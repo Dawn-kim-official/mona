@@ -1,0 +1,66 @@
+{
+  "common": {
+    "login": "Login",
+    "logout": "Logout",
+    "dashboard": "Dashboard",
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "back": "Back"
+  },
+  "business": {
+    "registration": {
+      "title": "Business Registration",
+      "businessName": "Business Name",
+      "representativeName": "Representative Name",
+      "businessLicense": "Business License",
+      "email": "Email",
+      "phone": "Phone Number",
+      "address": "Address",
+      "website": "Website",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "submit": "Submit Application"
+    },
+    "donation": {
+      "title": "Submit Donation",
+      "description": "Product Description",
+      "photos": "Photos",
+      "expirationDate": "Expiration Date",
+      "quantity": "Quantity",
+      "pickupDeadline": "Pickup Deadline",
+      "pickupLocation": "Pickup Location",
+      "taxDeduction": "Tax Deduction Needed",
+      "yes": "Yes",
+      "no": "No"
+    },
+    "dashboard": {
+      "activedonations": "Active Donations",
+      "pastDonations": "Past Donations",
+      "completedDonations": "Completed Donations",
+      "impactStats": "Impact Statistics",
+      "co2Saved": "CO₂ Saved",
+      "mealsServed": "Meals Served",
+      "wasteDiverted": "Waste Diverted"
+    }
+  },
+  "admin": {
+    "approvals": "Approval Management",
+    "donations": "Donation Management",
+    "quotes": "Quote Management",
+    "reports": "Reports"
+  },
+  "status": {
+    "pending": "Pending",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "pending_review": "Pending Review",
+    "quote_sent": "Quote Sent",
+    "quote_accepted": "Quote Accepted",
+    "matched": "Matched",
+    "pickup_scheduled": "Pickup Scheduled",
+    "completed": "Completed"
+  }
+}

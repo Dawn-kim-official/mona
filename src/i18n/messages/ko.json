@@ -1,0 +1,66 @@
+{
+  "common": {
+    "login": "로그인",
+    "logout": "로그아웃",
+    "dashboard": "대시보드",
+    "submit": "제출",
+    "cancel": "취소",
+    "save": "저장",
+    "delete": "삭제",
+    "edit": "수정",
+    "back": "뒤로"
+  },
+  "business": {
+    "registration": {
+      "title": "사업자 등록",
+      "businessName": "사업자명",
+      "representativeName": "대표자명",
+      "businessLicense": "사업자 등록증",
+      "email": "이메일",
+      "phone": "전화번호",
+      "address": "주소",
+      "website": "웹사이트",
+      "password": "비밀번호",
+      "confirmPassword": "비밀번호 확인",
+      "submit": "가입 신청"
+    },
+    "donation": {
+      "title": "기부 등록",
+      "description": "상품 설명",
+      "photos": "사진",
+      "expirationDate": "유통기한",
+      "quantity": "수량",
+      "pickupDeadline": "픽업 마감일",
+      "pickupLocation": "픽업 장소",
+      "taxDeduction": "세금 공제 필요",
+      "yes": "예",
+      "no": "아니오"
+    },
+    "dashboard": {
+      "activedonations": "진행 중인 기부",
+      "pastDonations": "과거 기부",
+      "completedDonations": "완료된 기부",
+      "impactStats": "임팩트 통계",
+      "co2Saved": "절감된 CO₂",
+      "mealsServed": "제공된 식사",
+      "wasteDiverted": "전환된 폐기물"
+    }
+  },
+  "admin": {
+    "approvals": "승인 관리",
+    "donations": "기부 관리",
+    "quotes": "견적 관리",
+    "reports": "보고서"
+  },
+  "status": {
+    "pending": "대기 중",
+    "approved": "승인됨",
+    "rejected": "거절됨",
+    "pending_review": "검토 대기",
+    "quote_sent": "견적 발송됨",
+    "quote_accepted": "견적 수락됨",
+    "matched": "매칭됨",
+    "pickup_scheduled": "픽업 예정",
+    "completed": "완료됨"
+  }
+}
