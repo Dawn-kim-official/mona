@@ -1,11 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import createMiddleware from 'next-intl/middleware'
-
-const intlMiddleware = createMiddleware({
-  locales: ['en', 'ko'],
-  defaultLocale: 'ko'
-})
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -41,17 +35,17 @@ export async function middleware(request: NextRequest) {
 
   if (!user && request.nextUrl.pathname.startsWith('/business/dashboard')) {
     const url = request.nextUrl.clone()
-    url.pathname = '/business/login'
+    url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
   if (!user && request.nextUrl.pathname.startsWith('/admin/dashboard')) {
     const url = request.nextUrl.clone()
-    url.pathname = '/admin/login'
+    url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  return intlMiddleware(request)
+  return supabaseResponse
 }
 
 export const config = {
