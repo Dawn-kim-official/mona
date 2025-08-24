@@ -49,8 +49,6 @@ export async function GET(request: Request) {
 
         if (profile?.role === 'admin') {
           return NextResponse.redirect(new URL('/admin/dashboard', requestUrl.origin))
-        } else if (!business) {
-          return NextResponse.redirect(new URL('/business/registration', requestUrl.origin))
         } else {
           return NextResponse.redirect(new URL('/business/dashboard', requestUrl.origin))
         }

@@ -2,67 +2,71 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
-import { Database } from '@/lib/supabase-types'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
-type Donation = Database['public']['Tables']['donations']['Row']
-
-const statusMap: { [key: string]: { text: string; color: string } } = {
-  'pending_review': { text: '승인 대기', color: '#FF8C00' },
-  'quote_sent': { text: '승인 거절', color: '#FF0000' },
-  'quote_accepted': { text: '견적 대기', color: '#FF8C00' },
-  'matched': { text: '견적 대기', color: '#FF8C00' },
-  'pickup_scheduled': { text: '견적 수락', color: '#0066FF' },
-  'completed': { text: '픽업 완료', color: '#00AA00' }
-}
-
-const tabs = [
-  { id: 'all', label: '전체' },
-  { id: 'pending_review', label: '승인 대기' },
-  { id: 'rejected', label: '승인 거절' },
-  { id: 'quote_pending', label: '견적 대기' },
-  { id: 'quote_accepted', label: '견적 수락' },
-  { id: 'quote_rejected', label: '견적 거절' },
-  { id: 'pickup_completed', label: '픽업 완료' },
-  { id: 'donation_completed', label: '기부 완료' }
-]
-
 export default function BusinessDashboardPage() {
+  const router = useRouter()
   const supabase = createClient()
-  const [donations, setDonations] = useState<Donation[]>([])
   const [loading, setLoading] = useState(true)
-  const [businessId, setBusinessId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState('all')
+  const [stats, setStats] = useState({
+    totalDonations: 0,
+    completedDonations: 0,
+    pendingDonations: 0
+  })
+  const [recentDonations, setRecentDonations] = useState<any[]>([])
+  const [esgReportUrl, setEsgReportUrl] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchDonations()
+    fetchDashboardData()
   }, [])
 
-  async function fetchDonations() {
+  async function fetchDashboardData() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
     const { data: business } = await supabase
       .from('businesses')
-      .select('id')
+      .select('id, esg_report_url')
       .eq('user_id', user.id)
       .single()
 
     if (!business) return
 
-    setBusinessId(business.id)
+    // Set ESG report URL if exists
+    if (business.esg_report_url) {
+      setEsgReportUrl(business.esg_report_url)
+    }
 
-    const { data, error } = await supabase
+    // Fetch all donations for stats
+    const { data: allDonations } = await supabase
+      .from('donations')
+      .select('status')
+      .eq('business_id', business.id)
+
+    if (allDonations) {
+      const total = allDonations.length
+      const completed = allDonations.filter(d => d.status === 'completed').length
+      const pending = allDonations.filter(d => 
+        ['pending_review', 'quote_sent', 'matched', 'quote_accepted', 'pickup_scheduled'].includes(d.status)
+      ).length
+
+      setStats({
+        totalDonations: total,
+        completedDonations: completed,
+        pendingDonations: pending
+      })
+    }
+
+    // Fetch recent donations (최근 2개)
+    const { data: donations } = await supabase
       .from('donations')
       .select('*')
       .eq('business_id', business.id)
       .order('created_at', { ascending: false })
+      .limit(2)
 
-    if (error) {
-      console.error('Error fetching donations:', error)
-    } else {
-      setDonations(data || [])
-    }
+    setRecentDonations(donations || [])
     setLoading(false)
   }
 
@@ -70,261 +74,204 @@ export default function BusinessDashboardPage() {
     return <div style={{ padding: '40px', textAlign: 'center' }}>로딩 중...</div>
   }
 
-  const filteredDonations = activeTab === 'all' 
-    ? donations 
-    : donations.filter(donation => {
-        switch(activeTab) {
-          case 'pending_review': return donation.status === 'pending_review';
-          case 'rejected': return donation.status === 'quote_sent';
-          case 'quote_pending': return donation.status === 'matched' || donation.status === 'quote_accepted';
-          case 'quote_accepted': return donation.status === 'pickup_scheduled';
-          case 'quote_rejected': return false;
-          case 'pickup_completed': return donation.status === 'completed';
-          case 'donation_completed': return donation.status === 'completed';
-          default: return true;
-        }
-      });
-
   return (
-    <div style={{ backgroundColor: '#ffffff', minHeight: '100vh' }}>
-      {/* Main Content Container */}
-      <div style={{ padding: '40px' }}>
-        {/* Tab Navigation */}
+    <div style={{ backgroundColor: '#F8F9FA', minHeight: '100vh' }}>
+      <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
+        {/* 기부 현황 요약 섹션 */}
         <div style={{ 
-          backgroundColor: '#F5F5F5',
-          padding: '12px 24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          borderRadius: '12px',
-          marginBottom: '32px'
+          backgroundColor: 'white',
+          borderRadius: '8px',
+          padding: '32px',
+          marginBottom: '24px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
         }}>
-          <div style={{ display: 'flex', gap: '40px', alignItems: 'center' }}>
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  padding: '8px 0',
-                  fontSize: '15px',
-                  color: activeTab === tab.id ? '#333333' : '#888888',
-                  fontWeight: activeTab === tab.id ? '600' : '400',
-                  cursor: 'pointer',
-                  transition: 'color 0.2s',
-                  whiteSpace: 'nowrap'
-                }}
-                onMouseEnter={(e) => {
-                  if (activeTab !== tab.id) {
-                    e.currentTarget.style.color = '#555555';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (activeTab !== tab.id) {
-                    e.currentTarget.style.color = '#888888';
-                  }
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
+          <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '24px', color: '#212529' }}>
+            기부 현황 요약
+          </h2>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px' }}>
+            <div style={{ 
+              textAlign: 'center',
+              padding: '24px',
+              backgroundColor: '#F8F9FA',
+              borderRadius: '8px',
+              border: '1px solid #E9ECEF'
+            }}>
+              <div style={{ fontSize: '48px', fontWeight: '700', color: '#212529', marginBottom: '8px' }}>
+                {stats.totalDonations}
+              </div>
+              <div style={{ fontSize: '16px', color: '#6C757D' }}>전체 기부 건수</div>
+            </div>
+            
+            <div style={{ 
+              textAlign: 'center',
+              padding: '24px',
+              backgroundColor: '#F8F9FA',
+              borderRadius: '8px',
+              border: '1px solid #E9ECEF'
+            }}>
+              <div style={{ fontSize: '48px', fontWeight: '700', color: '#212529', marginBottom: '8px' }}>
+                {stats.completedDonations}
+              </div>
+              <div style={{ fontSize: '16px', color: '#6C757D' }}>완료된 기부</div>
+            </div>
+            
+            <div style={{ 
+              textAlign: 'center',
+              padding: '24px',
+              backgroundColor: '#F8F9FA',
+              borderRadius: '8px',
+              border: '1px solid #E9ECEF'
+            }}>
+              <div style={{ fontSize: '48px', fontWeight: '700', color: '#FFC107', marginBottom: '8px' }}>
+                {stats.pendingDonations}
+              </div>
+              <div style={{ fontSize: '16px', color: '#6C757D' }}>진행 중인 기부</div>
+            </div>
           </div>
-          <Link href="/business/donation/new">
-            <button style={{ 
-              backgroundColor: '#FFC107', 
-              color: '#333333', 
-              padding: '10px 24px', 
-              border: 'none', 
-              borderRadius: '20px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#FFB300';
-              e.currentTarget.style.transform = 'scale(1.02)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#FFC107';
-              e.currentTarget.style.transform = 'scale(1)';
-            }}
-            >
-              <span style={{ fontSize: '16px', lineHeight: '1' }}>+</span>
-              새 기부 등록
-            </button>
-          </Link>
-        </div>
-        <div style={{ marginBottom: '30px' }}>
-          <h1 style={{ fontSize: '28px', marginBottom: '8px', color: '#1B4D3E' }}>내 기부 목록</h1>
-          <p style={{ color: '#666', fontSize: '16px' }}>등록하신 기부 내역을 확인하고 관리할 수 있습니다.</p>
         </div>
 
-        {filteredDonations.length === 0 ? (
+        {/* ESG 리포트 섹션 */}
+        {esgReportUrl && (
           <div style={{ 
-            textAlign: 'center', 
-            padding: '80px', 
             backgroundColor: 'white',
-            borderRadius: '12px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+            borderRadius: '8px',
+            padding: '32px',
+            marginBottom: '24px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
           }}>
-            <p style={{ color: '#999', fontSize: '16px', marginBottom: '20px' }}>등록된 기부가 없습니다.</p>
-            <Link href="/business/donation/new">
-              <button style={{ 
-                backgroundColor: '#FFB800', 
-                color: 'white', 
-                padding: '12px 32px', 
-                border: 'none', 
-                borderRadius: '8px',
-                fontSize: '15px',
-                fontWeight: 'bold',
-                cursor: 'pointer'
-              }}>
-                첫 기부 등록하기
-              </button>
-            </Link>
-          </div>
-        ) : (
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            overflow: 'hidden'
-          }}>
-            <table style={{ 
-              width: '100%',
-              borderCollapse: 'collapse'
-            }}>
-              <thead>
-                <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '1px solid #e9ecef' }}>
-                  <th style={{ padding: '18px 16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px', width: '80px' }}>이미지</th>
-                  <th style={{ padding: '18px 16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>품명</th>
-                  <th style={{ padding: '18px 16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px', width: '100px' }}>등록일</th>
-                  <th style={{ padding: '18px 16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px', width: '80px' }}>수량</th>
-                  <th style={{ padding: '18px 16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px', width: '120px' }}>픽업희망일</th>
-                  <th style={{ padding: '18px 16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px', width: '120px' }}>상태</th>
-                  <th style={{ padding: '18px 16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px', width: '150px' }}>작업</th>
-                </tr>
-              </thead>
-            <tbody>
-              {filteredDonations.map((donation) => {
-                const status = statusMap[donation.status] || { text: donation.status, color: '#666' }
-                return (
-                    <tr key={donation.id} style={{ 
-                      borderBottom: '1px solid #f0f0f0',
-                      transition: 'background-color 0.2s',
-                      cursor: 'pointer'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                    >
-                      <td style={{ padding: '16px' }}>
-                        <div style={{ 
-                          width: '64px', 
-                          height: '64px', 
-                          backgroundColor: '#f5f5f5',
-                          borderRadius: '8px',
-                          overflow: 'hidden',
-                          border: '1px solid #e9ecef'
-                        }}>
-                          {donation.photos && donation.photos[0] ? (
-                            <img 
-                              src={donation.photos[0]} 
-                              alt="기부 물품" 
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            />
-                          ) : (
-                            <div style={{
-                              width: '100%',
-                              height: '100%',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: '#adb5bd'
-                            }}>
-                              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
-                              </svg>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td style={{ padding: '16px', fontSize: '14px', fontWeight: '500', color: '#212529' }}>{donation.description}</td>
-                      <td style={{ padding: '16px', fontSize: '14px', color: '#6c757d' }}>{new Date(donation.created_at).toLocaleDateString('ko-KR')}</td>
-                      <td style={{ padding: '16px', fontSize: '14px', fontWeight: '500' }}>{donation.quantity}kg</td>
-                      <td style={{ padding: '16px', fontSize: '14px', color: '#6c757d' }}>{new Date(donation.pickup_deadline).toLocaleDateString('ko-KR')}</td>
-                      <td style={{ padding: '16px' }}>
-                        <span style={{ 
-                          color: status.color,
-                          fontWeight: '600',
-                          fontSize: '13px',
-                          backgroundColor: status.color + '15',
-                          padding: '6px 12px',
-                          borderRadius: '20px',
-                          display: 'inline-block',
-                          border: `1px solid ${status.color}30`
-                        }}>
-                          {status.text}
-                        </span>
-                      </td>
-                      <td style={{ padding: '16px' }}>
-                        {donation.status === 'quote_sent' && (
-                          <button style={{ 
-                            color: '#0066FF', 
-                            background: 'none', 
-                            border: '1px solid #0066FF',
-                            padding: '6px 16px',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontSize: '13px',
-                            fontWeight: '500',
-                            transition: 'all 0.2s'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#0066FF';
-                            e.currentTarget.style.color = 'white';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'transparent';
-                            e.currentTarget.style.color = '#0066FF';
-                          }}
-                          >견적서 확인</button>
-                        )}
-                        {donation.status === 'pickup_scheduled' && (
-                          <div style={{ fontSize: '13px' }}>
-                            <div style={{ color: '#6c757d', marginBottom: '4px' }}>픽업 예정일</div>
-                            <div style={{ color: '#212529', fontWeight: '500' }}>
-                              {donation.completed_at ? new Date(donation.completed_at).toLocaleDateString('ko-KR') : '-'}
-                            </div>
-                          </div>
-                        )}
-                        {donation.status === 'completed' && (
-                          <button style={{ 
-                            color: '#00AA00', 
-                            background: 'none', 
-                            border: '1px solid #00AA00',
-                            padding: '6px 16px',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontSize: '13px',
-                            fontWeight: '500'
-                          }}>ESG 리포트</button>
-                        )}
-                        {!['quote_sent', 'pickup_scheduled', 'completed'].includes(donation.status) && (
-                          <span style={{ color: '#adb5bd', fontSize: '13px' }}>-</span>
-                        )}
-                      </td>
-                    </tr>
-                )
-              })}
-              </tbody>
-            </table>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '8px', color: '#212529' }}>
+                  ESG 리포트
+                </h2>
+                <p style={{ fontSize: '14px', color: '#6C757D' }}>
+                  2025년 ESG 리포트가 준비되었습니다. (업데이트: 2025.07.31)
+                </p>
+              </div>
+              <a 
+                href={esgReportUrl} 
+                download
+                style={{ textDecoration: 'none' }}
+              >
+                <button style={{
+                  backgroundColor: '#FFC107',
+                  color: '#212529',
+                  border: 'none',
+                  borderRadius: '4px',
+                  padding: '10px 20px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#FFB300'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FFC107'}
+                >
+                  ESG 리포트 다운로드
+                </button>
+              </a>
+            </div>
           </div>
         )}
+
+        {/* 최근 기부 이력 섹션 */}
+        <div style={{ 
+          backgroundColor: 'white',
+          borderRadius: '8px',
+          padding: '32px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+        }}>
+          <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '24px', color: '#212529' }}>
+            최근 기부 이력
+          </h2>
+          
+          {recentDonations.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#6C757D' }}>
+              <p>아직 기부 이력이 없습니다.</p>
+              <Link href="/business/donation/new">
+                <button style={{
+                  backgroundColor: '#FFC107',
+                  color: '#212529',
+                  border: 'none',
+                  borderRadius: '4px',
+                  padding: '10px 24px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  marginTop: '16px'
+                }}>
+                  첫 기부 등록하기
+                </button>
+              </Link>
+            </div>
+          ) : (
+            <div style={{ overflow: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#F8F9FA', borderBottom: '1px solid #DEE2E6' }}>
+                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>이미지</th>
+                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>품명</th>
+                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>등록일</th>
+                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>수량</th>
+                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>픽업희망일</th>
+                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>상태</th>
+                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>작업</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentDonations.map((donation) => (
+                    <tr key={donation.id} style={{ borderBottom: '1px solid #DEE2E6' }}>
+                      <td style={{ padding: '12px', textAlign: 'center' }}>
+                        <div style={{ 
+                          width: '50px', 
+                          height: '50px', 
+                          backgroundColor: '#F8F9FA',
+                          borderRadius: '4px',
+                          margin: '0 auto',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#ADB5BD'
+                        }}>
+                          <span style={{ fontSize: '12px' }}>이미지</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'center', fontSize: '14px' }}>
+                        {donation.name || donation.description}
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'center', fontSize: '14px', color: '#6C757D' }}>
+                        {new Date(donation.created_at).toLocaleDateString('ko-KR')}
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'center', fontSize: '14px' }}>
+                        {donation.quantity}kg
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'center', fontSize: '14px', color: '#6C757D' }}>
+                        {new Date(donation.pickup_deadline).toLocaleDateString('ko-KR')}
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'center' }}>
+                        <span style={{ 
+                          color: '#28A745',
+                          fontWeight: '500',
+                          fontSize: '12px',
+                          backgroundColor: '#28A74520',
+                          padding: '4px 12px',
+                          borderRadius: '4px',
+                          display: 'inline-block'
+                        }}>
+                          기부 완료
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'center' }}>
+                        <span style={{ color: '#6C757D', fontSize: '13px' }}>-</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

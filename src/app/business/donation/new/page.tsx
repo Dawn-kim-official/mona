@@ -10,14 +10,13 @@ export default function NewDonationPage() {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
-    description: '',
+    category: '',
     quantity: '',
-    unit: 'kg',
-    condition: 'good',
+    expiryDate: '',
     pickupAddress: '',
-    pickupDeadline: '',
     additionalInfo: '',
-    photos: [] as File[]
+    photos: [] as File[],
+    photoType: 'main' // 'main' or 'sub'
   })
 
   async function handleSubmit(e: React.FormEvent) {
@@ -36,41 +35,58 @@ export default function NewDonationPage() {
 
       if (!business) throw new Error('Business not found')
 
-      // Upload photos
+      // Upload photos if any
       const photoUrls = []
-      for (const photo of formData.photos) {
-        const { data, error } = await supabase.storage
-          .from('donation_photos')
-          .upload(`${business.id}/${Date.now()}-${photo.name}`, photo)
-        
-        if (!error && data) {
-          const { data: { publicUrl } } = supabase.storage
-            .from('donation_photos')
-            .getPublicUrl(data.path)
-          photoUrls.push(publicUrl)
+      if (formData.photos.length > 0) {
+        for (const photo of formData.photos) {
+          const fileExt = photo.name.split('.').pop()
+          const fileName = `${business.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
+          
+          const { data, error } = await supabase.storage
+            .from('donation-photos')
+            .upload(fileName, photo)
+          
+          if (error) {
+            console.error('Upload error:', error)
+            // Continue without photos rather than failing
+          } else if (data) {
+            const { data: { publicUrl } } = supabase.storage
+              .from('donation-photos')
+              .getPublicUrl(data.path)
+            photoUrls.push(publicUrl)
+          }
         }
       }
 
       // Create donation
-      const { error } = await supabase.from('donations').insert({
+      const donationData = {
         business_id: business.id,
         name: formData.name,
-        description: formData.description,
-        quantity: parseFloat(formData.quantity),
-        unit: formData.unit,
-        condition: formData.condition as any,
-        pickup_deadline: formData.pickupDeadline,
+        description: formData.name, // Using name as description temporarily
+        quantity: parseFloat(formData.quantity) || 0,
+        unit: 'kg',
+        condition: 'good',
+        pickup_deadline: formData.expiryDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default to 7 days from now
         pickup_location: formData.pickupAddress,
-        additional_info: formData.additionalInfo,
-        photos: photoUrls
-      })
+        additional_info: formData.additionalInfo || null,
+        photos: photoUrls.length > 0 ? photoUrls : null,
+        status: 'pending_review'
+      }
+      
+      console.log('Creating donation with data:', donationData)
+      
+      const { error } = await supabase.from('donations').insert(donationData)
 
-      if (error) throw error
+      if (error) {
+        console.error('Donation creation error:', error)
+        throw error
+      }
 
+      alert('기부가 성공적으로 등록되었습니다!')
       router.push('/business/dashboard')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating donation:', error)
-      alert('기부 등록 중 오류가 발생했습니다.')
+      alert(`기부 등록 중 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}`)
     } finally {
       setLoading(false)
     }
@@ -87,12 +103,12 @@ export default function NewDonationPage() {
 
   const inputStyle = {
     width: '100%',
-    padding: '12px 16px',
+    padding: '10px 16px',
     fontSize: '14px',
-    border: '1px solid #e9ecef',
-    borderRadius: '8px',
-    backgroundColor: 'white',
-    transition: 'border-color 0.2s',
+    border: '1px solid #DEE2E6',
+    borderRadius: '4px',
+    backgroundColor: '#F8F9FA',
+    transition: 'all 0.2s',
     outline: 'none'
   }
 
@@ -100,190 +116,262 @@ export default function NewDonationPage() {
     display: 'block',
     marginBottom: '8px',
     fontSize: '14px',
-    fontWeight: '600' as const,
+    fontWeight: '500' as const,
     color: '#212529'
   }
 
   return (
-    <div style={{ padding: '40px', backgroundColor: '#fafafa', minHeight: 'calc(100vh - 70px)' }}>
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <div style={{ marginBottom: '40px' }}>
-          <h1 style={{ fontSize: '28px', marginBottom: '8px', color: '#1B4D3E' }}>새 기부 등록</h1>
-          <p style={{ color: '#666', fontSize: '16px' }}>기부하실 물품의 정보를 입력해주세요.</p>
+    <div style={{ padding: '40px', backgroundColor: '#F8F9FA', minHeight: 'calc(100vh - 70px)' }}>
+      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+        <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h1 style={{ fontSize: '24px', marginBottom: '8px', color: '#212529', fontWeight: '600' }}>기부 등록</h1>
+          </div>
+          <button
+            onClick={() => router.push('/business/dashboard')}
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: '14px',
+              color: '#6C757D',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            <span style={{ fontSize: '16px' }}>←</span> 목록으로
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ 
-          backgroundColor: 'white', 
-          padding: '40px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
-        }}>
-          <div style={{ marginBottom: '32px' }}>
-            <label style={labelStyle}>
-              물품명 <span style={{ color: '#dc3545' }}>*</span>
-            </label>
-            <input
-              type="text"
-              required
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              style={inputStyle}
-              placeholder="예: 의류, 전자제품, 가구 등"
-              onFocus={(e) => e.currentTarget.style.borderColor = '#FFB800'}
-              onBlur={(e) => e.currentTarget.style.borderColor = '#e9ecef'}
-            />
-          </div>
-
-          <div style={{ marginBottom: '32px' }}>
-            <label style={labelStyle}>
-              상세 설명 <span style={{ color: '#dc3545' }}>*</span>
-            </label>
-            <textarea
-              required
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              style={{ ...inputStyle, minHeight: '120px', resize: 'vertical' }}
-              placeholder="물품의 상태, 특징 등을 자세히 설명해주세요"
-              onFocus={(e) => e.currentTarget.style.borderColor = '#FFB800'}
-              onBlur={(e) => e.currentTarget.style.borderColor = '#e9ecef'}
-            />
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
-            <div>
-              <label style={labelStyle}>
-                수량 <span style={{ color: '#dc3545' }}>*</span>
-              </label>
-              <div style={{ display: 'flex', gap: '12px' }}>
+        <form onSubmit={handleSubmit}>
+          {/* 기부 정보 입력 섹션 */}
+          <div style={{ 
+            backgroundColor: 'white', 
+            padding: '32px',
+            borderRadius: '8px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            marginBottom: '24px'
+          }}>
+            <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '24px', color: '#212529' }}>기부 정보 입력</h2>
+            <p style={{ fontSize: '14px', color: '#6C757D', marginBottom: '24px' }}>기부할 물품의 정보를 정확하게 입력해주세요.</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
+              <div>
+                <label style={labelStyle}>
+                  품명 <span style={{ color: '#DC3545' }}>*</span>
+                </label>
                 <input
-                  type="number"
+                  type="text"
                   required
-                  min="0"
-                  step="0.1"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  style={inputStyle}
+                  placeholder="품명을 입력하세요"
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#80BDFF'
+                    e.currentTarget.style.backgroundColor = '#FFFFFF'
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#DEE2E6'
+                    e.currentTarget.style.backgroundColor = '#F8F9FA'
+                  }}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>
+                  수량 <span style={{ color: '#DC3545' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  required
                   value={formData.quantity}
                   onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                  style={{ ...inputStyle, flex: 1 }}
-                  placeholder="0"
-                  onFocus={(e) => e.currentTarget.style.borderColor = '#FFB800'}
-                  onBlur={(e) => e.currentTarget.style.borderColor = '#e9ecef'}
+                  style={inputStyle}
+                  placeholder="수량을 입력하세요"
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#80BDFF'
+                    e.currentTarget.style.backgroundColor = '#FFFFFF'
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#DEE2E6'
+                    e.currentTarget.style.backgroundColor = '#F8F9FA'
+                  }}
                 />
-                <select
-                  value={formData.unit}
-                  onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                  style={{ ...inputStyle, width: '100px' }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = '#FFB800'}
-                  onBlur={(e) => e.currentTarget.style.borderColor = '#e9ecef'}
-                >
-                  <option value="kg">kg</option>
-                  <option value="개">개</option>
-                  <option value="박스">박스</option>
-                  <option value="세트">세트</option>
-                </select>
               </div>
             </div>
 
-            <div>
-              <label style={labelStyle}>
-                물품 상태 <span style={{ color: '#dc3545' }}>*</span>
-              </label>
-              <select
-                value={formData.condition}
-                onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
-                style={inputStyle}
-                onFocus={(e) => e.currentTarget.style.borderColor = '#FFB800'}
-                onBlur={(e) => e.currentTarget.style.borderColor = '#e9ecef'}
-              >
-                <option value="new">새상품</option>
-                <option value="good">좋음</option>
-                <option value="fair">보통</option>
-              </select>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
+              <div>
+                <label style={labelStyle}>
+                  카테고리 <span style={{ color: '#DC3545' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  style={inputStyle}
+                  placeholder="카테고리를 입력하세요"
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#80BDFF'
+                    e.currentTarget.style.backgroundColor = '#FFFFFF'
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#DEE2E6'
+                    e.currentTarget.style.backgroundColor = '#F8F9FA'
+                  }}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>
+                  소비기한
+                </label>
+                <input
+                  type="date"
+                  value={formData.expiryDate}
+                  onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
+                  style={inputStyle}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#80BDFF'
+                    e.currentTarget.style.backgroundColor = '#FFFFFF'
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#DEE2E6'
+                    e.currentTarget.style.backgroundColor = '#F8F9FA'
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+              <div>
+                <label style={labelStyle}>
+                  픽업 희망일 <span style={{ color: '#DC3545' }}>*</span>
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={formData.expiryDate}
+                  onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
+                  style={inputStyle}
+                  min={new Date().toISOString().split('T')[0]}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#80BDFF'
+                    e.currentTarget.style.backgroundColor = '#FFFFFF'
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#DEE2E6'
+                    e.currentTarget.style.backgroundColor = '#F8F9FA'
+                  }}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>
+                  픽업 장소 <span style={{ color: '#DC3545' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.pickupAddress}
+                  onChange={(e) => setFormData({ ...formData, pickupAddress: e.target.value })}
+                  style={inputStyle}
+                  placeholder="픽업 장소를 입력하세요"
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#80BDFF'
+                    e.currentTarget.style.backgroundColor = '#FFFFFF'
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#DEE2E6'
+                    e.currentTarget.style.backgroundColor = '#F8F9FA'
+                  }}
+                />
+              </div>
             </div>
           </div>
 
-          <div style={{ marginBottom: '32px' }}>
-            <label style={labelStyle}>
-              픽업 주소 <span style={{ color: '#dc3545' }}>*</span>
-            </label>
-            <input
-              type="text"
-              required
-              value={formData.pickupAddress}
-              onChange={(e) => setFormData({ ...formData, pickupAddress: e.target.value })}
-              style={inputStyle}
-              placeholder="픽업 가능한 주소를 입력해주세요"
-              onFocus={(e) => e.currentTarget.style.borderColor = '#FFB800'}
-              onBlur={(e) => e.currentTarget.style.borderColor = '#e9ecef'}
-            />
+          {/* 기부 물품 사진 업로드 섹션 */}
+          <div style={{ 
+            backgroundColor: 'white', 
+            padding: '32px',
+            borderRadius: '8px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            marginBottom: '24px'
+          }}>
+            <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', color: '#212529' }}>기부 물품 사진 (최대 3장)</h2>
+            <div style={{ 
+              border: '2px dashed #DEE2E6',
+              borderRadius: '8px',
+              padding: '40px',
+              textAlign: 'center',
+              backgroundColor: '#F8F9FA',
+              marginBottom: '24px',
+              position: 'relative',
+              cursor: 'pointer'
+            }}
+            onClick={() => document.getElementById('photo-upload')?.click()}
+            >
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="#ADB5BD" style={{ marginBottom: '16px' }}>
+                <path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>
+              </svg>
+              <p style={{ color: '#6C757D', fontSize: '14px', marginBottom: '16px' }}>클릭하여 업로드 또는 이미지 드래그하세요.</p>
+              <p style={{ color: '#ADB5BD', fontSize: '12px' }}>최대 5MB</p>
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handlePhotoChange}
+                style={{ display: 'none' }}
+                id="photo-upload"
+              />
+              <label htmlFor="photo-upload" style={{ 
+                cursor: 'pointer',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0
+              }}>
+                {/* Invisible input area */}
+              </label>
+            </div>
+            {formData.photos.length > 0 && (
+              <div style={{ marginTop: '16px' }}>
+                <p style={{ fontSize: '14px', color: '#495057', marginBottom: '8px' }}>
+                  선택된 파일: {formData.photos.length}개
+                </p>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {formData.photos.map((photo, index) => (
+                    <li key={index} style={{ fontSize: '13px', color: '#6C757D', marginBottom: '4px' }}>
+                      • {photo.name}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
-          <div style={{ marginBottom: '32px' }}>
-            <label style={labelStyle}>
-              픽업 희망일 <span style={{ color: '#dc3545' }}>*</span>
-            </label>
-            <input
-              type="date"
-              required
-              value={formData.pickupDeadline}
-              onChange={(e) => setFormData({ ...formData, pickupDeadline: e.target.value })}
-              style={inputStyle}
-              min={new Date().toISOString().split('T')[0]}
-              onFocus={(e) => e.currentTarget.style.borderColor = '#FFB800'}
-              onBlur={(e) => e.currentTarget.style.borderColor = '#e9ecef'}
-            />
-          </div>
-
-          <div style={{ marginBottom: '32px' }}>
-            <label style={labelStyle}>
-              사진 업로드
-            </label>
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handlePhotoChange}
-              style={inputStyle}
-            />
-            <p style={{ fontSize: '13px', color: '#6c757d', marginTop: '8px' }}>
-              최대 5장까지 업로드 가능합니다
-            </p>
-          </div>
-
-          <div style={{ marginBottom: '40px' }}>
-            <label style={labelStyle}>
-              추가 정보
-            </label>
-            <textarea
-              value={formData.additionalInfo}
-              onChange={(e) => setFormData({ ...formData, additionalInfo: e.target.value })}
-              style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }}
-              placeholder="기타 참고사항이 있으면 입력해주세요"
-              onFocus={(e) => e.currentTarget.style.borderColor = '#FFB800'}
-              onBlur={(e) => e.currentTarget.style.borderColor = '#e9ecef'}
-            />
-          </div>
-
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
             <button
               type="button"
               onClick={() => router.push('/business/dashboard')}
               style={{
-                padding: '12px 32px',
-                fontSize: '15px',
+                padding: '10px 24px',
+                fontSize: '14px',
                 fontWeight: '500',
-                color: '#666',
+                color: '#6C757D',
                 backgroundColor: 'white',
-                border: '1px solid #e9ecef',
-                borderRadius: '8px',
+                border: '1px solid #DEE2E6',
+                borderRadius: '4px',
                 cursor: 'pointer',
                 transition: 'all 0.2s'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#f8f9fa';
-                e.currentTarget.style.borderColor = '#dee2e6';
+                e.currentTarget.style.backgroundColor = '#F8F9FA';
+                e.currentTarget.style.borderColor = '#ADB5BD';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = 'white';
-                e.currentTarget.style.borderColor = '#e9ecef';
+                e.currentTarget.style.borderColor = '#DEE2E6';
               }}
             >
               취소
@@ -292,28 +380,24 @@ export default function NewDonationPage() {
               type="submit"
               disabled={loading}
               style={{
-                padding: '12px 32px',
-                fontSize: '15px',
-                fontWeight: 'bold',
-                color: 'white',
-                backgroundColor: loading ? '#FDD676' : '#FFB800',
+                padding: '10px 24px',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#212529',
+                backgroundColor: loading ? '#FFE082' : '#FFC107',
                 border: 'none',
-                borderRadius: '8px',
+                borderRadius: '4px',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s'
               }}
               onMouseEnter={(e) => {
                 if (!loading) {
-                  e.currentTarget.style.backgroundColor = '#F0A800';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 184, 0, 0.3)';
+                  e.currentTarget.style.backgroundColor = '#FFB300';
                 }
               }}
               onMouseLeave={(e) => {
                 if (!loading) {
-                  e.currentTarget.style.backgroundColor = '#FFB800';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
+                  e.currentTarget.style.backgroundColor = '#FFC107';
                 }
               }}
             >

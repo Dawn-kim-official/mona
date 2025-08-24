@@ -28,7 +28,21 @@ export default function LoginPage() {
         password,
       })
 
-      if (error) throw error
+      if (error) {
+        console.error('Login error details:', {
+          error,
+          message: error.message,
+          status: error.status,
+          code: error.code
+        })
+        
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('이메일 또는 비밀번호가 올바르지 않습니다.')
+        } else if (error.message.includes('Email not confirmed')) {
+          throw new Error('이메일 인증이 필요합니다. 이메일을 확인해주세요.')
+        }
+        throw error
+      }
 
       if (data.user) {
         // profiles 테이블에서 role 확인
@@ -62,10 +76,11 @@ export default function LoginPage() {
             .single()
 
           if (!business) {
-            router.push('/business/registration')
-          } else if (business.status === 'pending') {
-            router.push('/business/registration-complete')
+            // 회원가입 시 이미 사업자 정보를 입력받았으므로, business가 없는 경우는 오류
+            setError('사업자 정보를 찾을 수 없습니다. 관리자에게 문의하세요.')
+            return
           } else {
+            // 모든 비즈니스 사용자는 바로 대시보드로 이동
             router.push('/business/dashboard')
           }
         }
@@ -77,19 +92,6 @@ export default function LoginPage() {
     }
   }
 
-  const handleGoogleLogin = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      })
-      if (error) throw error
-    } catch (error: any) {
-      setError(error.message)
-    }
-  }
 
   return (
     <Card>
@@ -127,26 +129,6 @@ export default function LoginPage() {
             {loading ? '로그인 중...' : '로그인'}
           </Button>
         </form>
-        <div className="mt-4">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                또는
-              </span>
-            </div>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full mt-4"
-            onClick={handleGoogleLogin}
-          >
-            Google로 로그인
-          </Button>
-        </div>
       </CardContent>
       <CardFooter className="flex justify-center">
         <p className="text-sm text-muted-foreground">

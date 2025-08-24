@@ -79,12 +79,12 @@ export default function BusinessLayout({
               color: 'white', 
               textDecoration: 'none',
               fontSize: '16px'
-            }}>기부</Link>
-            <Link href="/business/dashboard" style={{ 
+            }}>대시보드</Link>
+            <Link href="/business/donations" style={{ 
               color: 'white', 
               textDecoration: 'none',
               fontSize: '16px'
-            }}>대시보드</Link>
+            }}>내 기부 목록</Link>
           </div>
         </div>
         <button 
