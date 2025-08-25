@@ -87,3 +87,23 @@ body {
   margin: 0;
   padding: 0;
 }
+
+/* Next.js 오류 오버레이 숨기기 - 영상 촬영용 */
+nextjs-portal {
+  display: none !important;
+}
+
+/* React 오류 오버레이 숨기기 */
+.nextjs-toast-errors-parent {
+  display: none !important;
+}
+
+/* 빌드 인디케이터 숨기기 */
+#__next-build-indicator {
+  display: none !important;
+}
+
+/* 오류 오버레이 프레임 숨기기 */
+[data-nextjs-dialog-overlay] {
+  display: none !important;
+}

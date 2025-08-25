@@ -13,6 +13,7 @@ type Quote = Database['public']['Tables']['quotes']['Row']
 const statusMap: { [key: string]: { text: string; color: string } } = {
   'pending_review': { text: '승인 대기', color: '#FF8C00' },
   'rejected': { text: '승인 거절', color: '#DC3545' },
+  'beneficiary_selected': { text: '수혜기관 선정', color: '#17A2B8' },
   'quote_sent': { text: '견적 대기', color: '#FF8C00' },
   'quote_accepted': { text: '견적 대기', color: '#FF8C00' },
   'matched': { text: '견적 대기', color: '#FF8C00' },
@@ -24,6 +25,7 @@ const tabs = [
   { id: '전체', label: '전체' },
   { id: '승인 대기', label: '승인 대기' },
   { id: '승인 거절', label: '승인 거절' },
+  { id: '수혜기관 선정', label: '수혜기관 선정' },
   { id: '견적 대기', label: '견적 대기' },
   { id: '견적 수락', label: '견적 수락' },
   { id: '견적 거절', label: '견적 거절' },
@@ -144,6 +146,7 @@ export default function BusinessDashboardPage() {
         switch(activeTab) {
           case '승인 대기': return donation.status === 'pending_review';
           case '승인 거절': return donation.status === 'rejected';
+          case '수혜기관 선정': return donation.status === 'beneficiary_selected';
           case '견적 대기': return donation.status === 'quote_sent' || donation.status === 'matched' || donation.status === 'quote_accepted';
           case '견적 수락': return donation.status === 'pickup_scheduled';
           case '견적 거절': return false;

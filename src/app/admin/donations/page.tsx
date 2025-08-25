@@ -24,7 +24,7 @@ interface Donation {
 const statusMap: { [key: string]: { text: string; color: string; bgColor: string } } = {
   'pending_review': { text: '승인 대기', color: '#FF8C00', bgColor: '#FFF3CD' },
   'rejected': { text: '승인 거절', color: '#DC3545', bgColor: '#F8D7DA' },
-  'matched': { text: '견적 대기', color: '#FF8C00', bgColor: '#FFF3CD' },
+  'matched': { text: '수혜기관 선정', color: '#17A2B8', bgColor: '#D1ECF1' },
   'quote_sent': { text: '견적 대기', color: '#FF8C00', bgColor: '#FFF3CD' },
   'quote_accepted': { text: '견적 수락', color: '#007BFF', bgColor: '#CCE5FF' },
   'pickup_scheduled': { text: '픽업 완료', color: '#007BFF', bgColor: '#CCE5FF' },
@@ -126,8 +126,8 @@ export default function AdminDonationsPage() {
     { id: null, label: '전체' },
     { id: 'pending_review', label: '승인 대기' },
     { id: 'rejected', label: '승인 거절' },
-    { id: 'matched', label: '견적 대기' },
-    { id: 'quote_sent', label: '견적 거절' },
+    { id: 'matched', label: '수혜기관 선정' },
+    { id: 'quote_sent', label: '견적 발송' },
     { id: 'quote_accepted', label: '견적 수락' },
     { id: 'pickup_scheduled', label: '픽업 완료' },
     { id: 'completed', label: '기부 완료' }
@@ -196,7 +196,6 @@ export default function AdminDonationsPage() {
                 <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>픽업희망일</th>
                 <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>상태</th>
                 <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>작업</th>
-                <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px', width: '60px' }}>삭제</th>
               </tr>
             </thead>
             <tbody>
@@ -265,9 +264,8 @@ export default function AdminDonationsPage() {
                           >
                             거절
                           </button>
-                          <button
-                            onClick={() => handleApprove(donation.id)}
-                            style={{
+                          <Link href={`/admin/donation/${donation.id}/propose`}>
+                            <button style={{
                               padding: '6px 16px',
                               fontSize: '13px',
                               fontWeight: '500',
@@ -276,10 +274,10 @@ export default function AdminDonationsPage() {
                               border: 'none',
                               borderRadius: '4px',
                               cursor: 'pointer'
-                            }}
-                          >
-                            승인
-                          </button>
+                            }}>
+                              수혜기관 선택
+                            </button>
+                          </Link>
                         </div>
                       )}
                       {donation.status === 'matched' && (
@@ -294,9 +292,41 @@ export default function AdminDonationsPage() {
                             borderRadius: '4px',
                             cursor: 'pointer'
                           }}>
-                            견적서 업로드
+                            견적서 발송
                           </button>
                         </Link>
+                      )}
+                      {donation.status === 'pickup_scheduled' && (
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                          <Link href={`/admin/donation/${donation.id}/propose`}>
+                            <button style={{
+                              padding: '6px 16px',
+                              fontSize: '13px',
+                              fontWeight: '500',
+                              color: 'white',
+                              backgroundColor: '#28A745',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer'
+                            }}>
+                              수혜자 제안
+                            </button>
+                          </Link>
+                          <Link href={`/admin/donation/${donation.id}/quote`}>
+                            <button style={{
+                              padding: '6px 16px',
+                              fontSize: '13px',
+                              fontWeight: '500',
+                              color: '#212529',
+                              backgroundColor: '#FFC107',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer'
+                            }}>
+                              견적서 업로드
+                            </button>
+                          </Link>
+                        </div>
                       )}
                       {donation.status === 'quote_sent' && (
                         <span style={{ fontSize: '12px', color: '#666' }}>견적서 확인</span>
@@ -345,32 +375,6 @@ export default function AdminDonationsPage() {
                       {(donation.status === 'rejected' || !['pending_review', 'matched', 'quote_sent', 'quote_accepted', 'pickup_scheduled', 'completed'].includes(donation.status)) && (
                         <span style={{ color: '#6C757D', fontSize: '12px' }}>-</span>
                       )}
-                    </td>
-                    <td style={{ padding: '16px', textAlign: 'center' }}>
-                      <button
-                        onClick={() => handleDelete(donation.id)}
-                        style={{
-                          padding: '6px 12px',
-                          fontSize: '13px',
-                          fontWeight: '500',
-                          color: '#DC3545',
-                          backgroundColor: 'transparent',
-                          border: '1px solid #DC3545',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#DC3545';
-                          e.currentTarget.style.color = 'white';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'transparent';
-                          e.currentTarget.style.color = '#DC3545';
-                        }}
-                      >
-                        삭제
-                      </button>
                     </td>
                   </tr>
                 )

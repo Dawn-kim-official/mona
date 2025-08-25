@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase'
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [userType, setUserType] = useState<'business' | 'beneficiary'>('business')
+  const [userType, setUserType] = useState<'business' | 'beneficiary' | 'admin'>('business')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
@@ -62,7 +62,7 @@ export default function LoginPage() {
         }
 
         // role에 따라 리다이렉트
-        if (profile?.role === 'admin') {
+        if (profile?.role === 'admin' || userType === 'admin') {
           router.push('/admin/dashboard')
         } else if (profile?.role === 'beneficiary' || userType === 'beneficiary') {
           // beneficiary 사용자인 경우
@@ -189,6 +189,24 @@ export default function LoginPage() {
           >
             수혜 기관
           </button>
+          <button
+            type="button"
+            onClick={() => setUserType('admin')}
+            style={{
+              flex: 1,
+              padding: '12px',
+              border: 'none',
+              borderBottom: userType === 'admin' ? '2px solid #1B4D3E' : '2px solid transparent',
+              backgroundColor: 'transparent',
+              color: userType === 'admin' ? '#1B4D3E' : '#6C757D',
+              fontWeight: userType === 'admin' ? '600' : '400',
+              fontSize: '14px',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+          >
+            관리자
+          </button>
         </div>
 
         <form onSubmit={handleLogin}>
@@ -302,30 +320,32 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p style={{ 
-          textAlign: 'center', 
-          marginTop: '24px',
-          fontSize: '14px',
-          color: '#6C757D'
-        }}>
-          {userType === 'business' 
-            ? '회원가입 후 사업자 정보를 등록하여 서비스를 이용하실 수 있습니다.'
-            : '회원가입 후 기관 정보를 등록하여 서비스를 이용하실 수 있습니다.'}
-          <br />
-          <Link 
-            href={userType === 'business' ? '/signup' : '/signup-beneficiary'} 
-            style={{ 
-              color: '#007BFF', 
-              textDecoration: 'none',
-              marginTop: '8px',
-              display: 'inline-block'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-            onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-          >
-            회원가입
-          </Link>
-        </p>
+        {userType !== 'admin' && (
+          <p style={{ 
+            textAlign: 'center', 
+            marginTop: '24px',
+            fontSize: '14px',
+            color: '#6C757D'
+          }}>
+            {userType === 'business' 
+              ? '회원가입 후 사업자 정보를 등록하여 서비스를 이용하실 수 있습니다.'
+              : '회원가입 후 기관 정보를 등록하여 서비스를 이용하실 수 있습니다.'}
+            <br />
+            <Link 
+              href={userType === 'business' ? '/signup' : '/signup-beneficiary'} 
+              style={{ 
+                color: '#007BFF', 
+                textDecoration: 'none',
+                marginTop: '8px',
+                display: 'inline-block'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+              onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+            >
+              회원가입
+            </Link>
+          </p>
+        )}
       </div>
     </div>
   )

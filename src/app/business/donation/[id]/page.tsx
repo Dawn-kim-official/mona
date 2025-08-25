@@ -5,6 +5,11 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import Link from 'next/link'
 import QuoteDetailModal from '@/components/QuoteDetailModal'
+import dynamic from 'next/dynamic'
+import html2canvas from 'html2canvas'
+import jsPDF from 'jspdf'
+
+const ReceiptTemplate = dynamic(() => import('@/app/beneficiary/receipts/ReceiptTemplate'), { ssr: false })
 
 interface Donation {
   id: string
@@ -47,6 +52,8 @@ export default function DonationDetailPage() {
   const [quote, setQuote] = useState<Quote | null>(null)
   const [loading, setLoading] = useState(true)
   const [showQuoteModal, setShowQuoteModal] = useState(false)
+  const [receiptInfo, setReceiptInfo] = useState<any>(null)
+  const [generatingPdf, setGeneratingPdf] = useState(false)
 
   useEffect(() => {
     fetchDonationDetail()
@@ -73,6 +80,24 @@ export default function DonationDetailPage() {
 
       if (quoteData) {
         setQuote(quoteData)
+      }
+
+      // Check if receipt is issued
+      const { data: matchData } = await supabase
+        .from('donation_matches')
+        .select(`
+          *,
+          beneficiaries (
+            *
+          )
+        `)
+        .eq('donation_id', params.id)
+        .eq('receipt_issued', true)
+        .single()
+
+      if (matchData) {
+        console.log('Receipt info:', matchData);
+        setReceiptInfo(matchData)
       }
     }
 
@@ -452,6 +477,55 @@ export default function DonationDetailPage() {
             <p style={{ fontSize: '14px', color: '#856404', margin: 0 }}>
               🕐 견적서를 기다리고 있습니다. 곧 연락드리겠습니다.
             </p>
+          </div>
+        )}
+
+        {/* 영수증 다운로드 섹션 */}
+        {receiptInfo && receiptInfo.receipt_issued && (
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            padding: '24px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            border: '2px solid #28A745'
+          }}>
+            <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: '#212529' }}>
+              기부영수증
+            </h3>
+            <p style={{ fontSize: '14px', color: '#6C757D', marginBottom: '16px' }}>
+              기부영수증이 발행되었습니다. ({receiptInfo.receipt_issued_at ? new Date(receiptInfo.receipt_issued_at).toLocaleDateString('ko-KR') : ''})
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              {receiptInfo && receiptInfo.receipt_file_url ? (
+                <a
+                  href={receiptInfo.receipt_file_url}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    padding: '8px 20px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: 'white',
+                    backgroundColor: '#28A745',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s',
+                    textDecoration: 'none',
+                    display: 'inline-block'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#218838'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#28A745'}
+                >
+                  영수증 다운로드
+                </a>
+              ) : (
+                <span style={{ fontSize: '14px', color: '#6C757D' }}>
+                  영수증 파일이 아직 업로드되지 않았습니다.
+                </span>
+              )}
+            </div>
           </div>
         )}
       </div>
