@@ -12,7 +12,9 @@ export default function NewDonationPage() {
     name: '',
     category: '',
     quantity: '',
+    unit: 'kg', // 'kg' or '개'
     expiryDate: '',
+    pickupDate: '',
     pickupAddress: '',
     additionalInfo: '',
     photos: [] as File[],
@@ -64,9 +66,9 @@ export default function NewDonationPage() {
         name: formData.name,
         description: formData.name, // Using name as description temporarily
         quantity: parseFloat(formData.quantity) || 0,
-        unit: 'kg',
+        unit: formData.unit,
         condition: 'good',
-        pickup_deadline: formData.expiryDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default to 7 days from now
+        pickup_deadline: formData.pickupDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default to 7 days from now
         pickup_location: formData.pickupAddress,
         additional_info: formData.additionalInfo || null,
         photos: photoUrls.length > 0 ? photoUrls : null,
@@ -103,13 +105,14 @@ export default function NewDonationPage() {
 
   const inputStyle = {
     width: '100%',
-    padding: '10px 16px',
-    fontSize: '14px',
-    border: '1px solid #DEE2E6',
-    borderRadius: '4px',
-    backgroundColor: '#F8F9FA',
+    padding: '14px 16px',
+    fontSize: '16px',
+    border: '1px solid #CED4DA',
+    borderRadius: '6px',
+    backgroundColor: '#FFFFFF',
     transition: 'all 0.2s',
-    outline: 'none'
+    outline: 'none',
+    color: '#212529'
   }
 
   const labelStyle = {
@@ -168,12 +171,12 @@ export default function NewDonationPage() {
                   style={inputStyle}
                   placeholder="품명을 입력하세요"
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = '#80BDFF'
-                    e.currentTarget.style.backgroundColor = '#FFFFFF'
+                    e.currentTarget.style.borderColor = '#1B4D3E'
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
                   }}
                   onBlur={(e) => {
-                    e.currentTarget.style.borderColor = '#DEE2E6'
-                    e.currentTarget.style.backgroundColor = '#F8F9FA'
+                    e.currentTarget.style.borderColor = '#CED4DA'
+                    e.currentTarget.style.boxShadow = 'none'
                   }}
                 />
               </div>
@@ -181,22 +184,50 @@ export default function NewDonationPage() {
                 <label style={labelStyle}>
                   수량 <span style={{ color: '#DC3545' }}>*</span>
                 </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.quantity}
-                  onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                  style={inputStyle}
-                  placeholder="수량을 입력하세요"
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = '#80BDFF'
-                    e.currentTarget.style.backgroundColor = '#FFFFFF'
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = '#DEE2E6'
-                    e.currentTarget.style.backgroundColor = '#F8F9FA'
-                  }}
-                />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    required
+                    value={formData.quantity}
+                    onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                    style={{ ...inputStyle, flex: 1 }}
+                    placeholder="수량을 입력하세요"
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = '#1B4D3E'
+                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = '#CED4DA'
+                      e.currentTarget.style.boxShadow = 'none'
+                    }}
+                  />
+                  <select
+                    value={formData.unit}
+                    onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                    style={{
+                      width: '100px',
+                      padding: '14px 16px',
+                      fontSize: '16px',
+                      border: '1px solid #CED4DA',
+                      borderRadius: '6px',
+                      backgroundColor: '#FFFFFF',
+                      color: '#212529',
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = '#1B4D3E'
+                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = '#CED4DA'
+                      e.currentTarget.style.boxShadow = 'none'
+                    }}
+                  >
+                    <option value="kg">kg</option>
+                    <option value="개">개</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -213,12 +244,12 @@ export default function NewDonationPage() {
                   style={inputStyle}
                   placeholder="카테고리를 입력하세요"
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = '#80BDFF'
-                    e.currentTarget.style.backgroundColor = '#FFFFFF'
+                    e.currentTarget.style.borderColor = '#1B4D3E'
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
                   }}
                   onBlur={(e) => {
-                    e.currentTarget.style.borderColor = '#DEE2E6'
-                    e.currentTarget.style.backgroundColor = '#F8F9FA'
+                    e.currentTarget.style.borderColor = '#CED4DA'
+                    e.currentTarget.style.boxShadow = 'none'
                   }}
                 />
               </div>
@@ -232,12 +263,12 @@ export default function NewDonationPage() {
                   onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
                   style={inputStyle}
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = '#80BDFF'
-                    e.currentTarget.style.backgroundColor = '#FFFFFF'
+                    e.currentTarget.style.borderColor = '#1B4D3E'
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
                   }}
                   onBlur={(e) => {
-                    e.currentTarget.style.borderColor = '#DEE2E6'
-                    e.currentTarget.style.backgroundColor = '#F8F9FA'
+                    e.currentTarget.style.borderColor = '#CED4DA'
+                    e.currentTarget.style.boxShadow = 'none'
                   }}
                 />
               </div>
@@ -251,17 +282,17 @@ export default function NewDonationPage() {
                 <input
                   type="date"
                   required
-                  value={formData.expiryDate}
-                  onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
+                  value={formData.pickupDate}
+                  onChange={(e) => setFormData({ ...formData, pickupDate: e.target.value })}
                   style={inputStyle}
                   min={new Date().toISOString().split('T')[0]}
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = '#80BDFF'
-                    e.currentTarget.style.backgroundColor = '#FFFFFF'
+                    e.currentTarget.style.borderColor = '#1B4D3E'
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
                   }}
                   onBlur={(e) => {
-                    e.currentTarget.style.borderColor = '#DEE2E6'
-                    e.currentTarget.style.backgroundColor = '#F8F9FA'
+                    e.currentTarget.style.borderColor = '#CED4DA'
+                    e.currentTarget.style.boxShadow = 'none'
                   }}
                 />
               </div>
@@ -277,12 +308,12 @@ export default function NewDonationPage() {
                   style={inputStyle}
                   placeholder="픽업 장소를 입력하세요"
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = '#80BDFF'
-                    e.currentTarget.style.backgroundColor = '#FFFFFF'
+                    e.currentTarget.style.borderColor = '#1B4D3E'
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
                   }}
                   onBlur={(e) => {
-                    e.currentTarget.style.borderColor = '#DEE2E6'
-                    e.currentTarget.style.backgroundColor = '#F8F9FA'
+                    e.currentTarget.style.borderColor = '#CED4DA'
+                    e.currentTarget.style.boxShadow = 'none'
                   }}
                 />
               </div>
@@ -298,7 +329,7 @@ export default function NewDonationPage() {
             marginBottom: '24px'
           }}>
             <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', color: '#212529' }}>기부 물품 사진 (최대 3장)</h2>
-            <div style={{ 
+            <label htmlFor="photo-upload" style={{ 
               border: '2px dashed #DEE2E6',
               borderRadius: '8px',
               padding: '40px',
@@ -306,10 +337,9 @@ export default function NewDonationPage() {
               backgroundColor: '#F8F9FA',
               marginBottom: '24px',
               position: 'relative',
-              cursor: 'pointer'
-            }}
-            onClick={() => document.getElementById('photo-upload')?.click()}
-            >
+              cursor: 'pointer',
+              display: 'block'
+            }}>
               <svg width="48" height="48" viewBox="0 0 24 24" fill="#ADB5BD" style={{ marginBottom: '16px' }}>
                 <path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>
               </svg>
@@ -323,17 +353,7 @@ export default function NewDonationPage() {
                 style={{ display: 'none' }}
                 id="photo-upload"
               />
-              <label htmlFor="photo-upload" style={{ 
-                cursor: 'pointer',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0
-              }}>
-                {/* Invisible input area */}
-              </label>
-            </div>
+            </label>
             {formData.photos.length > 0 && (
               <div style={{ marginTop: '16px' }}>
                 <p style={{ fontSize: '14px', color: '#495057', marginBottom: '8px' }}>

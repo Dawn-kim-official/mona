@@ -10,21 +10,18 @@ export default function AdminBusinessesPage() {
   const supabase = createClient()
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending')
 
   useEffect(() => {
     fetchBusinesses()
-  }, [filter])
+  }, [])
 
   async function fetchBusinesses() {
     setLoading(true)
-    let query = supabase.from('businesses').select('*').order('created_at', { ascending: false })
-
-    if (filter !== 'all') {
-      query = query.eq('status', filter)
-    }
-
-    const { data, error } = await query
+    const { data, error } = await supabase
+      .from('businesses')
+      .select('*')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
 
     if (error) {
       console.error('Error fetching businesses:', error)
@@ -51,56 +48,123 @@ export default function AdminBusinessesPage() {
     }
   }
 
+  if (loading) {
+    return <div style={{ padding: '40px', textAlign: 'center' }}>로딩 중...</div>
+  }
+
   return (
-    <div>
-      <h2>사업자 관리</h2>
+    <div style={{ backgroundColor: '#F8F9FA', minHeight: '100vh' }}>
+      <div style={{ padding: '40px', maxWidth: '1400px', margin: '0 auto' }}>
+        <h1 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '32px', color: '#212529' }}>
+          회원 승인 대기 목록
+        </h1>
 
-      <div>
-        <button onClick={() => setFilter('all')}>전체</button>
-        <button onClick={() => setFilter('pending')}>승인 대기</button>
-        <button onClick={() => setFilter('approved')}>승인됨</button>
-        <button onClick={() => setFilter('rejected')}>거절됨</button>
+        {businesses.length === 0 ? (
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '80px', 
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+          }}>
+            <p style={{ color: '#6C757D', fontSize: '16px' }}>승인 대기 중인 회원이 없습니다.</p>
+          </div>
+        ) : (
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            overflow: 'hidden'
+          }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#F8F9FA', borderBottom: '1px solid #DEE2E6' }}>
+                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>가입일</th>
+                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>사업자명</th>
+                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>대표자명</th>
+                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>사업자등록증</th>
+                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>작업</th>
+                </tr>
+              </thead>
+              <tbody>
+                {businesses.map((business) => (
+                  <tr key={business.id} style={{ borderBottom: '1px solid #DEE2E6' }}>
+                    <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#6C757D' }}>
+                      {new Date(business.created_at).toLocaleDateString('ko-KR')}
+                    </td>
+                    <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#212529' }}>
+                      {business.name}
+                    </td>
+                    <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#212529' }}>
+                      {business.representative_name}
+                    </td>
+                    <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px' }}>
+                      {business.business_license_url ? (
+                        <a 
+                          href={business.business_license_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          style={{ 
+                            color: '#007BFF', 
+                            textDecoration: 'underline',
+                            cursor: 'pointer'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = '#0056B3'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = '#007BFF'}
+                        >
+                          보기
+                        </a>
+                      ) : (
+                        <span style={{ color: '#6C757D' }}>-</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '16px', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                        <button
+                          onClick={() => updateBusinessStatus(business.id, 'rejected')}
+                          style={{
+                            padding: '6px 16px',
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            color: 'white',
+                            backgroundColor: '#DC3545',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            transition: 'background-color 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#C82333'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#DC3545'}
+                        >
+                          거절
+                        </button>
+                        <button
+                          onClick={() => updateBusinessStatus(business.id, 'approved')}
+                          style={{
+                            padding: '6px 16px',
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            color: 'white',
+                            backgroundColor: '#007BFF',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            transition: 'background-color 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0056B3'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#007BFF'}
+                        >
+                          수락
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
-
-      {loading ? (
-        <div>로딩 중...</div>
-      ) : businesses.length === 0 ? (
-        <p>해당하는 사업자가 없습니다.</p>
-      ) : (
-        <div>
-          {businesses.map((business) => (
-            <div key={business.id}>
-              <h3>{business.name}</h3>
-              <p>대표자명: {business.representative_name}</p>
-              <p>이메일: {business.email}</p>
-              <p>전화번호: {business.phone}</p>
-              <p>주소: {business.address}</p>
-              <p>상태: {business.status}</p>
-              
-              {business.business_license_url && (
-                <a href={business.business_license_url} target="_blank" rel="noopener noreferrer">
-                  사업자 등록증 보기
-                </a>
-              )}
-
-              {business.status === 'pending' && (
-                <div>
-                  <button onClick={() => updateBusinessStatus(business.id, 'approved')}>
-                    승인
-                  </button>
-                  <button onClick={() => updateBusinessStatus(business.id, 'rejected')}>
-                    거절
-                  </button>
-                </div>
-              )}
-
-              {business.status === 'approved' && !business.contract_signed && (
-                <p>계약서 서명 대기 중</p>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   )
 }

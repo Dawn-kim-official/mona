@@ -38,7 +38,14 @@ export default function BusinessLayout({
       return
     }
 
-    if (business.status !== 'approved') {
+    if (business.status === 'pending') {
+      router.push('/registration-pending')
+      return
+    } else if (business.status === 'rejected') {
+      await supabase.auth.signOut()
+      router.push('/login')
+      return
+    } else if (business.status !== 'approved') {
       router.push('/business/registration-complete')
       return
     }

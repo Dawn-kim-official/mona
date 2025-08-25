@@ -329,7 +329,7 @@ export default function BusinessDashboardPage() {
                       </td>
                       <td style={{ padding: '16px', fontSize: '14px', color: '#212529', textAlign: 'center' }}>{donation.description}</td>
                       <td style={{ padding: '16px', fontSize: '14px', color: '#495057', textAlign: 'center' }}>{new Date(donation.created_at).toLocaleDateString('ko-KR')}</td>
-                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529', textAlign: 'center' }}>{donation.quantity}kg</td>
+                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529', textAlign: 'center' }}>{donation.quantity}{donation.unit || 'kg'}</td>
                       <td style={{ padding: '16px', fontSize: '14px', color: '#495057', textAlign: 'center' }}>{new Date(donation.pickup_deadline).toLocaleDateString('ko-KR')}</td>
                       <td style={{ padding: '16px', textAlign: 'center' }}>
                         <span style={{ 

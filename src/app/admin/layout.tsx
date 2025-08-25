@@ -58,93 +58,60 @@ export default function AdminLayout({
   ]
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
-      {/* Sidebar */}
+    <div style={{ minHeight: '100vh', backgroundColor: '#F8F9FA' }}>
+      {/* Top Navigation Bar */}
       <nav style={{ 
-        width: '280px', 
         backgroundColor: '#1B4D3E',
-        padding: '32px 24px',
+        padding: '0 40px',
+        height: '70px',
         display: 'flex',
-        flexDirection: 'column',
-        boxShadow: '2px 0 8px rgba(0,0,0,0.1)'
+        alignItems: 'center',
+        justifyContent: 'space-between'
       }}>
-        <div style={{ marginBottom: '48px' }}>
-          <h1 style={{ 
-            color: '#FFB800', 
-            fontSize: '32px', 
-            fontWeight: 'bold',
-            margin: 0,
-            marginBottom: '8px'
-          }}>MONA</h1>
-          <p style={{ color: '#ffffff80', fontSize: '14px', margin: 0 }}>관리자 대시보드</p>
-        </div>
-        
-        <div style={{ flex: 1 }}>
-          {navItems.map(item => (
-            <Link 
-              key={item.href}
-              href={item.href} 
-              style={{ 
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                color: pathname === item.href ? '#FFB800' : 'white',
-                textDecoration: 'none',
-                padding: '14px 20px',
-                marginBottom: '8px',
-                borderRadius: '8px',
-                backgroundColor: pathname === item.href ? '#ffffff15' : 'transparent',
-                transition: 'all 0.2s',
-                fontSize: '15px',
-                fontWeight: pathname === item.href ? '600' : '400'
-              }}
-              onMouseEnter={(e) => {
-                if (pathname !== item.href) {
-                  e.currentTarget.style.backgroundColor = '#ffffff10';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (pathname !== item.href) {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }
-              }}
-            >
-              <span style={{ fontSize: '20px' }}>{item.icon}</span>
-              {item.label}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '40px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ color: 'white', fontSize: '14px' }}>관리자</span>
+            <h1 style={{ 
+              color: '#FFB800', 
+              fontSize: '28px', 
+              fontWeight: 'bold',
+              margin: 0
+            }}>MONA</h1>
+          </div>
+          <div style={{ display: 'flex', gap: '30px' }}>
+            <Link href="/admin/businesses" style={{ color: 'white', textDecoration: 'none', fontSize: '16px' }}>
+              회원 관리
             </Link>
-          ))}
+            <Link href="/admin/donations" style={{ color: 'white', textDecoration: 'none', fontSize: '16px' }}>
+              기부 관리
+            </Link>
+            <Link href="/admin/reports" style={{ color: 'white', textDecoration: 'none', fontSize: '16px' }}>
+              리포트 관리
+            </Link>
+          </div>
         </div>
-        
         <button 
           onClick={handleLogout}
           style={{
-            backgroundColor: '#ffffff20',
-            color: 'white',
+            width: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            backgroundColor: 'white',
             border: 'none',
-            padding: '12px 20px',
-            borderRadius: '8px',
             cursor: 'pointer',
-            fontSize: '14px',
-            transition: 'all 0.2s',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
-            marginTop: '32px'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#ffffff30';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#ffffff20';
+            justifyContent: 'center'
           }}
         >
-          <span>🚪</span>
-          로그아웃
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12ZM12 14C9.33 14 4 15.34 4 18V20H20V18C20 15.34 14.67 14 12 14Z" fill="#1B4D3E"/>
+          </svg>
         </button>
       </nav>
       
       {/* Main Content */}
-      <main style={{ flex: 1, padding: '32px', overflowY: 'auto' }}>
+      <main style={{ flex: 1 }}>
         {children}
       </main>
     </div>
