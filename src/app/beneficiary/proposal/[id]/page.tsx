@@ -51,67 +51,87 @@ export default function ProposalDetailPage() {
   }, [proposalId])
 
   async function fetchProposal() {
-    // Get current user
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      router.push('/login')
-      return
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        router.push('/login')
+        return
+      }
+
+      console.log('Current user:', user.id)
+      console.log('Fetching proposal with ID:', proposalId)
+
+      // Get beneficiary info
+      const { data: beneficiaryData, error: beneficiaryError } = await supabase
+        .from('beneficiaries')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+
+      if (beneficiaryError) {
+        console.error('Error fetching beneficiary:', beneficiaryError)
+      } else if (beneficiaryData) {
+        setBeneficiary(beneficiaryData)
+        console.log('Beneficiary data:', beneficiaryData)
+      }
+
+      // Get proposal details - simplified query first
+      const { data, error } = await supabase
+        .from('donation_matches')
+        .select('*')
+        .eq('id', proposalId)
+        .single()
+
+      console.log('Basic proposal data:', data)
+      console.log('Basic proposal error:', error)
+
+      if (!error && data) {
+        // Get donation details
+        const { data: donationData, error: donationError } = await supabase
+          .from('donations')
+          .select(`
+            *,
+            businesses (*)
+          `)
+          .eq('id', data.donation_id)
+          .single()
+
+        console.log('Donation data:', donationData)
+        console.log('Donation error:', donationError)
+
+        if (donationData) {
+          // Combine the data
+          const proposalWithDetails = {
+            ...data,
+            donations: donationData,
+            quotes: []
+          }
+
+          // Get quotes if needed
+          const { data: quotes } = await supabase
+            .from('quotes')
+            .select('*')
+            .eq('donation_id', data.donation_id)
+            .order('created_at', { ascending: false })
+          
+          if (quotes) {
+            proposalWithDetails.quotes = quotes
+          }
+
+          console.log('Final proposal data:', proposalWithDetails)
+          setProposal(proposalWithDetails)
+          setNotes(data.response_notes || '')
+        }
+      } else if (error) {
+        console.error('Error fetching proposal:', error)
+        console.error('Error details:', error.message, error.details)
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err)
+    } finally {
+      setLoading(false)
     }
-
-    // Get beneficiary info
-    const { data: beneficiaryData } = await supabase
-      .from('beneficiaries')
-      .select('*')
-      .eq('user_id', user.id)
-      .single()
-
-    if (beneficiaryData) {
-      setBeneficiary(beneficiaryData)
-    }
-
-    // Get proposal details with quotes
-    const { data, error } = await supabase
-      .from('donation_matches')
-      .select(`
-        *,
-        donations!inner (
-          id,
-          name,
-          description,
-          quantity,
-          unit,
-          pickup_deadline,
-          pickup_location,
-          photos,
-          status,
-          businesses!inner (
-            name,
-            address,
-            phone,
-            representative_name,
-            email,
-            business_registration_number
-          )
-        ),
-        quotes:quotes!donation_id (
-          id,
-          unit_price,
-          total_amount,
-          estimated_pickup_date
-        )
-      `)
-      .eq('id', proposalId)
-      .eq('donations.quotes.beneficiary_id', beneficiaryData?.id)
-      .single()
-
-    if (error) {
-      console.error('Error fetching proposal:', error)
-    } else {
-      setProposal(data)
-      setNotes(data.response_notes || '')
-    }
-
-    setLoading(false)
   }
 
   async function handleResponse(accept: boolean) {
@@ -190,7 +210,7 @@ export default function ProposalDetailPage() {
               <label style={{ fontSize: '14px', color: '#6C757D', display: 'block', marginBottom: '4px' }}>
                 품명
               </label>
-              <p style={{ fontSize: '16px', color: '#212529', margin: 0 }}>{donation.description}</p>
+              <p style={{ fontSize: '16px', color: '#212529', margin: 0 }}>{donation.name || donation.description}</p>
             </div>
             <div>
               <label style={{ fontSize: '14px', color: '#6C757D', display: 'block', marginBottom: '4px' }}>

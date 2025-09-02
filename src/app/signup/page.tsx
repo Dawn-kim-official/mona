@@ -66,6 +66,19 @@ export default function SignupPage() {
     try {
       console.log('Signing up with email:', email)
       
+      // 먼저 이메일 중복 체크
+      const { data: existingUser } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('email', email.trim().toLowerCase())
+        .single()
+      
+      if (existingUser) {
+        setError('이미 등록된 이메일입니다. 로그인 페이지에서 로그인해주세요.')
+        setLoading(false)
+        return
+      }
+      
       const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
@@ -79,8 +92,12 @@ export default function SignupPage() {
 
       if (error) {
         console.error('Signup error:', error)
-        if (error.message.includes('already registered')) {
-          throw new Error('이미 등록된 이메일입니다.')
+        // Supabase는 이미 가입된 이메일에 대해 다양한 메시지를 반환할 수 있음
+        if (error.message.includes('already registered') || 
+            error.message.includes('User already registered') ||
+            error.message.includes('duplicate key value') ||
+            error.code === '23505') {
+          throw new Error('이미 등록된 이메일입니다. 로그인 페이지에서 로그인해주세요.')
         }
         throw error
       }

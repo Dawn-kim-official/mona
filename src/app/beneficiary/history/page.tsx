@@ -8,9 +8,12 @@ interface DonationHistory {
   id: string
   donation_id: string
   status: string
-  accepted_at: string
+  proposed_at: string
+  responded_at: string | null
   received_at: string | null
   receipt_photos: string[] | null
+  receipt_issued: boolean
+  receipt_file_url: string | null
   donations: {
     id: string
     name: string
@@ -46,9 +49,24 @@ export default function BeneficiaryHistoryPage() {
       .eq('user_id', user.id)
       .single()
 
-    if (!beneficiary) return
+    if (!beneficiary) {
+      console.error('No beneficiary found for user:', user.id)
+      setLoading(false)
+      return
+    }
 
-    // Fetch accepted/received donations
+    console.log('Fetching history for beneficiary:', beneficiary.id)
+
+    // 먼저 모든 donation_matches 확인
+    const { data: allMatches } = await supabase
+      .from('donation_matches')
+      .select('*')
+      .eq('beneficiary_id', beneficiary.id)
+    
+    console.log('All matches for beneficiary:', allMatches)
+    console.log('Received matches:', allMatches?.filter(m => m.status === 'received'))
+
+    // Fetch accepted/received donations - 수령 완료된 것만 표시
     const { data, error } = await supabase
       .from('donation_matches')
       .select(`
@@ -66,12 +84,18 @@ export default function BeneficiaryHistoryPage() {
         )
       `)
       .eq('beneficiary_id', beneficiary.id)
-      .in('status', ['accepted', 'received'])
-      .order('accepted_at', { ascending: false })
+      .eq('status', 'received')  // 수령 완료된 것만
 
     if (error) {
       console.error('Error fetching history:', error)
+      console.error('Error details:', error.message, error.details, error.hint)
     } else {
+      console.log('Fetched history with donations:', data)
+      console.log('Data length:', data?.length)
+      if (data && data.length > 0) {
+        console.log('First item:', data[0])
+        console.log('First item donations:', data[0].donations)
+      }
       setHistory(data || [])
     }
 
@@ -169,7 +193,7 @@ export default function BeneficiaryHistoryPage() {
                       color: '#212529',
                       marginBottom: '12px'
                     }}>
-                      {item.donations?.name}
+                      {item.donations?.name || item.donations?.description || '기부 물품'}
                     </h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
                       <div>
@@ -187,7 +211,7 @@ export default function BeneficiaryHistoryPage() {
                       <div>
                         <label style={{ fontSize: '13px', color: '#6C757D' }}>수락일</label>
                         <p style={{ fontSize: '14px', color: '#212529', margin: '4px 0' }}>
-                          {new Date(item.accepted_at).toLocaleDateString('ko-KR')}
+                          {item.responded_at ? new Date(item.responded_at).toLocaleDateString('ko-KR') : '-'}
                         </p>
                       </div>
                       {item.received_at && (
@@ -238,17 +262,32 @@ export default function BeneficiaryHistoryPage() {
                   </div>
 
                   <div style={{ marginLeft: '24px' }}>
-                    <span style={{ 
-                      color: item.status === 'received' ? '#007BFF' : '#28A745',
-                      fontWeight: '500',
-                      fontSize: '12px',
-                      backgroundColor: (item.status === 'received' ? '#007BFF' : '#28A745') + '20',
-                      padding: '4px 12px',
-                      borderRadius: '4px',
-                      display: 'inline-block'
-                    }}>
-                      {item.status === 'received' ? '수령 완료' : '수령 대기'}
-                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
+                      <span style={{ 
+                        color: '#007BFF',
+                        fontWeight: '500',
+                        fontSize: '12px',
+                        backgroundColor: '#007BFF20',
+                        padding: '4px 12px',
+                        borderRadius: '4px',
+                        display: 'inline-block'
+                      }}>
+                        수령 완료
+                      </span>
+                      {item.receipt_issued && (
+                        <span style={{ 
+                          color: '#28A745',
+                          fontWeight: '500',
+                          fontSize: '12px',
+                          backgroundColor: '#28A74520',
+                          padding: '4px 12px',
+                          borderRadius: '4px',
+                          display: 'inline-block'
+                        }}>
+                          영수증 발급됨
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 

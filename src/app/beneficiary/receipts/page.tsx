@@ -12,22 +12,27 @@ const ReceiptTemplate = dynamic(() => import('./ReceiptTemplate'), { ssr: false 
 interface ReceivedDonation {
   id: string
   status: string
-  accepted_at: string
-  quote_sent_at: string
+  proposed_at: string
+  responded_at: string | null
+  received_at: string | null
+  receipt_issued: boolean
+  receipt_issued_at: string | null
+  receipt_file_url: string | null
   donations: {
     id: string
     name: string
     description: string
     quantity: number
     unit: string
+    pickup_deadline: string
+    pickup_location: string
     businesses: {
       name: string
-      business_registration_number: string
       address: string
       representative_name: string
     }
   }
-  quotes: {
+  quotes?: {
     id: string
     unit_price: number
     total_amount: number
@@ -64,12 +69,14 @@ export default function BeneficiaryReceiptsPage() {
     if (beneficiaryData) {
       setBeneficiary(beneficiaryData)
       
-      // 픽업 일정이 조율된 기부 목록 가져오기 (수령 대기 + 수령 완료)
-      const { data: donationsData } = await supabase
+      // 수령 완료된 기부 목록 가져오기
+      console.log('Fetching donations for beneficiary:', beneficiaryData.id)
+      
+      const { data: donationsData, error } = await supabase
         .from('donation_matches')
         .select(`
           *,
-          donations!inner (
+          donations (
             id,
             name,
             description,
@@ -78,24 +85,22 @@ export default function BeneficiaryReceiptsPage() {
             status,
             pickup_deadline,
             pickup_location,
-            businesses!inner (
+            businesses (
               name,
-              business_registration_number,
               address,
               representative_name
             )
-          ),
-          quotes:quotes!donation_id (
-            id,
-            unit_price,
-            total_amount,
-            estimated_pickup_date
           )
         `)
         .eq('beneficiary_id', beneficiaryData.id)
-        .in('status', ['quote_sent', 'received'])
-        .in('donations.status', ['pickup_scheduled', 'completed'])
-        .order('created_at', { ascending: false })
+        .eq('status', 'received')  // 수령 완료된 것만
+        .order('received_at', { ascending: false, nullsFirst: false })
+      
+      if (error) {
+        console.error('Error fetching donations:', error)
+      } else {
+        console.log('Fetched donations:', donationsData)
+      }
 
       if (donationsData) {
         setReceivedDonations(donationsData)
@@ -159,7 +164,7 @@ export default function BeneficiaryReceiptsPage() {
       }
       
       // PDF 저장
-      pdf.save(`기부영수증_${donation.donations.businesses.name}_${new Date().toISOString().split('T')[0]}.pdf`)
+      pdf.save(`기부영수증_${donation.donations?.businesses?.name || '기부'}_${new Date().toISOString().split('T')[0]}.pdf`)
       
       // 정리
       root.unmount()
@@ -229,24 +234,24 @@ export default function BeneficiaryReceiptsPage() {
               <tbody>
                 {receivedDonations.map((donation) => {
                   const isReceived = donation.status === 'received'
-                  const hasReceipt = (donation as any).receipt_issued
+                  const hasReceipt = donation.receipt_issued
                   
                   return (
                     <tr key={donation.id} style={{ borderBottom: '1px solid #DEE2E6' }}>
                       <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#212529' }}>
-                        {donation.donations.businesses.name}
+                        {donation.donations?.businesses?.name || '-'}
                       </td>
                       <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#212529' }}>
-                        {donation.donations.name || donation.donations.description}
+                        {donation.donations?.name || donation.donations?.description || '-'}
                       </td>
                       <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#212529' }}>
-                        {donation.donations.quantity}{donation.donations.unit}
+                        {donation.donations?.quantity || 0}{donation.donations?.unit || 'kg'}
                       </td>
                       <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#212529' }}>
-                        {new Date(donation.donations.pickup_deadline).toLocaleDateString('ko-KR')}
+                        {donation.donations?.pickup_deadline ? new Date(donation.donations.pickup_deadline).toLocaleDateString('ko-KR') : '-'}
                       </td>
                       <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#212529' }}>
-                        {donation.donations.pickup_location}
+                        {donation.donations?.pickup_location || '-'}
                       </td>
                       <td style={{ padding: '16px', textAlign: 'center' }}>
                         <span style={{
