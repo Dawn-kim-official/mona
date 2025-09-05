@@ -31,7 +31,7 @@ export default function TestConnectionPage() {
 
       // 2. Auth 상태 확인
       const { data: { user } } = await supabase.auth.getUser()
-      console.log('Current user:', user)
+      // Current user
 
     } catch (err: any) {
       setStatus(`Exception: ${err.message}`)

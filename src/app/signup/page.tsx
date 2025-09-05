@@ -64,7 +64,6 @@ export default function SignupPage() {
     }
 
     try {
-      console.log('Signing up with email:', email)
       
       // 먼저 이메일 중복 체크
       const { data: existingUser } = await supabase
@@ -91,7 +90,7 @@ export default function SignupPage() {
       })
 
       if (error) {
-        console.error('Signup error:', error)
+        // Signup error
         // Supabase는 이미 가입된 이메일에 대해 다양한 메시지를 반환할 수 있음
         if (error.message.includes('already registered') || 
             error.message.includes('User already registered') ||
@@ -113,7 +112,7 @@ export default function SignupPage() {
           })
         
         if (profileError) {
-          console.error('Profile creation error:', profileError)
+          // Profile creation error
           // 이미 존재하는 프로필인 경우 무시
           if (!profileError.message.includes('duplicate')) {
             throw profileError
@@ -131,7 +130,7 @@ export default function SignupPage() {
             .upload(fileName, businessLicense)
           
           if (uploadError) {
-            console.error('Upload error:', uploadError)
+            // Upload error
             throw uploadError
           }
           
@@ -162,7 +161,7 @@ export default function SignupPage() {
             })
           
           if (businessError) {
-            console.error('Business creation error:', businessError)
+            // Business creation error
             throw businessError
           }
         }

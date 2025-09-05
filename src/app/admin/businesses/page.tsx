@@ -30,7 +30,7 @@ export default function AdminBusinessesPage() {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Error fetching businesses:', error)
+      // Error fetching businesses
     } else {
       setBusinesses(data || [])
     }
@@ -47,7 +47,7 @@ export default function AdminBusinessesPage() {
         .limit(1)
       
       if (testError && testError.message.includes('relation "public.beneficiaries" does not exist')) {
-        console.error('beneficiaries 테이블이 존재하지 않습니다. SQL 파일을 실행해주세요.')
+        // beneficiaries 테이블이 존재하지 않습니다
         setBeneficiaries([])
         setLoading(false)
         return
@@ -61,13 +61,13 @@ export default function AdminBusinessesPage() {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching beneficiaries:', error)
+        // Error fetching beneficiaries
         setBeneficiaries([])
       } else {
         setBeneficiaries(data || [])
       }
     } catch (err) {
-      console.error('Unexpected error:', err)
+      // Unexpected error
       setBeneficiaries([])
     }
     setLoading(false)
@@ -84,7 +84,7 @@ export default function AdminBusinessesPage() {
       .eq('id', businessId)
 
     if (error) {
-      console.error('Error updating business:', error)
+      // Error updating business
     } else {
       fetchBusinesses()
     }
@@ -100,7 +100,7 @@ export default function AdminBusinessesPage() {
       .eq('id', beneficiaryId)
 
     if (error) {
-      console.error('Error updating beneficiary:', error)
+      // Error updating beneficiary
     } else {
       fetchBeneficiaries()
     }

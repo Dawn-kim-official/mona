@@ -26,12 +26,6 @@ export default function LoginPage() {
       })
 
       if (error) {
-        console.error('Login error details:', {
-          error,
-          message: error.message,
-          status: error.status,
-          code: error.code
-        })
         
         if (error.message.includes('Invalid login credentials')) {
           throw new Error('이메일 또는 비밀번호가 올바르지 않습니다.')
@@ -50,7 +44,6 @@ export default function LoginPage() {
           .single()
 
         if (profileError) {
-          console.log('Profile not found, creating...')
           // profile이 없으면 생성
           await supabase
             .from('profiles')

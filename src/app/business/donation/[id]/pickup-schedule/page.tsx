@@ -31,7 +31,7 @@ export default function PickupSchedulePage({ params }: { params: { id: string } 
       .single()
 
     if (donationError || !donationData) {
-      console.error('Error fetching donation:', donationError)
+      // Error fetching donation
       router.push('/business/dashboard')
       return
     }
@@ -44,7 +44,7 @@ export default function PickupSchedulePage({ params }: { params: { id: string } 
       .single()
 
     if (quoteError || !quoteData) {
-      console.error('Error fetching quote:', quoteError)
+      // Error fetching quote
       router.push('/business/dashboard')
       return
     }
@@ -96,7 +96,7 @@ export default function PickupSchedulePage({ params }: { params: { id: string } 
 
       router.push('/business/dashboard')
     } catch (error) {
-      console.error('Error scheduling pickup:', error)
+      // Error scheduling pickup
       alert('픽업 일정 확정 중 오류가 발생했습니다.')
     } finally {
       setSubmitting(false)

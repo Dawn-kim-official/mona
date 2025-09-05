@@ -70,7 +70,6 @@ export default function BeneficiaryReceiptsPage() {
       setBeneficiary(beneficiaryData)
       
       // 수령 완료된 기부 목록 가져오기
-      console.log('Fetching donations for beneficiary:', beneficiaryData.id)
       
       const { data: donationsData, error } = await supabase
         .from('donation_matches')
@@ -97,9 +96,8 @@ export default function BeneficiaryReceiptsPage() {
         .order('received_at', { ascending: false, nullsFirst: false })
       
       if (error) {
-        console.error('Error fetching donations:', error)
+        // Error fetching donations
       } else {
-        console.log('Fetched donations:', donationsData)
       }
 
       if (donationsData) {
@@ -182,7 +180,7 @@ export default function BeneficiaryReceiptsPage() {
       alert('기부영수증이 발행되었습니다.')
       fetchData()
     } catch (error) {
-      console.error('Error generating receipt:', error)
+      // Error generating receipt
       alert('영수증 발행 중 오류가 발생했습니다.')
     } finally {
       setGeneratingPdf(null)

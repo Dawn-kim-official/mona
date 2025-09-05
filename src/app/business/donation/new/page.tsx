@@ -49,7 +49,7 @@ export default function NewDonationPage() {
             .upload(fileName, photo)
           
           if (error) {
-            console.error('Upload error:', error)
+            // Upload error
             // Continue without photos rather than failing
           } else if (data) {
             const { data: { publicUrl } } = supabase.storage
@@ -75,19 +75,19 @@ export default function NewDonationPage() {
         status: 'pending_review'
       }
       
-      console.log('Creating donation with data:', donationData)
+      // Creating donation with data
       
       const { error } = await supabase.from('donations').insert(donationData)
 
       if (error) {
-        console.error('Donation creation error:', error)
+        // Donation creation error
         throw error
       }
 
       alert('기부가 성공적으로 등록되었습니다!')
       router.push('/business/dashboard')
     } catch (error: any) {
-      console.error('Error creating donation:', error)
+      // Error creating donation
       alert(`기부 등록 중 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}`)
     } finally {
       setLoading(false)

@@ -85,7 +85,7 @@ export default function AdminQuoteUploadPage() {
         setBeneficiary(matchData.beneficiaries)
       }
     } catch (error) {
-      console.error('Error fetching data:', error)
+      // Error fetching data
     } finally {
       setLoading(false)
     }
@@ -126,7 +126,7 @@ export default function AdminQuoteUploadPage() {
       if (!user) throw new Error('User not authenticated')
 
       // Create quote
-      console.log('Inserting quote with data:', {
+      // Inserting quote with data
         donation_id: params.id,
         unit_price: unitPrice,
         logistics_cost: logisticsCost,
@@ -151,7 +151,7 @@ export default function AdminQuoteUploadPage() {
         })
 
       if (insertQuoteError) {
-        console.error('Detailed quote error:', insertQuoteError)
+        // Detailed quote error
         throw insertQuoteError
       }
 
@@ -181,7 +181,7 @@ export default function AdminQuoteUploadPage() {
       alert('견적서가 성공적으로 발송되었습니다.')
       router.push('/admin/donations')
     } catch (error) {
-      console.error('Error uploading quote:', error)
+      // Error uploading quote
       alert('견적서 업로드 중 오류가 발생했습니다.')
     } finally {
       setLoading(false)

@@ -59,8 +59,6 @@ export default function ProposalDetailPage() {
         return
       }
 
-      console.log('Current user:', user.id)
-      console.log('Fetching proposal with ID:', proposalId)
 
       // Get beneficiary info
       const { data: beneficiaryData, error: beneficiaryError } = await supabase
@@ -70,10 +68,9 @@ export default function ProposalDetailPage() {
         .single()
 
       if (beneficiaryError) {
-        console.error('Error fetching beneficiary:', beneficiaryError)
+        // Error fetching beneficiary
       } else if (beneficiaryData) {
         setBeneficiary(beneficiaryData)
-        console.log('Beneficiary data:', beneficiaryData)
       }
 
       // Get proposal details - simplified query first
@@ -83,8 +80,6 @@ export default function ProposalDetailPage() {
         .eq('id', proposalId)
         .single()
 
-      console.log('Basic proposal data:', data)
-      console.log('Basic proposal error:', error)
 
       if (!error && data) {
         // Get donation details
@@ -97,8 +92,6 @@ export default function ProposalDetailPage() {
           .eq('id', data.donation_id)
           .single()
 
-        console.log('Donation data:', donationData)
-        console.log('Donation error:', donationError)
 
         if (donationData) {
           // Combine the data
@@ -119,16 +112,14 @@ export default function ProposalDetailPage() {
             proposalWithDetails.quotes = quotes
           }
 
-          console.log('Final proposal data:', proposalWithDetails)
           setProposal(proposalWithDetails)
           setNotes(data.response_notes || '')
         }
       } else if (error) {
-        console.error('Error fetching proposal:', error)
-        console.error('Error details:', error.message, error.details)
+        // Error fetching proposal
       }
     } catch (err) {
-      console.error('Unexpected error:', err)
+      // Unexpected error
     } finally {
       setLoading(false)
     }
@@ -149,7 +140,6 @@ export default function ProposalDetailPage() {
       .eq('id', proposalId)
 
     if (error) {
-      console.error('Error updating proposal:', error)
       alert('응답 처리 중 오류가 발생했습니다.')
     } else {
       alert(accept ? '제안을 수락했습니다.' : '제안을 거절했습니다.')
@@ -611,7 +601,6 @@ export default function ProposalDetailPage() {
                       alert('기부영수증이 발행되었습니다.')
                       router.push('/beneficiary/proposals')
                     } catch (error) {
-                      console.error('Error generating receipt:', error)
                       alert('영수증 발행 중 오류가 발생했습니다.')
                     } finally {
                       setGeneratingPdf(false)

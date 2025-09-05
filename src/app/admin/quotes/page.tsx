@@ -40,7 +40,7 @@ export default function AdminQuotesPage() {
       .order('created_at', { ascending: false })
 
     if (quotesError) {
-      console.error('Error fetching quotes:', quotesError)
+      // Error fetching quotes
     } else {
       setQuotes(quotesData || [])
     }
@@ -58,7 +58,7 @@ export default function AdminQuotesPage() {
       .order('created_at', { ascending: false })
 
     if (donationsError) {
-      console.error('Error fetching donations:', donationsError)
+      // Error fetching donations
     } else {
       setNeedsQuote(donationsData || [])
     }
@@ -80,7 +80,7 @@ export default function AdminQuotesPage() {
       })
 
     if (error) {
-      console.error('Error creating quote:', error)
+      // Error creating quote
     } else {
       // 기부 상태 업데이트
       await supabase

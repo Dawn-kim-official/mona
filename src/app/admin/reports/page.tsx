@@ -60,7 +60,7 @@ export default function AdminReportsPage() {
       await fetchBusinesses()
       alert('ESG 리포트가 성공적으로 업로드되었습니다.')
     } catch (error) {
-      console.error('Error uploading report:', error)
+      // Error uploading report
       alert('리포트 업로드 중 오류가 발생했습니다.')
     } finally {
       setUploadingId(null)

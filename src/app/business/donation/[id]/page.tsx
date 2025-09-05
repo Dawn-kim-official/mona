@@ -96,7 +96,7 @@ export default function DonationDetailPage() {
         .single()
 
       if (matchData) {
-        console.log('Receipt info:', matchData);
+        
         setReceiptInfo(matchData)
       }
     }

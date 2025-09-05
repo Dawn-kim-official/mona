@@ -69,7 +69,7 @@ export default function BusinessDashboardPage() {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Error fetching donations:', error)
+      // Error fetching donations
     } else {
       setDonations(data || [])
     }
@@ -89,7 +89,7 @@ export default function BusinessDashboardPage() {
       .single()
 
     if (error) {
-      console.error('Error fetching quote:', error)
+      // Error fetching quote
       return
     }
 

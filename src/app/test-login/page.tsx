@@ -12,18 +12,14 @@ export default function TestLoginPage() {
     setLoading(true)
     try {
       // 환경 변수 확인
-      console.log('ENV URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
-      console.log('ENV KEY exists:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
       
       // 먼저 현재 세션 확인
       const { data: { session } } = await supabase.auth.getSession()
-      console.log('Current session:', session)
 
       // 로그아웃 먼저 시도
       await supabase.auth.signOut()
 
       // 로그인 시도
-      console.log('Attempting login with test@test.com')
       const { data, error } = await supabase.auth.signInWithPassword({
         email: 'test@test.com',
         password: '123123'
@@ -39,7 +35,6 @@ export default function TestLoginPage() {
         url: process.env.NEXT_PUBLIC_SUPABASE_URL
       })
 
-      console.log('Login result:', { data, error })
     } catch (err: any) {
       setResult({
         success: false,

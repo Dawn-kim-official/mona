@@ -42,7 +42,7 @@ export default function APITestPage() {
       })
 
       const authData = await authResponse.text()
-      console.log('Auth response:', authResponse.status, authData)
+      // Auth response
 
     } catch (error: any) {
       setResult({ error: error.message })

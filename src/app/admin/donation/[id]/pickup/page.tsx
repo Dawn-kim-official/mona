@@ -81,7 +81,7 @@ export default function AdminPickupSchedulePage() {
       alert('픽업 일정이 성공적으로 설정되었습니다.')
       router.push('/admin/donations')
     } catch (error) {
-      console.error('Error setting pickup schedule:', error)
+      // Error setting pickup schedule
       alert('픽업 일정 설정 중 오류가 발생했습니다.')
     } finally {
       setLoading(false)

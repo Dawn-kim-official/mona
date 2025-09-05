@@ -64,11 +64,6 @@ export default function SignupBeneficiaryPage() {
     }
 
     try {
-      console.log('Starting beneficiary signup...', {
-        email: email.trim().toLowerCase(),
-        organizationName,
-        representativeName
-      })
       
       const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
@@ -78,15 +73,8 @@ export default function SignupBeneficiaryPage() {
         },
       })
       
-      console.log('Auth signup response:', { data, error })
 
       if (error) {
-        console.error('Signup error details:', {
-          error,
-          message: error.message,
-          status: error.status,
-          code: error.code
-        })
         
         if (error.message.includes('already registered')) {
           throw new Error('이미 등록된 이메일입니다.')
@@ -99,7 +87,6 @@ export default function SignupBeneficiaryPage() {
       }
 
       if (data.user) {
-        console.log('User created successfully:', data.user.id)
         
         // Create profile with beneficiary role
         const { error: profileError } = await supabase
@@ -110,10 +97,8 @@ export default function SignupBeneficiaryPage() {
             role: 'beneficiary'
           })
         
-        console.log('Profile insert result:', { profileError })
         
         if (profileError) {
-          console.error('Profile creation error:', profileError)
           // 이미 존재하는 프로필인 경우 무시
           if (!profileError.message.includes('duplicate')) {
             throw profileError
@@ -121,7 +106,6 @@ export default function SignupBeneficiaryPage() {
         }
 
         // Create beneficiary record
-        console.log('Creating beneficiary record...')
         const { error: beneficiaryError } = await supabase
           .from('beneficiaries')
           .insert({
@@ -136,10 +120,8 @@ export default function SignupBeneficiaryPage() {
             status: 'pending'
           })
         
-        console.log('Beneficiary insert result:', { beneficiaryError })
         
         if (beneficiaryError) {
-          console.error('Beneficiary creation error:', beneficiaryError)
           throw beneficiaryError
         }
         
@@ -148,7 +130,6 @@ export default function SignupBeneficiaryPage() {
         router.push('/login')
       }
     } catch (error: any) {
-      console.error('Signup process error:', error)
       setError(error.message || '회원가입 중 오류가 발생했습니다.')
     } finally {
       setLoading(false)

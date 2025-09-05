@@ -19,7 +19,6 @@ export async function sendEmail({ to, subject, html }: EmailTemplate) {
 
     return { success: true, data }
   } catch (error) {
-    console.error('Failed to send email:', error)
     return { success: false, error }
   }
 }

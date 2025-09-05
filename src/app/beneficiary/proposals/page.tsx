@@ -73,7 +73,6 @@ export default function BeneficiaryProposalsPage() {
       .single()
 
     if (!beneficiaryData) {
-      console.error('No beneficiary data found for user:', user.id)
       return
     }
     setBeneficiary(beneficiaryData)
@@ -109,9 +108,8 @@ export default function BeneficiaryProposalsPage() {
     const { data, error } = await query
 
     if (error) {
-      console.error('Error fetching proposals:', error)
+      // Error fetching proposals
     } else {
-      console.log('Fetched proposals:', data)
       
       // quotes 정보를 별도로 가져오기
       if (data && data.length > 0) {
@@ -163,7 +161,6 @@ export default function BeneficiaryProposalsPage() {
         const fileExt = file.name.split('.').pop();
         const fileName = `${proposal.id}_${Date.now()}.${fileExt}`;
         
-        console.log('Uploading file:', fileName);
         
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('donation-receipts')
@@ -173,7 +170,6 @@ export default function BeneficiaryProposalsPage() {
           });
         
         if (uploadError) {
-          console.error('Upload error:', uploadError);
           throw uploadError;
         }
         
@@ -182,7 +178,6 @@ export default function BeneficiaryProposalsPage() {
           .from('donation-receipts')
           .getPublicUrl(fileName);
         
-        console.log('Public URL:', publicUrl);
         
         // Update database
         await supabase
@@ -208,7 +203,6 @@ export default function BeneficiaryProposalsPage() {
         alert('기부영수증이 업로드되었습니다. 기부 기업에서 다운로드 가능합니다.');
         fetchProposals();
       } catch (error) {
-        console.error('Error uploading receipt:', error);
         alert('영수증 업로드 중 오류가 발생했습니다.');
       } finally {
         setGeneratingPdf(null);

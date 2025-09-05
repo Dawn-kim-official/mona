@@ -50,12 +50,10 @@ export default function BeneficiaryHistoryPage() {
       .single()
 
     if (!beneficiary) {
-      console.error('No beneficiary found for user:', user.id)
       setLoading(false)
       return
     }
 
-    console.log('Fetching history for beneficiary:', beneficiary.id)
 
     // 먼저 모든 donation_matches 확인
     const { data: allMatches } = await supabase
@@ -63,8 +61,6 @@ export default function BeneficiaryHistoryPage() {
       .select('*')
       .eq('beneficiary_id', beneficiary.id)
     
-    console.log('All matches for beneficiary:', allMatches)
-    console.log('Received matches:', allMatches?.filter(m => m.status === 'received'))
 
     // Fetch accepted/received donations - 수령 완료된 것만 표시
     const { data, error } = await supabase
@@ -87,15 +83,8 @@ export default function BeneficiaryHistoryPage() {
       .eq('status', 'received')  // 수령 완료된 것만
 
     if (error) {
-      console.error('Error fetching history:', error)
-      console.error('Error details:', error.message, error.details, error.hint)
+      // Error fetching history
     } else {
-      console.log('Fetched history with donations:', data)
-      console.log('Data length:', data?.length)
-      if (data && data.length > 0) {
-        console.log('First item:', data[0])
-        console.log('First item donations:', data[0].donations)
-      }
       setHistory(data || [])
     }
 
@@ -140,7 +129,6 @@ export default function BeneficiaryHistoryPage() {
       alert('수령 확인 사진이 업로드되었습니다.')
       await fetchHistory()
     } catch (error) {
-      console.error('Error uploading receipt:', error)
       alert('사진 업로드 중 오류가 발생했습니다.')
     } finally {
       setUploading(null)

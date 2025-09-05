@@ -59,7 +59,7 @@ export default function AdminDonationsPage() {
     const { data, error } = await query
 
     if (error) {
-      console.error('Error fetching donations:', error)
+      // Error fetching donations
     } else {
       setDonations(data || [])
     }
@@ -112,7 +112,7 @@ export default function AdminDonationsPage() {
       if (!error) {
         await fetchDonations()
       } else {
-        console.error('Error deleting donation:', error)
+        // Error deleting donation
         alert('기부 삭제 중 오류가 발생했습니다.')
       }
     }
