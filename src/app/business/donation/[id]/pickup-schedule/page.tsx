@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { Database } from '@/lib/supabase-types'
@@ -8,7 +8,8 @@ import { Database } from '@/lib/supabase-types'
 type Donation = Database['public']['Tables']['donations']['Row']
 type Quote = Database['public']['Tables']['quotes']['Row']
 
-export default function PickupSchedulePage({ params }: { params: { id: string } }) {
+export default function PickupSchedulePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter()
   const supabase = createClient()
   const [donation, setDonation] = useState<Donation | null>(null)
@@ -21,13 +22,13 @@ export default function PickupSchedulePage({ params }: { params: { id: string } 
 
   useEffect(() => {
     fetchDonationAndQuote()
-  }, [params.id])
+  }, [id])
 
   async function fetchDonationAndQuote() {
     const { data: donationData, error: donationError } = await supabase
       .from('donations')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (donationError || !donationData) {
@@ -39,7 +40,7 @@ export default function PickupSchedulePage({ params }: { params: { id: string } 
     const { data: quoteData, error: quoteError } = await supabase
       .from('quotes')
       .select('*')
-      .eq('donation_id', params.id)
+      .eq('donation_id', id)
       .eq('status', 'accepted')
       .single()
 
@@ -79,7 +80,7 @@ export default function PickupSchedulePage({ params }: { params: { id: string } 
           status: 'pickup_scheduled',
           scheduled_pickup_date: `${selectedDate}T${selectedTime}:00`
         })
-        .eq('id', params.id)
+        .eq('id', id)
 
       if (donationError) throw donationError
 
@@ -91,7 +92,7 @@ export default function PickupSchedulePage({ params }: { params: { id: string } 
           type: 'pickup_scheduled',
           title: '픽업 일정이 확정되었습니다',
           message: `${selectedDate} ${selectedTime}에 픽업이 예정되어 있습니다.`,
-          related_donation_id: params.id
+          related_donation_id: id
         })
 
       router.push('/business/dashboard')
@@ -168,7 +169,7 @@ export default function PickupSchedulePage({ params }: { params: { id: string } 
               <div>
                 <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>수량:</p>
                 <p style={{ fontSize: '15px', color: '#111827', fontWeight: '500' }}>
-                  {donation.quantity}{donation.unit || 'kg'}
+                  {donation.quantity}{(donation as any).unit || 'kg'}
                 </p>
               </div>
               <div>
@@ -178,7 +179,7 @@ export default function PickupSchedulePage({ params }: { params: { id: string } 
               <div>
                 <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>견적 금액:</p>
                 <p style={{ fontSize: '15px', color: '#111827', fontWeight: '500' }}>
-                  {quote.total_amount.toLocaleString()}원
+                  {((quote as any).total_amount || 0).toLocaleString()}원
                 </p>
               </div>
             </div>
@@ -200,7 +201,7 @@ export default function PickupSchedulePage({ params }: { params: { id: string } 
               onBlur={(e) => e.currentTarget.style.borderColor = '#e9ecef'}
             />
             <p style={{ fontSize: '13px', color: '#6c757d', marginTop: '8px' }}>
-              제안된 픽업 날짜: {new Date(quote.pickup_date).toLocaleDateString('ko-KR')}
+              제안된 픽업 날짜: {new Date((quote as any).pickup_date || new Date()).toLocaleDateString('ko-KR')}
             </p>
           </div>
 

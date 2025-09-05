@@ -107,9 +107,9 @@ export default function AdminReportsPage() {
                     {business.phone}
                   </td>
                   <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px' }}>
-                    {business.esg_report_url ? (
+                    {(business as any).esg_report_url ? (
                       <a 
-                        href={business.esg_report_url} 
+                        href={(business as any).esg_report_url} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         style={{ 
@@ -160,7 +160,7 @@ export default function AdminReportsPage() {
                           transition: 'background-color 0.2s'
                         }}
                       >
-                        {uploadingId === business.id ? '업로드 중...' : business.esg_report_url ? '재업로드' : '업로드'}
+                        {uploadingId === business.id ? '업로드 중...' : (business as any).esg_report_url ? '재업로드' : '업로드'}
                       </button>
                     </div>
                   </td>

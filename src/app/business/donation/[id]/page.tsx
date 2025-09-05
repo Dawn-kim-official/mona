@@ -535,7 +535,7 @@ export default function DonationDetailPage() {
         <QuoteDetailModal
           isOpen={showQuoteModal}
           onClose={() => setShowQuoteModal(false)}
-          quote={quote}
+          quote={quote as any}
           donationInfo={{
             description: donation.name || donation.description,
             quantity: donation.quantity,

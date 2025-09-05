@@ -1,13 +1,13 @@
 'use server'
 
-import { createClient } from '@/lib/supabase-server'
+import { createServerComponentClient } from '@/lib/supabase-server'
 
 export async function createDonationMatch(
   donationId: string,
   beneficiaryId: string,
   userId: string
 ) {
-  const supabase = createClient()
+  const supabase = await createServerComponentClient()
   
   // 먼저 기존 매칭이 있는지 확인
   const { data: existingMatch } = await supabase
@@ -46,7 +46,7 @@ export async function createDonationMatch(
 }
 
 export async function updateDonationStatus(donationId: string, status: string) {
-  const supabase = createClient()
+  const supabase = await createServerComponentClient()
   
   const { error } = await supabase
     .from('donations')

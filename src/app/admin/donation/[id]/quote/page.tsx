@@ -127,15 +127,6 @@ export default function AdminQuoteUploadPage() {
 
       // Create quote
       // Inserting quote with data
-        donation_id: params.id,
-        unit_price: unitPrice,
-        logistics_cost: logisticsCost,
-        total_amount: totalAmount,
-        estimated_pickup_date: formData.estimated_pickup_date,
-        pickup_time: formData.pickup_time,
-        special_notes: formData.special_notes,
-        status: 'pending'
-      })
 
       const { error: insertQuoteError } = await supabase
         .from('quotes')

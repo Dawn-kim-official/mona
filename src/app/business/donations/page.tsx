@@ -145,8 +145,8 @@ export default function BusinessDashboardPage() {
     : donations.filter(donation => {
         switch(activeTab) {
           case '승인 대기': return donation.status === 'pending_review';
-          case '승인 거절': return donation.status === 'rejected';
-          case '수혜기관 선정': return donation.status === 'beneficiary_selected';
+          case '승인 거절': return (donation.status as any) === 'rejected';
+          case '수혜기관 선정': return (donation.status as any) === 'beneficiary_selected';
           case '견적 대기': return donation.status === 'quote_sent' || donation.status === 'matched' || donation.status === 'quote_accepted';
           case '견적 수락': return donation.status === 'pickup_scheduled';
           case '견적 거절': return false;
@@ -332,7 +332,7 @@ export default function BusinessDashboardPage() {
                       </td>
                       <td style={{ padding: '16px', fontSize: '14px', color: '#212529', textAlign: 'center' }}>{donation.description}</td>
                       <td style={{ padding: '16px', fontSize: '14px', color: '#495057', textAlign: 'center' }}>{new Date(donation.created_at).toLocaleDateString('ko-KR')}</td>
-                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529', textAlign: 'center' }}>{donation.quantity}{donation.unit || 'kg'}</td>
+                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529', textAlign: 'center' }}>{donation.quantity}{(donation as any).unit || 'kg'}</td>
                       <td style={{ padding: '16px', fontSize: '14px', color: '#495057', textAlign: 'center' }}>{new Date(donation.pickup_deadline).toLocaleDateString('ko-KR')}</td>
                       <td style={{ padding: '16px', textAlign: 'center' }}>
                         <span style={{ 
@@ -411,17 +411,17 @@ export default function BusinessDashboardPage() {
           setSelectedQuote(null)
           setSelectedDonation(null)
         }}
-        quote={selectedQuote}
+        quote={selectedQuote as any}
         donationInfo={selectedDonation ? {
           description: selectedDonation.description,
           quantity: selectedDonation.quantity,
-          unit: selectedDonation.unit || 'kg',
+          unit: (selectedDonation as any).unit || 'kg',
           pickup_location: selectedDonation.pickup_location,
           pickup_deadline: selectedDonation.pickup_deadline,
           created_at: selectedDonation.created_at
         } : null}
-        onAccept={handleAcceptQuote}
-        onReject={handleRejectQuote}
+        onAccept={handleAcceptQuote as any}
+        onReject={handleRejectQuote as any}
       />
     </div>
   )

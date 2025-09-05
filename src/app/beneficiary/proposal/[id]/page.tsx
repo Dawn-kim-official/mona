@@ -180,11 +180,11 @@ export default function ProposalDetailPage() {
             기부 물품 정보
           </h2>
 
-          {donation.image_url && (
+          {(donation as any).image_url && (
             <div style={{ marginBottom: '24px', textAlign: 'center' }}>
               <img 
-                src={donation.image_url} 
-                alt={donation.name}
+                src={(donation as any).image_url} 
+                alt={(donation as any).name || donation.description}
                 style={{ 
                   maxWidth: '400px', 
                   maxHeight: '300px', 
@@ -200,7 +200,7 @@ export default function ProposalDetailPage() {
               <label style={{ fontSize: '14px', color: '#6C757D', display: 'block', marginBottom: '4px' }}>
                 품명
               </label>
-              <p style={{ fontSize: '16px', color: '#212529', margin: 0 }}>{donation.name || donation.description}</p>
+              <p style={{ fontSize: '16px', color: '#212529', margin: 0 }}>{(donation as any).name || donation.description}</p>
             </div>
             <div>
               <label style={{ fontSize: '14px', color: '#6C757D', display: 'block', marginBottom: '4px' }}>
@@ -421,7 +421,7 @@ export default function ProposalDetailPage() {
         )}
 
         {/* 픽업 일정 및 수령 확인 섹션 */}
-        {proposal.status === 'quote_sent' && donation.status === 'pickup_scheduled' && (
+        {proposal.status === 'quote_sent' && (donation as any).status === 'pickup_scheduled' && (
           <div style={{
             backgroundColor: 'white',
             borderRadius: '8px',
@@ -512,7 +512,7 @@ export default function ProposalDetailPage() {
               </h3>
               <div style={{ fontSize: '14px', color: '#495057', lineHeight: '1.8' }}>
                 <p><strong>기부기업:</strong> {business?.name}</p>
-                <p><strong>기부물품:</strong> {donation.name || donation.description}</p>
+                <p><strong>기부물품:</strong> {(donation as any).name || donation.description}</p>
                 <p><strong>수량:</strong> {donation.quantity}{donation.unit}</p>
                 <p><strong>수령일:</strong> {new Date().toLocaleDateString('ko-KR')}</p>
               </div>
@@ -541,7 +541,7 @@ export default function ProposalDetailPage() {
                       // donation_matches 데이터에 quotes 정보 추가
                       const donationWithQuotes = {
                         ...proposal,
-                        quotes: proposal.quotes || []
+                        quotes: (proposal as any).quotes || []
                       }
                       
                       await new Promise<void>((resolve) => {
