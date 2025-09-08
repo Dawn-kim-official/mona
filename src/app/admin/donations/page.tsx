@@ -35,16 +35,28 @@ export default function AdminDonationsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
-  const [donations, setDonations] = useState<Donation[]>([])
+  const [allDonations, setAllDonations] = useState<Donation[]>([])
+  const [filteredDonations, setFilteredDonations] = useState<Donation[]>([])
   const [loading, setLoading] = useState(true)
-  const statusFilter = searchParams.get('status')
+  const [activeTab, setActiveTab] = useState<string | null>(searchParams.get('status'))
 
+  // 초기 로드 시 전체 데이터 한 번만 가져오기
   useEffect(() => {
-    fetchDonations()
-  }, [statusFilter])
+    fetchAllDonations()
+  }, [])
 
-  async function fetchDonations() {
-    let query = supabase
+  // 탭 변경 시 클라이언트 사이드 필터링
+  useEffect(() => {
+    if (activeTab) {
+      const filtered = allDonations.filter(donation => donation.status === activeTab)
+      setFilteredDonations(filtered)
+    } else {
+      setFilteredDonations(allDonations)
+    }
+  }, [activeTab, allDonations])
+
+  async function fetchAllDonations() {
+    const { data, error } = await supabase
       .from('donations')
       .select(`
         *,
@@ -52,16 +64,11 @@ export default function AdminDonationsPage() {
       `)
       .order('created_at', { ascending: false })
 
-    if (statusFilter) {
-      query = query.eq('status', statusFilter)
-    }
-
-    const { data, error } = await query
-
     if (error) {
       // Error fetching donations
     } else {
-      setDonations(data || [])
+      setAllDonations(data || [])
+      setFilteredDonations(data || [])
     }
     setLoading(false)
   }
@@ -73,7 +80,7 @@ export default function AdminDonationsPage() {
       .eq('id', donationId)
 
     if (!error) {
-      await fetchDonations()
+      await fetchAllDonations()
     }
   }
 
@@ -84,7 +91,7 @@ export default function AdminDonationsPage() {
       .eq('id', donationId)
 
     if (!error) {
-      await fetchDonations()
+      await fetchAllDonations()
     }
   }
 
@@ -98,7 +105,7 @@ export default function AdminDonationsPage() {
       .eq('id', donationId)
 
     if (!error) {
-      await fetchDonations()
+      await fetchAllDonations()
     }
   }
 
@@ -110,7 +117,7 @@ export default function AdminDonationsPage() {
         .eq('id', donationId)
 
       if (!error) {
-        await fetchDonations()
+        await fetchAllDonations()
       } else {
         // Error deleting donation
         alert('기부 삭제 중 오류가 발생했습니다.')
@@ -150,17 +157,22 @@ export default function AdminDonationsPage() {
         }}>
           <div style={{ display: 'flex', alignItems: 'stretch', height: '48px' }}>
             {navItems.map(item => (
-              <Link
+              <button
                 key={item.id || 'all'}
-                href={item.id ? `/admin/donations?status=${item.id}` : '/admin/donations'}
+                onClick={() => {
+                  setActiveTab(item.id)
+                  // URL도 업데이트하되 페이지는 리로드하지 않음
+                  const url = item.id ? `/admin/donations?status=${item.id}` : '/admin/donations'
+                  window.history.pushState({}, '', url)
+                }}
                 style={{
                   background: 'none',
                   border: 'none',
-                  borderBottom: statusFilter === item.id || (!statusFilter && !item.id) ? '2px solid #1B4D3E' : '2px solid transparent',
+                  borderBottom: activeTab === item.id || (!activeTab && !item.id) ? '2px solid #1B4D3E' : '2px solid transparent',
                   padding: '0 24px',
                   fontSize: '14px',
-                  color: statusFilter === item.id || (!statusFilter && !item.id) ? '#1B4D3E' : '#6C757D',
-                  fontWeight: statusFilter === item.id || (!statusFilter && !item.id) ? '600' : '400',
+                  color: activeTab === item.id || (!activeTab && !item.id) ? '#1B4D3E' : '#6C757D',
+                  fontWeight: activeTab === item.id || (!activeTab && !item.id) ? '600' : '400',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                   whiteSpace: 'nowrap',
@@ -170,7 +182,7 @@ export default function AdminDonationsPage() {
                 }}
               >
                 {item.label}
-              </Link>
+              </button>
             ))}
           </div>
         </div>
@@ -199,7 +211,7 @@ export default function AdminDonationsPage() {
               </tr>
             </thead>
             <tbody>
-              {donations.map((donation) => {
+              {filteredDonations.map((donation) => {
                 const status = statusMap[donation.status] || { text: donation.status, color: '#666' }
                 return (
                   <tr key={donation.id} style={{ borderBottom: '1px solid #DEE2E6' }}>
