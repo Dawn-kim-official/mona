@@ -247,21 +247,30 @@ export default function BusinessDashboardPage() {
             borderRadius: '8px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
           }}>
-            <p style={{ color: '#6C757D', fontSize: '16px', marginBottom: '24px' }}>등록된 기부가 없습니다.</p>
-            <Link href="/business/donation/new">
-              <button style={{ 
-                backgroundColor: '#FFC107', 
-                color: '#212529', 
-                padding: '10px 24px', 
-                border: 'none', 
-                borderRadius: '4px',
-                fontSize: '14px',
-                fontWeight: '500',
-                cursor: 'pointer'
-              }}>
-                첫 기부 등록하기
-              </button>
-            </Link>
+            <p style={{ color: '#6C757D', fontSize: '16px', marginBottom: donations.length === 0 ? '24px' : '0' }}>
+              {donations.length === 0 
+                ? '등록된 기부가 없습니다.' 
+                : activeTab === '전체' 
+                  ? '등록된 기부가 없습니다.'
+                  : `${activeTab} 상태의 기부가 없습니다.`}
+            </p>
+            {/* 전체 기부 이력이 없을 때만 첫 기부 등록하기 버튼 표시 */}
+            {donations.length === 0 && (
+              <Link href="/business/donation/new">
+                <button style={{ 
+                  backgroundColor: '#FFC107', 
+                  color: '#212529', 
+                  padding: '10px 24px', 
+                  border: 'none', 
+                  borderRadius: '4px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}>
+                  첫 기부 등록하기
+                </button>
+              </Link>
+            )}
           </div>
         ) : (
           <div style={{
