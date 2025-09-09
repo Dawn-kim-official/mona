@@ -12,17 +12,30 @@ export default function AdminBusinessesPage() {
   const [beneficiaries, setBeneficiaries] = useState<any[]>([])
   const [activeTab, setActiveTab] = useState<'business' | 'beneficiary'>('business')
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
 
+  // 페이지 로드 시 모든 데이터를 한 번에 가져오기
   useEffect(() => {
-    if (activeTab === 'business') {
-      fetchBusinesses()
-    } else {
+    fetchAllData()
+  }, [])
+
+  async function fetchAllData() {
+    setLoading(true)
+    // 두 개의 API 호출을 병렬로 실행
+    await Promise.all([
+      fetchBusinesses(),
       fetchBeneficiaries()
-    }
-  }, [activeTab])
+    ])
+    setLoading(false)
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true)
+    await fetchAllData()
+    setRefreshing(false)
+  }
 
   async function fetchBusinesses() {
-    setLoading(true)
     const { data, error } = await supabase
       .from('businesses')
       .select('*')
@@ -34,11 +47,9 @@ export default function AdminBusinessesPage() {
     } else {
       setBusinesses(data || [])
     }
-    setLoading(false)
   }
 
   async function fetchBeneficiaries() {
-    setLoading(true)
     try {
       // 먼저 테이블 존재 여부 확인
       const { data: testData, error: testError } = await supabase
@@ -49,7 +60,6 @@ export default function AdminBusinessesPage() {
       if (testError && testError.message.includes('relation "public.beneficiaries" does not exist')) {
         // beneficiaries 테이블이 존재하지 않습니다
         setBeneficiaries([])
-        setLoading(false)
         return
       }
 
@@ -70,7 +80,6 @@ export default function AdminBusinessesPage() {
       // Unexpected error
       setBeneficiaries([])
     }
-    setLoading(false)
   }
 
   async function updateBusinessStatus(businessId: string, status: 'approved' | 'rejected') {
@@ -86,7 +95,7 @@ export default function AdminBusinessesPage() {
     if (error) {
       // Error updating business
     } else {
-      fetchBusinesses()
+      await fetchBusinesses()
     }
   }
 
@@ -102,7 +111,7 @@ export default function AdminBusinessesPage() {
     if (error) {
       // Error updating beneficiary
     } else {
-      fetchBeneficiaries()
+      await fetchBeneficiaries()
     }
   }
 
@@ -123,41 +132,98 @@ export default function AdminBusinessesPage() {
           padding: '0',
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'space-between',
           borderRadius: '8px',
           marginBottom: '24px',
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
         }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <button
+              onClick={() => setActiveTab('business')}
+              style={{
+                background: 'none',
+                border: 'none',
+                borderBottom: activeTab === 'business' ? '2px solid #1B4D3E' : '2px solid transparent',
+                padding: '16px 24px',
+                fontSize: '14px',
+                color: activeTab === 'business' ? '#1B4D3E' : '#6C757D',
+                fontWeight: activeTab === 'business' ? '600' : '400',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              기부 기업
+            </button>
+            <button
+              onClick={() => setActiveTab('beneficiary')}
+              style={{
+                background: 'none',
+                border: 'none',
+                borderBottom: activeTab === 'beneficiary' ? '2px solid #1B4D3E' : '2px solid transparent',
+                padding: '16px 24px',
+                fontSize: '14px',
+                color: activeTab === 'beneficiary' ? '#1B4D3E' : '#6C757D',
+                fontWeight: activeTab === 'beneficiary' ? '600' : '400',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              수혜 기관
+            </button>
+          </div>
+          
+          {/* 새로고침 버튼 */}
           <button
-            onClick={() => setActiveTab('business')}
+            onClick={handleRefresh}
+            disabled={refreshing}
             style={{
               background: 'none',
-              border: 'none',
-              borderBottom: activeTab === 'business' ? '2px solid #1B4D3E' : '2px solid transparent',
-              padding: '16px 24px',
-              fontSize: '14px',
-              color: activeTab === 'business' ? '#1B4D3E' : '#6C757D',
-              fontWeight: activeTab === 'business' ? '600' : '400',
-              cursor: 'pointer',
+              border: '1px solid #DEE2E6',
+              borderRadius: '4px',
+              padding: '8px 16px',
+              marginRight: '16px',
+              fontSize: '13px',
+              color: refreshing ? '#ADB5BD' : '#495057',
+              cursor: refreshing ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
               transition: 'all 0.2s'
             }}
-          >
-            기부 기업
-          </button>
-          <button
-            onClick={() => setActiveTab('beneficiary')}
-            style={{
-              background: 'none',
-              border: 'none',
-              borderBottom: activeTab === 'beneficiary' ? '2px solid #1B4D3E' : '2px solid transparent',
-              padding: '16px 24px',
-              fontSize: '14px',
-              color: activeTab === 'beneficiary' ? '#1B4D3E' : '#6C757D',
-              fontWeight: activeTab === 'beneficiary' ? '600' : '400',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
+            onMouseEnter={(e) => {
+              if (!refreshing) {
+                e.currentTarget.style.backgroundColor = '#F8F9FA';
+                e.currentTarget.style.borderColor = '#ADB5BD';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.borderColor = '#DEE2E6';
             }}
           >
-            수혜 기관
+            <span 
+              style={{
+                display: 'inline-block',
+                width: '14px',
+                height: '14px',
+                transition: 'transform 0.2s',
+                transform: refreshing ? 'rotate(360deg)' : 'rotate(0deg)'
+              }}
+            >
+              <svg 
+                width="14" 
+                height="14" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+              >
+                <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/>
+              </svg>
+            </span>
+            {refreshing ? '새로고침 중...' : '새로고침'}
           </button>
         </div>
 
