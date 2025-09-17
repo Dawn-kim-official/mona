@@ -20,8 +20,12 @@ export default function MatchingNotificationModal({
   const supabase = createClient()
 
   useEffect(() => {
-    checkNewMatches()
-  }, [])
+    // 세션 스토리지 확인 - 이미 확인했으면 표시하지 않음
+    const confirmed = sessionStorage.getItem(`notification_confirmed_${userId}`)
+    if (!confirmed) {
+      checkNewMatches()
+    }
+  }, [userId])
 
   async function checkNewMatches() {
     try {
@@ -34,22 +38,18 @@ export default function MatchingNotificationModal({
           .single()
 
         if (business) {
-          // notification_confirmed_at이 null이거나 매칭 시간보다 이전인 경우
           const { data: donations } = await supabase
             .from('donations')
             .select('*, donation_matches(*)')
             .eq('business_id', business.id)
-            .not('donation_matches', 'is', null)
 
-          const unconfirmedMatches = donations?.filter(donation => {
-            return donation.donation_matches?.some((match: any) => 
-              !donation.notification_confirmed_at || 
-              new Date(donation.notification_confirmed_at) < new Date(match.proposed_at)
-            )
-          })
+          // 매칭이 있는 기부품 찾기
+          const matchedDonations = donations?.filter(donation => 
+            donation.donation_matches && donation.donation_matches.length > 0
+          )
 
-          if (unconfirmedMatches && unconfirmedMatches.length > 0) {
-            setMatchCount(unconfirmedMatches.length)
+          if (matchedDonations && matchedDonations.length > 0) {
+            setMatchCount(matchedDonations.length)
             setShow(true)
           }
         }
@@ -67,7 +67,6 @@ export default function MatchingNotificationModal({
             .select('*')
             .eq('beneficiary_id', beneficiary.id)
             .eq('status', 'proposed')
-            .is('notification_confirmed_at', null)
 
           if (matches && matches.length > 0) {
             setMatchCount(matches.length)
@@ -80,49 +79,14 @@ export default function MatchingNotificationModal({
     }
   }
 
-  async function handleConfirm() {
+  function handleConfirm() {
     if (!isChecked) return
 
-    try {
-      const now = new Date().toISOString()
-      
-      if (userType === 'business') {
-        const { data: business } = await supabase
-          .from('businesses')
-          .select('id')
-          .eq('user_id', userId)
-          .single()
-
-        if (business) {
-          // 모든 관련 donations의 notification_confirmed_at 업데이트
-          await supabase
-            .from('donations')
-            .update({ notification_confirmed_at: now })
-            .eq('business_id', business.id)
-        }
-      } else {
-        const { data: beneficiary } = await supabase
-          .from('beneficiaries')
-          .select('id')
-          .eq('user_id', userId)
-          .single()
-
-        if (beneficiary) {
-          // 모든 제안된 매칭의 notification_confirmed_at 업데이트
-          await supabase
-            .from('donation_matches')
-            .update({ notification_confirmed_at: now })
-            .eq('beneficiary_id', beneficiary.id)
-            .eq('status', 'proposed')
-            .is('notification_confirmed_at', null)
-        }
-      }
-
-      setShow(false)
-      onConfirm()
-    } catch (error) {
-      console.error('Error confirming notification:', error)
-    }
+    // 세션 스토리지에 확인 상태 저장 (브라우저 닫으면 초기화)
+    sessionStorage.setItem(`notification_confirmed_${userId}`, 'true')
+    
+    setShow(false)
+    onConfirm()
   }
 
   if (!show) return null
