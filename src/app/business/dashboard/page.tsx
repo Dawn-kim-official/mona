@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import MatchingNotificationModal from '@/components/MatchingNotificationModal'
 
 export default function BusinessDashboardPage() {
   const router = useRouter()
@@ -16,6 +17,8 @@ export default function BusinessDashboardPage() {
   })
   const [recentDonations, setRecentDonations] = useState<any[]>([])
   const [esgReportUrl, setEsgReportUrl] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
+  const [notificationConfirmed, setNotificationConfirmed] = useState(false)
 
   useEffect(() => {
     fetchDashboardData()
@@ -24,6 +27,8 @@ export default function BusinessDashboardPage() {
   async function fetchDashboardData() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+    
+    setUserId(user.id)
 
     const { data: business } = await supabase
       .from('businesses')
@@ -73,7 +78,7 @@ export default function BusinessDashboardPage() {
   }
 
   return (
-    <div style={{ backgroundColor: '#F8F9FA', minHeight: '100vh' }}>
+    <div style={{ backgroundColor: '#F8F9FA', minHeight: '100vh', opacity: notificationConfirmed ? 1 : 1 }}>
       <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
         {/* 기부 현황 요약 섹션 */}
         <div style={{ 
@@ -271,6 +276,15 @@ export default function BusinessDashboardPage() {
           )}
         </div>
       </div>
+      
+      {/* Matching Notification Modal */}
+      {userId && (
+        <MatchingNotificationModal
+          userType="business"
+          userId={userId}
+          onConfirm={() => setNotificationConfirmed(true)}
+        />
+      )}
     </div>
   )
 }

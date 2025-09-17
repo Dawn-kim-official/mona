@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import MatchingNotificationModal from '@/components/MatchingNotificationModal'
 
 interface DashboardStats {
   totalProposals: number
@@ -23,6 +24,8 @@ export default function BeneficiaryDashboardPage() {
   })
   const [recentProposals, setRecentProposals] = useState<any[]>([])
   const [beneficiaryId, setBeneficiaryId] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
+  const [notificationConfirmed, setNotificationConfirmed] = useState(false)
 
   useEffect(() => {
     fetchDashboardData()
@@ -31,6 +34,8 @@ export default function BeneficiaryDashboardPage() {
   async function fetchDashboardData() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+    
+    setUserId(user.id)
 
     // Get beneficiary info
     const { data: beneficiary } = await supabase
@@ -270,6 +275,15 @@ export default function BeneficiaryDashboardPage() {
           </table>
         )}
       </div>
+      
+      {/* Matching Notification Modal */}
+      {userId && (
+        <MatchingNotificationModal
+          userType="beneficiary"
+          userId={userId}
+          onConfirm={() => setNotificationConfirmed(true)}
+        />
+      )}
     </div>
   )
 }
