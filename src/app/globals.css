@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --nav-green: #1B4D3E;
-  --yellow-primary: #FFB800;
+  --nav-green: #02391f;
+  --yellow-primary: #ffd020;
   --bg-light: #F5F5F0;
   --text-gray: #666666;
   --status-orange: #FF8C00;
@@ -14,7 +14,7 @@
   --foreground: #171717;
   --card: #ffffff;
   --card-foreground: #171717;
-  --primary: #FFB800;
+  --primary: #ffd020;
   --primary-foreground: #ffffff;
   --secondary: #f3f4f6;
   --secondary-foreground: #171717;
@@ -26,7 +26,7 @@
   --accent-foreground: #171717;
   --border: #e5e7eb;
   --input: #e5e7eb;
-  --ring: #FFB800;
+  --ring: #ffd020;
 }
 
 @theme inline {
@@ -50,8 +50,8 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-montserrat);
+  --font-mono: var(--font-montserrat);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -60,7 +60,7 @@
     --foreground: #ededed;
     --card: #171717;
     --card-foreground: #ededed;
-    --primary: #FFB800;
+    --primary: #ffd020;
     --primary-foreground: #ffffff;
     --secondary: #262626;
     --secondary-foreground: #ededed;
@@ -72,14 +72,14 @@
     --accent-foreground: #ededed;
     --border: #262626;
     --input: #262626;
-    --ring: #FFB800;
+    --ring: #ffd020;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 * {

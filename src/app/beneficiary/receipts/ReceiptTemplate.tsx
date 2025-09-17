@@ -18,7 +18,7 @@ export default function ReceiptTemplate({ donation, beneficiary }: ReceiptTempla
         minHeight: '297mm',
         padding: '20mm',
         backgroundColor: 'white',
-        fontFamily: 'Pretendard, -apple-system, sans-serif',
+        fontFamily: 'Montserrat, -apple-system, sans-serif',
         color: '#000',
         position: 'absolute',
         left: '-9999px',
