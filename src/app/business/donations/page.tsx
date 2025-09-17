@@ -6,6 +6,7 @@ import { Database } from '@/lib/supabase-types'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import QuoteDetailModal from '@/components/QuoteDetailModal'
+import MatchingDetailModal from '@/components/MatchingDetailModal'
 
 type Donation = Database['public']['Tables']['donations']['Row']
 type Quote = Database['public']['Tables']['quotes']['Row']
@@ -43,6 +44,8 @@ export default function BusinessDashboardPage() {
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null)
   const [selectedDonation, setSelectedDonation] = useState<Donation | null>(null)
   const [showQuoteModal, setShowQuoteModal] = useState(false)
+  const [showMatchingModal, setShowMatchingModal] = useState(false)
+  const [selectedMatchingId, setSelectedMatchingId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchDonations()
@@ -96,6 +99,11 @@ export default function BusinessDashboardPage() {
     setSelectedDonation(donation)
     setSelectedQuote(quote)
     setShowQuoteModal(true)
+  }
+
+  function handleViewMatching(donationId: string) {
+    setSelectedMatchingId(donationId)
+    setShowMatchingModal(true)
   }
 
   async function handleAcceptQuote(quoteId: string) {
@@ -357,6 +365,37 @@ export default function BusinessDashboardPage() {
                         </span>
                       </td>
                       <td style={{ padding: '16px', textAlign: 'center' }}>
+                        {/* 매칭된 상태들에 대해 상세보기 버튼 표시 */}
+                        {['matched', 'quote_sent', 'quote_accepted', 'pickup_scheduled', 'completed'].includes(donation.status) && (
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleViewMatching(donation.id)
+                            }}
+                            style={{ 
+                              color: '#02391f', 
+                              background: 'transparent', 
+                              border: '1px solid #02391f',
+                              padding: '6px 12px',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '13px',
+                              fontWeight: '500',
+                              transition: 'all 0.2s',
+                              marginRight: '8px'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = '#02391f';
+                              e.currentTarget.style.color = 'white';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                              e.currentTarget.style.color = '#02391f';
+                            }}
+                          >
+                            상세보기
+                          </button>
+                        )}
                         {donation.status === 'quote_sent' && (
                           <button 
                             onClick={() => handleViewQuote(donation.id)}
@@ -432,6 +471,18 @@ export default function BusinessDashboardPage() {
         onAccept={handleAcceptQuote as any}
         onReject={handleRejectQuote as any}
       />
+      
+      {/* Matching Detail Modal */}
+      {showMatchingModal && selectedMatchingId && (
+        <MatchingDetailModal
+          isOpen={showMatchingModal}
+          onClose={() => {
+            setShowMatchingModal(false)
+            setSelectedMatchingId(null)
+          }}
+          donationId={selectedMatchingId}
+        />
+      )}
     </div>
   )
 }
