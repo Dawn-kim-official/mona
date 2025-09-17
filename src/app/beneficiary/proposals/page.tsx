@@ -240,10 +240,10 @@ export default function BeneficiaryProposalsPage() {
               style={{
                 background: 'none',
                 border: 'none',
-                borderBottom: filterStatus === item.id || (!filterStatus && !item.id) ? '2px solid #1B4D3E' : '2px solid transparent',
+                borderBottom: filterStatus === item.id || (!filterStatus && !item.id) ? '2px solid #02391f' : '2px solid transparent',
                 padding: '16px 24px',
                 fontSize: '14px',
-                color: filterStatus === item.id || (!filterStatus && !item.id) ? '#1B4D3E' : '#6C757D',
+                color: filterStatus === item.id || (!filterStatus && !item.id) ? '#02391f' : '#6C757D',
                 fontWeight: filterStatus === item.id || (!filterStatus && !item.id) ? '600' : '400',
                 cursor: 'pointer',
                 transition: 'all 0.2s'
@@ -329,7 +329,7 @@ export default function BeneficiaryProposalsPage() {
                               fontSize: '13px',
                               fontWeight: '500',
                               color: 'white',
-                              backgroundColor: generatingPdf === proposal.id ? '#6C757D' : '#1B4D3E',
+                              backgroundColor: generatingPdf === proposal.id ? '#6C757D' : '#02391f',
                               border: 'none',
                               borderRadius: '4px',
                               cursor: generatingPdf === proposal.id ? 'not-allowed' : 'pointer',

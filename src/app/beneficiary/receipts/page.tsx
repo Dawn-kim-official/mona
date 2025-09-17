@@ -309,7 +309,7 @@ export default function BeneficiaryReceiptsPage() {
                               fontSize: '13px',
                               fontWeight: '500',
                               color: 'white',
-                              backgroundColor: generatingPdf === donation.id ? '#6C757D' : '#1B4D3E',
+                              backgroundColor: generatingPdf === donation.id ? '#6C757D' : '#02391f',
                               border: 'none',
                               borderRadius: '4px',
                               cursor: generatingPdf === donation.id ? 'not-allowed' : 'pointer'

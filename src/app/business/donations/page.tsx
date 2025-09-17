@@ -179,10 +179,10 @@ export default function BusinessDashboardPage() {
                 style={{
                   background: 'none',
                   border: 'none',
-                  borderBottom: activeTab === tab.id ? '2px solid #1B4D3E' : '2px solid transparent',
+                  borderBottom: activeTab === tab.id ? '2px solid #02391f' : '2px solid transparent',
                   padding: '0 24px',
                   fontSize: '14px',
-                  color: activeTab === tab.id ? '#1B4D3E' : '#6C757D',
+                  color: activeTab === tab.id ? '#02391f' : '#6C757D',
                   fontWeight: activeTab === tab.id ? '600' : '400',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
@@ -207,7 +207,7 @@ export default function BusinessDashboardPage() {
           </div>
           <Link href="/business/donation/new">
             <button style={{ 
-              backgroundColor: '#FFC107', 
+              backgroundColor: '#ffd020', 
               color: '#212529', 
               padding: '8px 20px', 
               border: 'none', 
@@ -223,10 +223,10 @@ export default function BusinessDashboardPage() {
               height: '32px'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#FFB300';
+              e.currentTarget.style.opacity = '1';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#FFC107';
+              e.currentTarget.style.opacity = '1';
             }}
             >
               <span style={{ fontSize: '18px', lineHeight: '1' }}>⊕</span>
@@ -258,7 +258,7 @@ export default function BusinessDashboardPage() {
             {donations.length === 0 && (
               <Link href="/business/donation/new">
                 <button style={{ 
-                  backgroundColor: '#FFC107', 
+                  backgroundColor: '#ffd020', 
                   color: '#212529', 
                   padding: '10px 24px', 
                   border: 'none', 

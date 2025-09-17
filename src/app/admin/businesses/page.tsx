@@ -143,10 +143,10 @@ export default function AdminBusinessesPage() {
               style={{
                 background: 'none',
                 border: 'none',
-                borderBottom: activeTab === 'business' ? '2px solid #1B4D3E' : '2px solid transparent',
+                borderBottom: activeTab === 'business' ? '2px solid #02391f' : '2px solid transparent',
                 padding: '16px 24px',
                 fontSize: '14px',
-                color: activeTab === 'business' ? '#1B4D3E' : '#6C757D',
+                color: activeTab === 'business' ? '#02391f' : '#6C757D',
                 fontWeight: activeTab === 'business' ? '600' : '400',
                 cursor: 'pointer',
                 transition: 'all 0.2s'
@@ -159,10 +159,10 @@ export default function AdminBusinessesPage() {
               style={{
                 background: 'none',
                 border: 'none',
-                borderBottom: activeTab === 'beneficiary' ? '2px solid #1B4D3E' : '2px solid transparent',
+                borderBottom: activeTab === 'beneficiary' ? '2px solid #02391f' : '2px solid transparent',
                 padding: '16px 24px',
                 fontSize: '14px',
-                color: activeTab === 'beneficiary' ? '#1B4D3E' : '#6C757D',
+                color: activeTab === 'beneficiary' ? '#02391f' : '#6C757D',
                 fontWeight: activeTab === 'beneficiary' ? '600' : '400',
                 cursor: 'pointer',
                 transition: 'all 0.2s'

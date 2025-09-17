@@ -38,13 +38,15 @@ export default function BusinessDashboardPage() {
       setEsgReportUrl(business.esg_report_url)
     }
 
-    // Fetch all donations for stats
+    // 한 번의 쿼리로 모든 donations 가져오기 (중복 제거)
     const { data: allDonations } = await supabase
       .from('donations')
-      .select('status')
+      .select('*')  // 전체 데이터를 한 번에 가져옴
       .eq('business_id', business.id)
+      .order('created_at', { ascending: false })
 
     if (allDonations) {
+      // 통계 계산
       const total = allDonations.length
       const completed = allDonations.filter(d => d.status === 'completed').length
       const pending = allDonations.filter(d => 
@@ -56,17 +58,13 @@ export default function BusinessDashboardPage() {
         completedDonations: completed,
         pendingDonations: pending
       })
+
+      // 최근 2개 기부 (이미 정렬되어 있으므로 slice 사용)
+      setRecentDonations(allDonations.slice(0, 2))
+    } else {
+      setRecentDonations([])
     }
-
-    // Fetch recent donations (최근 2개)
-    const { data: donations } = await supabase
-      .from('donations')
-      .select('*')
-      .eq('business_id', business.id)
-      .order('created_at', { ascending: false })
-      .limit(2)
-
-    setRecentDonations(donations || [])
+    
     setLoading(false)
   }
 
@@ -123,7 +121,7 @@ export default function BusinessDashboardPage() {
               borderRadius: '8px',
               border: '1px solid #E9ECEF'
             }}>
-              <div style={{ fontSize: '48px', fontWeight: '700', color: '#FFC107', marginBottom: '8px' }}>
+              <div style={{ fontSize: '48px', fontWeight: '700', color: '#ffd020', marginBottom: '8px' }}>
                 {stats.pendingDonations}
               </div>
               <div style={{ fontSize: '16px', color: '#6C757D' }}>진행 중인 기부</div>
@@ -155,7 +153,7 @@ export default function BusinessDashboardPage() {
                 style={{ textDecoration: 'none' }}
               >
                 <button style={{
-                  backgroundColor: '#FFC107',
+                  backgroundColor: '#ffd020',
                   color: '#212529',
                   border: 'none',
                   borderRadius: '4px',
@@ -165,8 +163,8 @@ export default function BusinessDashboardPage() {
                   cursor: 'pointer',
                   transition: 'background-color 0.2s'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#FFB300'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FFC107'}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
                 >
                   ESG 리포트 다운로드
                 </button>
@@ -191,7 +189,7 @@ export default function BusinessDashboardPage() {
               <p>아직 기부 이력이 없습니다.</p>
               <Link href="/business/donation/new">
                 <button style={{
-                  backgroundColor: '#FFC107',
+                  backgroundColor: '#ffd020',
                   color: '#212529',
                   border: 'none',
                   borderRadius: '4px',

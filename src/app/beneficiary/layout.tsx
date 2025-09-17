@@ -129,7 +129,7 @@ export default function BeneficiaryLayout({
     <div style={{ minHeight: '100vh', backgroundColor: '#F8F9FA' }}>
       {/* Top Navigation Bar - 관리자/기업과 동일한 스타일 */}
       <nav style={{ 
-        backgroundColor: '#1B4D3E',
+        backgroundColor: '#02391f',
         padding: '0 40px',
         height: '70px',
         display: 'flex',
@@ -140,7 +140,7 @@ export default function BeneficiaryLayout({
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ color: 'white', fontSize: '14px' }}>수혜기관</span>
             <h1 style={{ 
-              color: '#FFB800', 
+              color: '#ffd020', 
               fontSize: '28px', 
               fontWeight: 'bold',
               margin: 0
@@ -199,7 +199,7 @@ export default function BeneficiaryLayout({
             }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12ZM12 14C9.33 14 4 15.34 4 18V20H20V18C20 15.34 14.67 14 12 14Z" fill="#1B4D3E"/>
+              <path d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12ZM12 14C9.33 14 4 15.34 4 18V20H20V18C20 15.34 14.67 14 12 14Z" fill="#02391f"/>
             </svg>
           </button>
         </div>

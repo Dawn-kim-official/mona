@@ -108,7 +108,7 @@ export default function BeneficiaryDashboardPage() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
             <span style={{ fontSize: '14px', color: '#6C757D' }}>전체 제안</span>
-            <span style={{ fontSize: '24px', color: '#FFB800' }}>📋</span>
+            <span style={{ fontSize: '24px', color: '#ffd020' }}>📋</span>
           </div>
           <div style={{ fontSize: '32px', fontWeight: '700', color: '#212529' }}>
             {stats.totalProposals}

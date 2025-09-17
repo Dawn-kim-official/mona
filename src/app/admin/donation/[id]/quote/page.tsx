@@ -562,7 +562,7 @@ export default function AdminQuoteUploadPage() {
                 fontSize: '14px',
                 fontWeight: '500',
                 color: 'white',
-                backgroundColor: loading ? '#6C757D' : '#FFC107',
+                backgroundColor: loading ? '#6C757D' : '#ffd020',
                 border: 'none',
                 borderRadius: '4px',
                 cursor: loading ? 'not-allowed' : 'pointer'

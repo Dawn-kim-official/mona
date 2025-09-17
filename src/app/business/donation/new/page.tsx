@@ -171,7 +171,7 @@ export default function NewDonationPage() {
                   style={inputStyle}
                   placeholder="품명을 입력하세요"
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = '#1B4D3E'
+                    e.currentTarget.style.borderColor = '#02391f'
                     e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
                   }}
                   onBlur={(e) => {
@@ -193,7 +193,7 @@ export default function NewDonationPage() {
                     style={{ ...inputStyle, flex: 1 }}
                     placeholder="수량을 입력하세요"
                     onFocus={(e) => {
-                      e.currentTarget.style.borderColor = '#1B4D3E'
+                      e.currentTarget.style.borderColor = '#02391f'
                       e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
                     }}
                     onBlur={(e) => {
@@ -216,7 +216,7 @@ export default function NewDonationPage() {
                       outline: 'none'
                     }}
                     onFocus={(e) => {
-                      e.currentTarget.style.borderColor = '#1B4D3E'
+                      e.currentTarget.style.borderColor = '#02391f'
                       e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
                     }}
                     onBlur={(e) => {
@@ -244,7 +244,7 @@ export default function NewDonationPage() {
                   style={inputStyle}
                   placeholder="카테고리를 입력하세요"
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = '#1B4D3E'
+                    e.currentTarget.style.borderColor = '#02391f'
                     e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
                   }}
                   onBlur={(e) => {
@@ -263,7 +263,7 @@ export default function NewDonationPage() {
                   onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
                   style={inputStyle}
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = '#1B4D3E'
+                    e.currentTarget.style.borderColor = '#02391f'
                     e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
                   }}
                   onBlur={(e) => {
@@ -287,7 +287,7 @@ export default function NewDonationPage() {
                   style={inputStyle}
                   min={new Date().toISOString().split('T')[0]}
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = '#1B4D3E'
+                    e.currentTarget.style.borderColor = '#02391f'
                     e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
                   }}
                   onBlur={(e) => {
@@ -308,7 +308,7 @@ export default function NewDonationPage() {
                   style={inputStyle}
                   placeholder="픽업 장소를 입력하세요"
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = '#1B4D3E'
+                    e.currentTarget.style.borderColor = '#02391f'
                     e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
                   }}
                   onBlur={(e) => {
@@ -404,7 +404,7 @@ export default function NewDonationPage() {
                 fontSize: '14px',
                 fontWeight: '500',
                 color: '#212529',
-                backgroundColor: loading ? '#FFE082' : '#FFC107',
+                backgroundColor: loading ? '#FFE082' : '#ffd020',
                 border: 'none',
                 borderRadius: '4px',
                 cursor: loading ? 'not-allowed' : 'pointer',
@@ -412,12 +412,12 @@ export default function NewDonationPage() {
               }}
               onMouseEnter={(e) => {
                 if (!loading) {
-                  e.currentTarget.style.backgroundColor = '#FFB300';
+                  e.currentTarget.style.opacity = '1';
                 }
               }}
               onMouseLeave={(e) => {
                 if (!loading) {
-                  e.currentTarget.style.backgroundColor = '#FFC107';
+                  e.currentTarget.style.opacity = '1';
                 }
               }}
             >

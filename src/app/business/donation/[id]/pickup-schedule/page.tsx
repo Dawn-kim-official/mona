@@ -135,7 +135,7 @@ export default function PickupSchedulePage({ params }: { params: Promise<{ id: s
     <div style={{ padding: '40px', backgroundColor: '#fafafa', minHeight: 'calc(100vh - 70px)' }}>
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         <div style={{ marginBottom: '40px' }}>
-          <h1 style={{ fontSize: '28px', marginBottom: '8px', color: '#1B4D3E' }}>픽업 일정 조율</h1>
+          <h1 style={{ fontSize: '28px', marginBottom: '8px', color: '#02391f' }}>픽업 일정 조율</h1>
           <p style={{ color: '#666', fontSize: '16px' }}>견적이 수락되었습니다. 픽업 일정을 확정해주세요.</p>
         </div>
 
@@ -197,7 +197,7 @@ export default function PickupSchedulePage({ params }: { params: Promise<{ id: s
               onChange={(e) => setSelectedDate(e.target.value)}
               min={new Date().toISOString().split('T')[0]}
               style={inputStyle}
-              onFocus={(e) => e.currentTarget.style.borderColor = '#FFB800'}
+              onFocus={(e) => e.currentTarget.style.borderColor = '#ffd020'}
               onBlur={(e) => e.currentTarget.style.borderColor = '#e9ecef'}
             />
             <p style={{ fontSize: '13px', color: '#6c757d', marginTop: '8px' }}>
@@ -213,7 +213,7 @@ export default function PickupSchedulePage({ params }: { params: Promise<{ id: s
               value={selectedTime}
               onChange={(e) => setSelectedTime(e.target.value)}
               style={inputStyle}
-              onFocus={(e) => e.currentTarget.style.borderColor = '#FFB800'}
+              onFocus={(e) => e.currentTarget.style.borderColor = '#ffd020'}
               onBlur={(e) => e.currentTarget.style.borderColor = '#e9ecef'}
             >
               <option value="09:00">오전 9:00</option>
@@ -235,7 +235,7 @@ export default function PickupSchedulePage({ params }: { params: Promise<{ id: s
               onChange={(e) => setNotes(e.target.value)}
               style={{ ...inputStyle, minHeight: '120px', resize: 'vertical' }}
               placeholder="픽업 시 특별한 요청사항이 있으면 입력해주세요 (예: 엘리베이터 사용 불가, 주차 공간 협소 등)"
-              onFocus={(e) => e.currentTarget.style.borderColor = '#FFB800'}
+              onFocus={(e) => e.currentTarget.style.borderColor = '#ffd020'}
               onBlur={(e) => e.currentTarget.style.borderColor = '#e9ecef'}
             />
           </div>
@@ -275,7 +275,7 @@ export default function PickupSchedulePage({ params }: { params: Promise<{ id: s
                 fontSize: '15px',
                 fontWeight: 'bold',
                 color: 'white',
-                backgroundColor: submitting ? '#FDD676' : '#FFB800',
+                backgroundColor: submitting ? '#FDD676' : '#ffd020',
                 border: 'none',
                 borderRadius: '8px',
                 cursor: submitting ? 'not-allowed' : 'pointer',
@@ -290,7 +290,7 @@ export default function PickupSchedulePage({ params }: { params: Promise<{ id: s
               }}
               onMouseLeave={(e) => {
                 if (!submitting) {
-                  e.currentTarget.style.backgroundColor = '#FFB800';
+                  e.currentTarget.style.opacity = '1';
                   e.currentTarget.style.transform = 'translateY(0)';
                   e.currentTarget.style.boxShadow = 'none';
                 }

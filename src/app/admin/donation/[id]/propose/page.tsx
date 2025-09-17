@@ -358,7 +358,7 @@ export default function ProposeDonationPage() {
                   style={{
                     padding: '16px',
                     border: selectedBeneficiaries.includes(beneficiary.id) 
-                      ? '2px solid #1B4D3E' 
+                      ? '2px solid #02391f' 
                       : '1px solid #DEE2E6',
                     borderRadius: '8px',
                     cursor: 'pointer',
@@ -402,10 +402,10 @@ export default function ProposeDonationPage() {
                       height: '24px',
                       borderRadius: '50%',
                       border: selectedBeneficiaries.includes(beneficiary.id)
-                        ? '2px solid #1B4D3E'
+                        ? '2px solid #02391f'
                         : '2px solid #DEE2E6',
                       backgroundColor: selectedBeneficiaries.includes(beneficiary.id)
-                        ? '#1B4D3E'
+                        ? '#02391f'
                         : 'white',
                       display: 'flex',
                       alignItems: 'center',
@@ -466,7 +466,7 @@ export default function ProposeDonationPage() {
               fontSize: '16px',
               fontWeight: '600',
               color: '#212529',
-              backgroundColor: '#FFC107',
+              backgroundColor: '#ffd020',
               border: 'none',
               borderRadius: '4px',
               cursor: submitting || selectedBeneficiaries.length === 0 ? 'not-allowed' : 'pointer',
@@ -475,12 +475,12 @@ export default function ProposeDonationPage() {
             }}
             onMouseEnter={(e) => {
               if (!submitting && selectedBeneficiaries.length > 0) {
-                e.currentTarget.style.backgroundColor = '#FFB300'
+                e.currentTarget.style.opacity = '1'
               }
             }}
             onMouseLeave={(e) => {
               if (!submitting && selectedBeneficiaries.length > 0) {
-                e.currentTarget.style.backgroundColor = '#FFC107'
+                e.currentTarget.style.opacity = '1'
               }
             }}
           >

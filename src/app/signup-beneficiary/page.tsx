@@ -203,7 +203,7 @@ export default function SignupBeneficiaryPage() {
                   color: '#212529'
                 }}
                 onFocus={(e) => {
-                  e.currentTarget.style.borderColor = '#1B4D3E'
+                  e.currentTarget.style.borderColor = '#02391f'
                   e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
                 }}
                 onBlur={(e) => {
@@ -242,7 +242,7 @@ export default function SignupBeneficiaryPage() {
                   color: '#212529'
                 }}
                 onFocus={(e) => {
-                  e.currentTarget.style.borderColor = '#1B4D3E'
+                  e.currentTarget.style.borderColor = '#02391f'
                   e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
                 }}
                 onBlur={(e) => {
@@ -281,7 +281,7 @@ export default function SignupBeneficiaryPage() {
                   color: '#212529'
                 }}
                 onFocus={(e) => {
-                  e.currentTarget.style.borderColor = '#1B4D3E'
+                  e.currentTarget.style.borderColor = '#02391f'
                   e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
                 }}
                 onBlur={(e) => {
@@ -310,14 +310,14 @@ export default function SignupBeneficiaryPage() {
                 fontSize: '16px',
                 fontWeight: '600',
                 color: '#212529',
-                backgroundColor: '#FFC107',
+                backgroundColor: '#ffd020',
                 border: 'none',
                 borderRadius: '4px',
                 cursor: 'pointer',
                 transition: 'background-color 0.2s'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#FFB300'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FFC107'}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
             >
               다음 단계
             </button>
@@ -352,7 +352,7 @@ export default function SignupBeneficiaryPage() {
                   color: '#212529'
                 }}
                 onFocus={(e) => {
-                  e.currentTarget.style.borderColor = '#1B4D3E'
+                  e.currentTarget.style.borderColor = '#02391f'
                   e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
                 }}
                 onBlur={(e) => {
@@ -388,7 +388,7 @@ export default function SignupBeneficiaryPage() {
                   cursor: 'pointer'
                 }}
                 onFocus={(e) => {
-                  e.currentTarget.style.borderColor = '#1B4D3E'
+                  e.currentTarget.style.borderColor = '#02391f'
                   e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
                 }}
                 onBlur={(e) => {
@@ -432,7 +432,7 @@ export default function SignupBeneficiaryPage() {
                   color: '#212529'
                 }}
                 onFocus={(e) => {
-                  e.currentTarget.style.borderColor = '#1B4D3E'
+                  e.currentTarget.style.borderColor = '#02391f'
                   e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
                 }}
                 onBlur={(e) => {
@@ -470,7 +470,7 @@ export default function SignupBeneficiaryPage() {
                   color: '#212529'
                 }}
                 onFocus={(e) => {
-                  e.currentTarget.style.borderColor = '#1B4D3E'
+                  e.currentTarget.style.borderColor = '#02391f'
                   e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
                 }}
                 onBlur={(e) => {
@@ -508,7 +508,7 @@ export default function SignupBeneficiaryPage() {
                   color: '#212529'
                 }}
                 onFocus={(e) => {
-                  e.currentTarget.style.borderColor = '#1B4D3E'
+                  e.currentTarget.style.borderColor = '#02391f'
                   e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
                 }}
                 onBlur={(e) => {
@@ -545,7 +545,7 @@ export default function SignupBeneficiaryPage() {
                   color: '#212529'
                 }}
                 onFocus={(e) => {
-                  e.currentTarget.style.borderColor = '#1B4D3E'
+                  e.currentTarget.style.borderColor = '#02391f'
                   e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
                 }}
                 onBlur={(e) => {
@@ -583,7 +583,7 @@ export default function SignupBeneficiaryPage() {
                   color: '#212529'
                 }}
                 onFocus={(e) => {
-                  e.currentTarget.style.borderColor = '#1B4D3E'
+                  e.currentTarget.style.borderColor = '#02391f'
                   e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
                 }}
                 onBlur={(e) => {
@@ -634,15 +634,15 @@ export default function SignupBeneficiaryPage() {
                   fontSize: '16px',
                   fontWeight: '600',
                   color: '#212529',
-                  backgroundColor: '#FFC107',
+                  backgroundColor: '#ffd020',
                   border: 'none',
                   borderRadius: '4px',
                   cursor: loading ? 'not-allowed' : 'pointer',
                   opacity: loading ? 0.7 : 1,
                   transition: 'background-color 0.2s'
                 }}
-                onMouseEnter={(e) => !loading && (e.currentTarget.style.backgroundColor = '#FFB300')}
-                onMouseLeave={(e) => !loading && (e.currentTarget.style.backgroundColor = '#FFC107')}
+                onMouseEnter={(e) => !loading && (e.currentTarget.style.opacity = '1')}
+                onMouseLeave={(e) => !loading && (e.currentTarget.style.opacity = '1')}
               >
                 {loading ? '가입 중...' : '회원가입 완료'}
               </button>

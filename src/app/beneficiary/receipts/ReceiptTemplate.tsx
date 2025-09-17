@@ -25,10 +25,10 @@ export default function ReceiptTemplate({ donation, beneficiary }: ReceiptTempla
         top: 0
       }}
     >
-      <div style={{ border: '2px solid #1B4D3E', padding: '30px' }}>
+      <div style={{ border: '2px solid #02391f', padding: '30px' }}>
         {/* 헤더 */}
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <h1 style={{ fontSize: '32px', marginBottom: '10px', color: '#1B4D3E' }}>
+          <h1 style={{ fontSize: '32px', marginBottom: '10px', color: '#02391f' }}>
             기부금 영수증
           </h1>
           <p style={{ fontSize: '16px', color: '#666' }}>
@@ -46,7 +46,7 @@ export default function ReceiptTemplate({ donation, beneficiary }: ReceiptTempla
 
         {/* 기부자 정보 */}
         <div style={{ marginBottom: '30px' }}>
-          <h3 style={{ fontSize: '20px', marginBottom: '15px', color: '#1B4D3E' }}>
+          <h3 style={{ fontSize: '20px', marginBottom: '15px', color: '#02391f' }}>
             ① 기부자
           </h3>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -89,7 +89,7 @@ export default function ReceiptTemplate({ donation, beneficiary }: ReceiptTempla
 
         {/* 수혜기관 정보 */}
         <div style={{ marginBottom: '30px' }}>
-          <h3 style={{ fontSize: '20px', marginBottom: '15px', color: '#1B4D3E' }}>
+          <h3 style={{ fontSize: '20px', marginBottom: '15px', color: '#02391f' }}>
             ② 수혜기관
           </h3>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -132,12 +132,12 @@ export default function ReceiptTemplate({ donation, beneficiary }: ReceiptTempla
 
         {/* 기부 내역 */}
         <div style={{ marginBottom: '30px' }}>
-          <h3 style={{ fontSize: '20px', marginBottom: '15px', color: '#1B4D3E' }}>
+          <h3 style={{ fontSize: '20px', marginBottom: '15px', color: '#02391f' }}>
             ③ 기부 내용
           </h3>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ backgroundColor: '#1B4D3E', color: 'white' }}>
+              <tr style={{ backgroundColor: '#02391f', color: 'white' }}>
                 <th style={{ border: '1px solid #ddd', padding: '10px' }}>품목</th>
                 <th style={{ border: '1px solid #ddd', padding: '10px' }}>수량</th>
                 <th style={{ border: '1px solid #ddd', padding: '10px' }}>단가</th>
@@ -182,7 +182,7 @@ export default function ReceiptTemplate({ donation, beneficiary }: ReceiptTempla
             {today}
           </p>
           <div style={{ marginTop: '40px' }}>
-            <p style={{ fontSize: '20px', fontWeight: 'bold', color: '#1B4D3E' }}>
+            <p style={{ fontSize: '20px', fontWeight: 'bold', color: '#02391f' }}>
               {beneficiary.organization_name}
             </p>
             <p style={{ fontSize: '16px', marginTop: '10px' }}>

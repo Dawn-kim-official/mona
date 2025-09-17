@@ -322,7 +322,7 @@ export default function ProposalDetailPage() {
                   backgroundColor: '#FFFFFF',
                   color: '#212529'
                 }}
-                onFocus={(e) => e.currentTarget.style.borderColor = '#1B4D3E'}
+                onFocus={(e) => e.currentTarget.style.borderColor = '#02391f'}
                 onBlur={(e) => e.currentTarget.style.borderColor = '#CED4DA'}
               />
             </div>
@@ -507,7 +507,7 @@ export default function ProposalDetailPage() {
               borderRadius: '8px',
               marginBottom: '24px' 
             }}>
-              <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', color: '#1B4D3E' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', color: '#02391f' }}>
                 영수증 정보
               </h3>
               <div style={{ fontSize: '14px', color: '#495057', lineHeight: '1.8' }}>
@@ -613,7 +613,7 @@ export default function ProposalDetailPage() {
                   fontSize: '16px',
                   fontWeight: '600',
                   color: 'white',
-                  backgroundColor: generatingPdf ? '#6C757D' : '#1B4D3E',
+                  backgroundColor: generatingPdf ? '#6C757D' : '#02391f',
                   border: 'none',
                   borderRadius: '4px',
                   cursor: generatingPdf ? 'not-allowed' : 'pointer',
@@ -621,7 +621,7 @@ export default function ProposalDetailPage() {
                   opacity: generatingPdf ? 0.7 : 1
                 }}
                 onMouseEnter={(e) => !generatingPdf && (e.currentTarget.style.backgroundColor = '#164137')}
-                onMouseLeave={(e) => !generatingPdf && (e.currentTarget.style.backgroundColor = '#1B4D3E')}
+                onMouseLeave={(e) => !generatingPdf && (e.currentTarget.style.backgroundColor = '#02391f')}
               >
                 {generatingPdf ? 'PDF 생성 중...' : '기부영수증 발급하기'}
               </button>

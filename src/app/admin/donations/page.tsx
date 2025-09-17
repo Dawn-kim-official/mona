@@ -168,10 +168,10 @@ export default function AdminDonationsPage() {
                 style={{
                   background: 'none',
                   border: 'none',
-                  borderBottom: activeTab === item.id || (!activeTab && !item.id) ? '2px solid #1B4D3E' : '2px solid transparent',
+                  borderBottom: activeTab === item.id || (!activeTab && !item.id) ? '2px solid #02391f' : '2px solid transparent',
                   padding: '0 24px',
                   fontSize: '14px',
-                  color: activeTab === item.id || (!activeTab && !item.id) ? '#1B4D3E' : '#6C757D',
+                  color: activeTab === item.id || (!activeTab && !item.id) ? '#02391f' : '#6C757D',
                   fontWeight: activeTab === item.id || (!activeTab && !item.id) ? '600' : '400',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
@@ -299,7 +299,7 @@ export default function AdminDonationsPage() {
                             fontSize: '13px',
                             fontWeight: '500',
                             color: '#212529',
-                            backgroundColor: '#FFC107',
+                            backgroundColor: '#ffd020',
                             border: 'none',
                             borderRadius: '4px',
                             cursor: 'pointer'
@@ -330,7 +330,7 @@ export default function AdminDonationsPage() {
                               fontSize: '13px',
                               fontWeight: '500',
                               color: '#212529',
-                              backgroundColor: '#FFC107',
+                              backgroundColor: '#ffd020',
                               border: 'none',
                               borderRadius: '4px',
                               cursor: 'pointer'

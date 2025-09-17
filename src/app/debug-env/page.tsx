@@ -55,7 +55,7 @@ export default function DebugEnvPage() {
         onClick={testSupabaseConnection}
         style={{ 
           padding: '10px 20px', 
-          backgroundColor: '#FFB800',
+          backgroundColor: '#ffd020',
           color: 'white',
           border: 'none',
           borderRadius: '8px',

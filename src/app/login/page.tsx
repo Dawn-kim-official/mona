@@ -129,7 +129,7 @@ export default function LoginPage() {
       }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <h1 style={{ 
-            color: '#FFB800', 
+            color: '#ffd020', 
             fontSize: '36px', 
             fontWeight: 'bold',
             marginBottom: '8px'
@@ -153,9 +153,9 @@ export default function LoginPage() {
               flex: 1,
               padding: '12px',
               border: 'none',
-              borderBottom: userType === 'business' ? '2px solid #1B4D3E' : '2px solid transparent',
+              borderBottom: userType === 'business' ? '2px solid #02391f' : '2px solid transparent',
               backgroundColor: 'transparent',
-              color: userType === 'business' ? '#1B4D3E' : '#6C757D',
+              color: userType === 'business' ? '#02391f' : '#6C757D',
               fontWeight: userType === 'business' ? '600' : '400',
               fontSize: '14px',
               cursor: 'pointer',
@@ -171,9 +171,9 @@ export default function LoginPage() {
               flex: 1,
               padding: '12px',
               border: 'none',
-              borderBottom: userType === 'beneficiary' ? '2px solid #1B4D3E' : '2px solid transparent',
+              borderBottom: userType === 'beneficiary' ? '2px solid #02391f' : '2px solid transparent',
               backgroundColor: 'transparent',
-              color: userType === 'beneficiary' ? '#1B4D3E' : '#6C757D',
+              color: userType === 'beneficiary' ? '#02391f' : '#6C757D',
               fontWeight: userType === 'beneficiary' ? '600' : '400',
               fontSize: '14px',
               cursor: 'pointer',
@@ -189,9 +189,9 @@ export default function LoginPage() {
               flex: 1,
               padding: '12px',
               border: 'none',
-              borderBottom: userType === 'admin' ? '2px solid #1B4D3E' : '2px solid transparent',
+              borderBottom: userType === 'admin' ? '2px solid #02391f' : '2px solid transparent',
               backgroundColor: 'transparent',
-              color: userType === 'admin' ? '#1B4D3E' : '#6C757D',
+              color: userType === 'admin' ? '#02391f' : '#6C757D',
               fontWeight: userType === 'admin' ? '600' : '400',
               fontSize: '14px',
               cursor: 'pointer',
@@ -231,7 +231,7 @@ export default function LoginPage() {
                 color: '#212529'
               }}
               onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#1B4D3E'
+                e.currentTarget.style.borderColor = '#02391f'
                 e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
               }}
               onBlur={(e) => {
@@ -269,7 +269,7 @@ export default function LoginPage() {
                 color: '#212529'
               }}
               onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#1B4D3E'
+                e.currentTarget.style.borderColor = '#02391f'
                 e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
               }}
               onBlur={(e) => {
@@ -299,15 +299,15 @@ export default function LoginPage() {
               fontSize: '16px',
               fontWeight: '600',
               color: '#212529',
-              backgroundColor: '#FFC107',
+              backgroundColor: '#ffd020',
               border: 'none',
               borderRadius: '4px',
               cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? 0.7 : 1,
               transition: 'background-color 0.2s'
             }}
-            onMouseEnter={(e) => !loading && (e.currentTarget.style.backgroundColor = '#FFB300')}
-            onMouseLeave={(e) => !loading && (e.currentTarget.style.backgroundColor = '#FFC107')}
+            onMouseEnter={(e) => !loading && (e.currentTarget.style.opacity = '1')}
+            onMouseLeave={(e) => !loading && (e.currentTarget.style.opacity = '1')}
           >
             {loading ? '로그인 중...' : '로그인'}
           </button>

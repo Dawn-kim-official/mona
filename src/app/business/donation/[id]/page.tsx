@@ -333,7 +333,7 @@ export default function DonationDetailPage() {
                     width: '40px',
                     height: '40px',
                     borderRadius: '50%',
-                    backgroundColor: isActive ? '#1B4D3E' : '#E9ECEF',
+                    backgroundColor: isActive ? '#02391f' : '#E9ECEF',
                     color: isActive ? 'white' : '#ADB5BD',
                     display: 'flex',
                     alignItems: 'center',
@@ -364,7 +364,7 @@ export default function DonationDetailPage() {
             borderRadius: '8px',
             padding: '24px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-            border: '2px solid #FFC107'
+            border: '2px solid #ffd020'
           }}>
             <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: '#212529' }}>
               견적서
