@@ -16,6 +16,7 @@ interface Donation {
   pickup_location: string
   status: string
   created_at: string
+  photos?: string[]
   businesses?: {
     name: string
   }
@@ -39,6 +40,9 @@ export default function AdminDonationsPage() {
   const [filteredDonations, setFilteredDonations] = useState<Donation[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<string | null>(searchParams.get('status'))
+  const [showRejectModal, setShowRejectModal] = useState(false)
+  const [selectedDonationId, setSelectedDonationId] = useState<string | null>(null)
+  const [rejectionReason, setRejectionReason] = useState('')
 
   // 초기 로드 시 전체 데이터 한 번만 가져오기
   useEffect(() => {
@@ -68,7 +72,12 @@ export default function AdminDonationsPage() {
       // Error fetching donations
     } else {
       setAllDonations(data || [])
-      setFilteredDonations(data || [])
+      // 상태 변경 후에도 필터링 유지
+      if (activeTab) {
+        setFilteredDonations(data?.filter(donation => donation.status === activeTab) || [])
+      } else {
+        setFilteredDonations(data || [])
+      }
     }
     setLoading(false)
   }
@@ -85,12 +94,23 @@ export default function AdminDonationsPage() {
   }
 
   async function handleReject(donationId: string) {
+    setSelectedDonationId(donationId)
+    setShowRejectModal(true)
+  }
+
+  async function confirmReject() {
+    if (!selectedDonationId) return
+
     const { error } = await supabase
       .from('donations')
       .update({ status: 'rejected' })
-      .eq('id', donationId)
+      .eq('id', selectedDonationId)
 
     if (!error) {
+      // 여기서 거절 사유를 이메일로 발송하는 로직을 추가할 수 있습니다
+      setShowRejectModal(false)
+      setRejectionReason('')
+      setSelectedDonationId(null)
       await fetchAllDonations()
     }
   }
@@ -216,19 +236,37 @@ export default function AdminDonationsPage() {
                 return (
                   <tr key={donation.id} style={{ borderBottom: '1px solid #DEE2E6' }}>
                     <td style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ 
-                        width: '50px', 
-                        height: '50px', 
-                        backgroundColor: '#F8F9FA',
-                        borderRadius: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#ADB5BD',
-                        fontSize: '12px'
-                      }}>
-                        이미지
-                      </div>
+                      {donation.photos && donation.photos.length > 0 ? (
+                        <img 
+                          src={donation.photos[0]} 
+                          alt={donation.name || donation.description}
+                          style={{ 
+                            width: '50px', 
+                            height: '50px', 
+                            objectFit: 'cover',
+                            borderRadius: '4px',
+                            border: '1px solid #E9ECEF'
+                          }}
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            e.currentTarget.parentElement!.innerHTML = '<div style="width: 50px; height: 50px; backgroundColor: #F8F9FA; borderRadius: 4px; display: flex; alignItems: center; justifyContent: center; color: #ADB5BD; fontSize: 12px">이미지</div>';
+                          }}
+                        />
+                      ) : (
+                        <div style={{ 
+                          width: '50px', 
+                          height: '50px', 
+                          backgroundColor: '#F8F9FA',
+                          borderRadius: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#ADB5BD',
+                          fontSize: '12px'
+                        }}>
+                          이미지
+                        </div>
+                      )}
                       <span style={{ fontSize: '14px', color: '#212529' }}>
                         {donation.name || donation.description}
                       </span>
@@ -259,26 +297,27 @@ export default function AdminDonationsPage() {
                       </span>
                     </td>
                     <td style={{ padding: '16px', textAlign: 'center' }}>
-                      {donation.status === 'pending_review' && (
-                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                          <button
-                            onClick={() => handleReject(donation.id)}
-                            style={{
-                              padding: '6px 16px',
-                              fontSize: '13px',
-                              fontWeight: '500',
-                              color: 'white',
-                              backgroundColor: '#DC3545',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            거절
-                          </button>
-                          <Link href={`/admin/donation/${donation.id}/propose`}>
-                            <button style={{
-                              padding: '6px 16px',
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                        {donation.status === 'pending_review' && (
+                          <>
+                            <button
+                              onClick={() => handleReject(donation.id)}
+                              style={{
+                                padding: '6px 16px',
+                                fontSize: '13px',
+                                fontWeight: '500',
+                                color: 'white',
+                                backgroundColor: '#DC3545',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              거절
+                            </button>
+                            <Link href={`/admin/donation/${donation.id}/propose`}>
+                              <button style={{
+                                padding: '6px 16px',
                               fontSize: '13px',
                               fontWeight: '500',
                               color: 'white',
@@ -290,11 +329,26 @@ export default function AdminDonationsPage() {
                               수혜기관 선택
                             </button>
                           </Link>
-                        </div>
-                      )}
-                      {donation.status === 'matched' && (
-                        <Link href={`/admin/donation/${donation.id}/quote`}>
-                          <button style={{
+                          </>
+                        )}
+                        {donation.status === 'matched' && (
+                          <>
+                            <Link href={`/admin/donation/${donation.id}/matches`}>
+                              <button style={{
+                                padding: '6px 16px',
+                                fontSize: '13px',
+                                fontWeight: '500',
+                                color: 'white',
+                                backgroundColor: '#17A2B8',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}>
+                                매칭 현황
+                              </button>
+                            </Link>
+                            <Link href={`/admin/donation/${donation.id}/quote`}>
+                              <button style={{
                             padding: '6px 16px',
                             fontSize: '13px',
                             fontWeight: '500',
@@ -307,6 +361,7 @@ export default function AdminDonationsPage() {
                             견적서 발송
                           </button>
                         </Link>
+                        </>
                       )}
                       {donation.status === 'pickup_scheduled' && (
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
@@ -382,11 +437,25 @@ export default function AdminDonationsPage() {
                         </div>
                       )}
                       {donation.status === 'completed' && (
-                        <span style={{ fontSize: '12px', color: '#666' }}>-</span>
+                        <Link href={`/admin/donation/${donation.id}/detail`}>
+                          <button style={{
+                            padding: '6px 16px',
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            color: '#007BFF',
+                            backgroundColor: 'transparent',
+                            border: '1px solid #007BFF',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                          }}>
+                            상세보기
+                          </button>
+                        </Link>
                       )}
                       {(donation.status === 'rejected' || !['pending_review', 'matched', 'quote_sent', 'quote_accepted', 'pickup_scheduled', 'completed'].includes(donation.status)) && (
                         <span style={{ color: '#6C757D', fontSize: '12px' }}>-</span>
                       )}
+                      </div>
                     </td>
                   </tr>
                 )
@@ -395,6 +464,95 @@ export default function AdminDonationsPage() {
           </table>
         </div>
       </div>
+
+      {/* 거절 사유 모달 */}
+      {showRejectModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '24px',
+            borderRadius: '8px',
+            width: '500px',
+            maxWidth: '90%'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '16px', color: '#212529' }}>기부 승인 거절</h3>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '8px', 
+                fontWeight: '500',
+                color: '#495057',
+                fontSize: '14px'
+              }}>
+                거절 사유
+              </label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="거절 사유를 입력해주세요"
+                style={{
+                  width: '100%',
+                  height: '120px',
+                  padding: '8px 12px',
+                  border: '1px solid #DEE2E6',
+                  borderRadius: '4px',
+                  fontSize: '14px',
+                  resize: 'none',
+                  color: '#000000',
+                  backgroundColor: '#FFFFFF'
+                }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setShowRejectModal(false)
+                  setRejectionReason('')
+                  setSelectedDonationId(null)
+                }}
+                style={{
+                  padding: '8px 24px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#6C757D',
+                  backgroundColor: 'white',
+                  border: '1px solid #DEE2E6',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                취소
+              </button>
+              <button
+                onClick={confirmReject}
+                style={{
+                  padding: '8px 24px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: 'white',
+                  backgroundColor: '#DC3545',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                거절
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

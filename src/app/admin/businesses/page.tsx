@@ -11,8 +11,15 @@ export default function AdminBusinessesPage() {
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [beneficiaries, setBeneficiaries] = useState<any[]>([])
   const [activeTab, setActiveTab] = useState<'business' | 'beneficiary'>('business')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [rejectModal, setRejectModal] = useState<{ show: boolean; id: string; type: 'business' | 'beneficiary' }>({ 
+    show: false, 
+    id: '', 
+    type: 'business' 
+  })
+  const [rejectReason, setRejectReason] = useState('')
 
   // 페이지 로드 시 모든 데이터를 한 번에 가져오기
   useEffect(() => {
@@ -39,11 +46,10 @@ export default function AdminBusinessesPage() {
     const { data, error } = await supabase
       .from('businesses')
       .select('*')
-      .eq('status', 'pending')
       .order('created_at', { ascending: false })
 
     if (error) {
-      // Error fetching businesses
+      console.error('Error fetching businesses:', error)
     } else {
       setBusinesses(data || [])
     }
@@ -51,69 +57,118 @@ export default function AdminBusinessesPage() {
 
   async function fetchBeneficiaries() {
     try {
-      // 먼저 테이블 존재 여부 확인
-      const { data: testData, error: testError } = await supabase
-        .from('beneficiaries')
-        .select('id')
-        .limit(1)
-      
-      if (testError && testError.message.includes('relation "public.beneficiaries" does not exist')) {
-        // beneficiaries 테이블이 존재하지 않습니다
-        setBeneficiaries([])
-        return
-      }
-
-      // 실제 데이터 가져오기
       const { data, error } = await supabase
         .from('beneficiaries')
         .select('*')
-        .eq('status', 'pending')
         .order('created_at', { ascending: false })
 
       if (error) {
-        // Error fetching beneficiaries
+        console.error('Error fetching beneficiaries:', error)
         setBeneficiaries([])
       } else {
         setBeneficiaries(data || [])
       }
     } catch (err) {
-      // Unexpected error
+      console.error('Unexpected error:', err)
       setBeneficiaries([])
     }
   }
 
-  async function updateBusinessStatus(businessId: string, status: 'approved' | 'rejected') {
-    const { error } = await supabase
-      .from('businesses')
-      .update({ 
-        status, 
-        approved_at: status === 'approved' ? new Date().toISOString() : null,
-        approved_by: (await supabase.auth.getUser()).data.user?.id
-      })
-      .eq('id', businessId)
+  async function updateBusinessStatus(businessId: string, status: 'approved' | 'rejected', reason?: string) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      const { error } = await supabase
+        .from('businesses')
+        .update({ 
+          status, 
+          approved_at: status === 'approved' ? new Date().toISOString() : null,
+          approved_by: user?.id
+        })
+        .eq('id', businessId)
 
-    if (error) {
-      // Error updating business
-    } else {
-      await fetchBusinesses()
+      if (error) {
+        console.error('Business update error:', error)
+        alert(`상태 업데이트 중 오류가 발생했습니다: ${error.message}`)
+      } else {
+        await fetchBusinesses()
+        if (status === 'rejected' && reason) {
+          // TODO: 거절 이메일 발송 로직 추가
+          // 거절 사유는 이메일로만 발송하고 DB에는 저장하지 않음
+          alert(`가입이 거절되었습니다.\n거절 사유: ${reason}`)
+        } else if (status === 'approved') {
+          alert('가입이 승인되었습니다.')
+        }
+      }
+    } catch (error: any) {
+      console.error('Update error:', error)
+      alert('상태 업데이트 중 오류가 발생했습니다.')
     }
   }
 
-  async function updateBeneficiaryStatus(beneficiaryId: string, status: 'approved' | 'rejected') {
-    const { error } = await supabase
-      .from('beneficiaries')
-      .update({ 
-        status, 
-        approved_at: status === 'approved' ? new Date().toISOString() : null
-      })
-      .eq('id', beneficiaryId)
+  async function updateBeneficiaryStatus(beneficiaryId: string, status: 'approved' | 'rejected', reason?: string) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      const { error } = await supabase
+        .from('beneficiaries')
+        .update({ 
+          status, 
+          approved_at: status === 'approved' ? new Date().toISOString() : null,
+          approved_by: user?.id
+        })
+        .eq('id', beneficiaryId)
 
-    if (error) {
-      // Error updating beneficiary
-    } else {
-      await fetchBeneficiaries()
+      if (error) {
+        console.error('Beneficiary update error:', error)
+        alert(`상태 업데이트 중 오류가 발생했습니다: ${error.message}`)
+      } else {
+        await fetchBeneficiaries()
+        if (status === 'rejected' && reason) {
+          // TODO: 거절 이메일 발송 로직 추가
+          // 거절 사유는 이메일로만 발송하고 DB에는 저장하지 않음
+          alert(`가입이 거절되었습니다.\n거절 사유: ${reason}`)
+        } else if (status === 'approved') {
+          alert('가입이 승인되었습니다.')
+        }
+      }
+    } catch (error: any) {
+      console.error('Update error:', error)
+      alert('상태 업데이트 중 오류가 발생했습니다.')
     }
   }
+
+  function handleRejectClick(id: string, type: 'business' | 'beneficiary') {
+    setRejectModal({ show: true, id, type })
+    setRejectReason('')
+  }
+
+  async function handleRejectSubmit() {
+    if (!rejectReason.trim()) {
+      alert('거절 사유를 입력해주세요.')
+      return
+    }
+
+    if (rejectModal.type === 'business') {
+      await updateBusinessStatus(rejectModal.id, 'rejected', rejectReason)
+    } else {
+      await updateBeneficiaryStatus(rejectModal.id, 'rejected', rejectReason)
+    }
+    
+    setRejectModal({ show: false, id: '', type: 'business' })
+    setRejectReason('')
+  }
+
+  // 필터링된 데이터
+  const filteredBusinesses = businesses.filter(b => {
+    if (statusFilter === 'all') return true
+    return b.status === statusFilter
+  })
+
+  const filteredBeneficiaries = beneficiaries.filter(b => {
+    if (statusFilter === 'all') return true
+    return b.status === statusFilter
+  })
 
   if (loading) {
     return <div style={{ padding: '40px', textAlign: 'center' }}>로딩 중...</div>
@@ -122,314 +177,392 @@ export default function AdminBusinessesPage() {
   return (
     <div style={{ backgroundColor: '#F8F9FA', minHeight: '100vh' }}>
       <div style={{ padding: '40px', maxWidth: '1400px', margin: '0 auto' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '32px', color: '#212529' }}>
-          회원 승인 관리
-        </h1>
-
-        {/* Tab Navigation */}
-        <div style={{ 
-          backgroundColor: '#FFFFFF',
-          padding: '0',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          borderRadius: '8px',
-          marginBottom: '24px',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <button
-              onClick={() => setActiveTab('business')}
-              style={{
-                background: 'none',
-                border: 'none',
-                borderBottom: activeTab === 'business' ? '2px solid #02391f' : '2px solid transparent',
-                padding: '16px 24px',
-                fontSize: '14px',
-                color: activeTab === 'business' ? '#02391f' : '#6C757D',
-                fontWeight: activeTab === 'business' ? '600' : '400',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              기부 기업
-            </button>
-            <button
-              onClick={() => setActiveTab('beneficiary')}
-              style={{
-                background: 'none',
-                border: 'none',
-                borderBottom: activeTab === 'beneficiary' ? '2px solid #02391f' : '2px solid transparent',
-                padding: '16px 24px',
-                fontSize: '14px',
-                color: activeTab === 'beneficiary' ? '#02391f' : '#6C757D',
-                fontWeight: activeTab === 'beneficiary' ? '600' : '400',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              수혜 기관
-            </button>
-          </div>
-          
-          {/* 새로고침 버튼 */}
+        {/* 헤더 */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+          <h1 style={{ fontSize: '24px', fontWeight: '600', color: '#212529' }}>
+            회원 관리
+          </h1>
           <button
             onClick={handleRefresh}
             disabled={refreshing}
             style={{
-              background: 'none',
-              border: '1px solid #DEE2E6',
+              padding: '10px 20px',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: refreshing ? '#6C757D' : '#212529',
+              backgroundColor: refreshing ? '#E9ECEF' : '#ffd020',
+              border: 'none',
               borderRadius: '4px',
-              padding: '8px 16px',
-              marginRight: '16px',
-              fontSize: '13px',
-              color: refreshing ? '#ADB5BD' : '#495057',
               cursor: refreshing ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
+              opacity: refreshing ? 0.5 : 1,
               transition: 'all 0.2s'
             }}
-            onMouseEnter={(e) => {
-              if (!refreshing) {
-                e.currentTarget.style.backgroundColor = '#F8F9FA';
-                e.currentTarget.style.borderColor = '#ADB5BD';
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.borderColor = '#DEE2E6';
-            }}
           >
-            <span 
-              style={{
-                display: 'inline-block',
-                width: '14px',
-                height: '14px',
-                transition: 'transform 0.2s',
-                transform: refreshing ? 'rotate(360deg)' : 'rotate(0deg)'
-              }}
-            >
-              <svg 
-                width="14" 
-                height="14" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="2" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-              >
-                <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/>
-              </svg>
-            </span>
             {refreshing ? '새로고침 중...' : '새로고침'}
           </button>
         </div>
 
-        {activeTab === 'business' ? (
-          // 기업 테이블
-          businesses.length === 0 ? (
-          <div style={{ 
-            textAlign: 'center', 
-            padding: '80px', 
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-          }}>
-            <p style={{ color: '#6C757D', fontSize: '16px' }}>승인 대기 중인 회원이 없습니다.</p>
-          </div>
-        ) : (
+        {/* 탭 네비게이션 */}
+        <div style={{ display: 'flex', marginBottom: '24px', backgroundColor: 'white', borderRadius: '8px', padding: '4px' }}>
+          <button
+            onClick={() => setActiveTab('business')}
+            style={{
+              flex: 1,
+              padding: '12px',
+              fontSize: '14px',
+              fontWeight: activeTab === 'business' ? '600' : '400',
+              color: activeTab === 'business' ? '#fff' : '#6C757D',
+              backgroundColor: activeTab === 'business' ? '#02391f' : 'transparent',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+          >
+            기업 회원 ({filteredBusinesses.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('beneficiary')}
+            style={{
+              flex: 1,
+              padding: '12px',
+              fontSize: '14px',
+              fontWeight: activeTab === 'beneficiary' ? '600' : '400',
+              color: activeTab === 'beneficiary' ? '#fff' : '#6C757D',
+              backgroundColor: activeTab === 'beneficiary' ? '#02391f' : 'transparent',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+          >
+            수혜기관 회원 ({filteredBeneficiaries.length})
+          </button>
+        </div>
+
+        {/* 상태 필터 */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+          {['all', 'pending', 'approved', 'rejected'].map((filter) => (
+            <button
+              key={filter}
+              onClick={() => setStatusFilter(filter as any)}
+              style={{
+                padding: '8px 16px',
+                fontSize: '13px',
+                fontWeight: statusFilter === filter ? '600' : '400',
+                color: statusFilter === filter ? '#fff' : '#6C757D',
+                backgroundColor: statusFilter === filter ? '#ffd020' : 'white',
+                border: `1px solid ${statusFilter === filter ? '#ffd020' : '#CED4DA'}`,
+                borderRadius: '20px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              {filter === 'all' && '전체'}
+              {filter === 'pending' && '승인 대기'}
+              {filter === 'approved' && '승인 완료'}
+              {filter === 'rejected' && '거절'}
+            </button>
+          ))}
+        </div>
+
+        {/* 기업 회원 테이블 */}
+        {activeTab === 'business' && (
           <div style={{
             backgroundColor: 'white',
             borderRadius: '8px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
             overflow: 'hidden'
           }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#F8F9FA', borderBottom: '1px solid #DEE2E6' }}>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>가입일</th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>사업자명</th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>대표자명</th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>사업자등록증</th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>작업</th>
-                </tr>
-              </thead>
-              <tbody>
-                {businesses.map((business) => (
-                  <tr key={business.id} style={{ borderBottom: '1px solid #DEE2E6' }}>
-                    <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#6C757D' }}>
-                      {new Date(business.created_at).toLocaleDateString('ko-KR')}
-                    </td>
-                    <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#212529' }}>
-                      {business.name}
-                    </td>
-                    <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#212529' }}>
-                      {business.representative_name}
-                    </td>
-                    <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px' }}>
-                      {business.business_license_url ? (
-                        <a 
-                          href={business.business_license_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          style={{ 
-                            color: '#007BFF', 
-                            textDecoration: 'underline',
-                            cursor: 'pointer'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.color = '#0056B3'}
-                          onMouseLeave={(e) => e.currentTarget.style.color = '#007BFF'}
-                        >
-                          보기
-                        </a>
-                      ) : (
-                        <span style={{ color: '#6C757D' }}>-</span>
-                      )}
-                    </td>
-                    <td style={{ padding: '16px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                        <button
-                          onClick={() => updateBusinessStatus(business.id, 'rejected')}
-                          style={{
-                            padding: '6px 16px',
-                            fontSize: '13px',
-                            fontWeight: '500',
-                            color: 'white',
-                            backgroundColor: '#DC3545',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            transition: 'background-color 0.2s'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#C82333'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#DC3545'}
-                        >
-                          거절
-                        </button>
-                        <button
-                          onClick={() => updateBusinessStatus(business.id, 'approved')}
-                          style={{
-                            padding: '6px 16px',
-                            fontSize: '13px',
-                            fontWeight: '500',
-                            color: 'white',
-                            backgroundColor: '#007BFF',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            transition: 'background-color 0.2s'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0056B3'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#007BFF'}
-                        >
-                          수락
-                        </button>
-                      </div>
-                    </td>
+            {filteredBusinesses.length === 0 ? (
+              <div style={{ padding: '60px', textAlign: 'center', color: '#6C757D', fontSize: '14px' }}>
+                승인 대기 중인 기업이 없습니다.
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#F8F9FA', borderBottom: '1px solid #DEE2E6' }}>
+                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>회사명</th>
+                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>담당자명</th>
+                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>담당자 연락처</th>
+                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>담당자 이메일</th>
+                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>사업자번호</th>
+                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>등록일</th>
+                    <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>상태</th>
+                    <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>작업</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredBusinesses.map((business) => (
+                    <tr key={business.id} style={{ borderBottom: '1px solid #DEE2E6' }}>
+                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>{business.name || '-'}</td>
+                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>{business.representative_name || '-'}</td>
+                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>{business.phone || '-'}</td>
+                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>{business.email || '-'}</td>
+                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>{business.address || '-'}</td>
+                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>
+                        {business.created_at ? new Date(business.created_at).toLocaleDateString('ko-KR') : '-'}
+                      </td>
+                      <td style={{ padding: '16px', textAlign: 'center' }}>
+                        <span style={{ 
+                          color: business.status === 'approved' ? '#28A745' : business.status === 'rejected' ? '#DC3545' : '#FF8C00',
+                          fontWeight: '500',
+                          fontSize: '12px',
+                          backgroundColor: business.status === 'approved' ? '#28A74520' : business.status === 'rejected' ? '#DC354520' : '#FF8C0020',
+                          padding: '4px 12px',
+                          borderRadius: '4px',
+                          display: 'inline-block'
+                        }}>
+                          {business.status === 'approved' && '승인됨'}
+                          {business.status === 'rejected' && '거절됨'}
+                          {business.status === 'pending' && '대기중'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '16px', textAlign: 'center' }}>
+                        {business.status === 'pending' && (
+                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                            <button
+                              onClick={() => updateBusinessStatus(business.id, 'approved')}
+                              style={{
+                                padding: '6px 16px',
+                                fontSize: '13px',
+                                fontWeight: '500',
+                                color: 'white',
+                                backgroundColor: '#28A745',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              승인
+                            </button>
+                            <button
+                              onClick={() => handleRejectClick(business.id, 'business')}
+                              style={{
+                                padding: '6px 16px',
+                                fontSize: '13px',
+                                fontWeight: '500',
+                                color: 'white',
+                                backgroundColor: '#DC3545',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              거절
+                            </button>
+                          </div>
+                        )}
+                        {business.status !== 'pending' && (
+                          <span style={{ fontSize: '12px', color: '#6C757D' }}>-</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
-        )
-        ) : (
-          // 수혜자 테이블
-          beneficiaries.length === 0 ? (
-          <div style={{ 
-            textAlign: 'center', 
-            padding: '80px', 
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-          }}>
-            <p style={{ color: '#6C757D', fontSize: '16px' }}>승인 대기 중인 수혜 기관이 없습니다.</p>
-          </div>
-        ) : (
+        )}
+
+        {/* 수혜기관 회원 테이블 */}
+        {activeTab === 'beneficiary' && (
           <div style={{
             backgroundColor: 'white',
             borderRadius: '8px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
             overflow: 'hidden'
           }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#F8F9FA', borderBottom: '1px solid #DEE2E6' }}>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>가입일</th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>기관명</th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>기관 유형</th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>담당자명</th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>연락처</th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>작업</th>
-                </tr>
-              </thead>
-              <tbody>
-                {beneficiaries.map((beneficiary) => (
-                  <tr key={beneficiary.id} style={{ borderBottom: '1px solid #DEE2E6' }}>
-                    <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#6C757D' }}>
-                      {new Date(beneficiary.created_at).toLocaleDateString('ko-KR')}
-                    </td>
-                    <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#212529' }}>
-                      {beneficiary.organization_name}
-                    </td>
-                    <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#212529' }}>
-                      {beneficiary.organization_type || '-'}
-                    </td>
-                    <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#212529' }}>
-                      {beneficiary.representative_name}
-                    </td>
-                    <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#212529' }}>
-                      {beneficiary.phone}
-                    </td>
-                    <td style={{ padding: '16px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                        <button
-                          onClick={() => updateBeneficiaryStatus(beneficiary.id, 'rejected')}
-                          style={{
-                            padding: '6px 16px',
-                            fontSize: '13px',
-                            fontWeight: '500',
-                            color: 'white',
-                            backgroundColor: '#DC3545',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            transition: 'background-color 0.2s'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#C82333'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#DC3545'}
-                        >
-                          거절
-                        </button>
-                        <button
-                          onClick={() => updateBeneficiaryStatus(beneficiary.id, 'approved')}
-                          style={{
-                            padding: '6px 16px',
-                            fontSize: '13px',
-                            fontWeight: '500',
-                            color: 'white',
-                            backgroundColor: '#007BFF',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            transition: 'background-color 0.2s'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0056B3'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#007BFF'}
-                        >
-                          수락
-                        </button>
-                      </div>
-                    </td>
+            {filteredBeneficiaries.length === 0 ? (
+              <div style={{ padding: '60px', textAlign: 'center', color: '#6C757D', fontSize: '14px' }}>
+                승인 대기 중인 수혜기관이 없습니다.
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#F8F9FA', borderBottom: '1px solid #DEE2E6' }}>
+                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>기관명</th>
+                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>기관유형</th>
+                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>담당자명</th>
+                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>연락처</th>
+                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>주소</th>
+                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>웹사이트</th>
+                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>등록일</th>
+                    <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>상태</th>
+                    <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>작업</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredBeneficiaries.map((beneficiary) => (
+                    <tr key={beneficiary.id} style={{ borderBottom: '1px solid #DEE2E6' }}>
+                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>{beneficiary.organization_name || '-'}</td>
+                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>{beneficiary.organization_type || '-'}</td>
+                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>{beneficiary.representative_name || '-'}</td>
+                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>{beneficiary.phone || '-'}</td>
+                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>{beneficiary.address || '-'}</td>
+                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>
+                        {beneficiary.website ? (
+                          <a href={beneficiary.website} target="_blank" rel="noopener noreferrer" style={{ color: '#007BFF' }}>
+                            링크
+                          </a>
+                        ) : '-'}
+                      </td>
+                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>
+                        {beneficiary.created_at ? new Date(beneficiary.created_at).toLocaleDateString('ko-KR') : '-'}
+                      </td>
+                      <td style={{ padding: '16px', textAlign: 'center' }}>
+                        <span style={{ 
+                          color: beneficiary.status === 'approved' ? '#28A745' : beneficiary.status === 'rejected' ? '#DC3545' : '#FF8C00',
+                          fontWeight: '500',
+                          fontSize: '12px',
+                          backgroundColor: beneficiary.status === 'approved' ? '#28A74520' : beneficiary.status === 'rejected' ? '#DC354520' : '#FF8C0020',
+                          padding: '4px 12px',
+                          borderRadius: '4px',
+                          display: 'inline-block'
+                        }}>
+                          {beneficiary.status === 'approved' && '승인됨'}
+                          {beneficiary.status === 'rejected' && '거절됨'}
+                          {beneficiary.status === 'pending' && '대기중'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '16px', textAlign: 'center' }}>
+                        {beneficiary.status === 'pending' && (
+                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                            <button
+                              onClick={() => updateBeneficiaryStatus(beneficiary.id, 'approved')}
+                              style={{
+                                padding: '6px 16px',
+                                fontSize: '13px',
+                                fontWeight: '500',
+                                color: 'white',
+                                backgroundColor: '#28A745',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              승인
+                            </button>
+                            <button
+                              onClick={() => handleRejectClick(beneficiary.id, 'beneficiary')}
+                              style={{
+                                padding: '6px 16px',
+                                fontSize: '13px',
+                                fontWeight: '500',
+                                color: 'white',
+                                backgroundColor: '#DC3545',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              거절
+                            </button>
+                          </div>
+                        )}
+                        {beneficiary.status !== 'pending' && (
+                          <span style={{ fontSize: '12px', color: '#6C757D' }}>-</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
-        )
         )}
       </div>
+
+      {/* 거절 사유 모달 */}
+      {rejectModal.show && (
+        <>
+          <div 
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 9998
+            }}
+            onClick={() => setRejectModal({ show: false, id: '', type: 'business' })}
+          />
+          <div style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            padding: '24px',
+            width: '90%',
+            maxWidth: '500px',
+            zIndex: 9999,
+            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)'
+          }}>
+            <h3 style={{ 
+              fontSize: '18px', 
+              fontWeight: '600', 
+              marginBottom: '16px',
+              color: '#212529'
+            }}>
+              가입 거절 사유
+            </h3>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="거절 사유를 입력하세요..."
+              rows={4}
+              style={{
+                width: '100%',
+                padding: '12px',
+                fontSize: '14px',
+                border: '1px solid #CED4DA',
+                borderRadius: '4px',
+                outline: 'none',
+                resize: 'vertical',
+                marginBottom: '16px',
+                color: '#000000',
+                backgroundColor: '#FFFFFF'
+              }}
+              autoFocus
+            />
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setRejectModal({ show: false, id: '', type: 'business' })}
+                style={{
+                  padding: '10px 20px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#6C757D',
+                  backgroundColor: 'white',
+                  border: '1px solid #CED4DA',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleRejectSubmit}
+                style={{
+                  padding: '10px 20px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: 'white',
+                  backgroundColor: '#DC3545',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                거절하기
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

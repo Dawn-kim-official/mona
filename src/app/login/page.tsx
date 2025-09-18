@@ -6,105 +6,104 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [userType, setUserType] = useState<'business' | 'beneficiary' | 'admin'>('business')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleLogin = async (e: React.FormEvent) => {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      // 로그인 시도
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
-        password,
+        password
       })
 
-      if (error) {
-        
-        if (error.message.includes('Invalid login credentials')) {
+      if (authError) {
+        if (authError.message.includes('Invalid login credentials')) {
           throw new Error('이메일 또는 비밀번호가 올바르지 않습니다.')
-        } else if (error.message.includes('Email not confirmed')) {
+        } else if (authError.message.includes('Email not confirmed')) {
           throw new Error('이메일 인증이 필요합니다. 이메일을 확인해주세요.')
         }
-        throw error
+        throw authError
       }
 
-      if (data.user) {
-        // profiles 테이블에서 role 확인
-        const { data: profile, error: profileError } = await supabase
+      if (authData.user) {
+        // 사용자의 role 확인
+        const { data: profile } = await supabase
           .from('profiles')
           .select('role')
-          .eq('id', data.user.id)
+          .eq('id', authData.user.id)
           .single()
 
-        if (profileError) {
-          // profile이 없으면 생성
-          await supabase
-            .from('profiles')
-            .insert({
-              id: data.user.id,
-              email: data.user.email!,
-              role: 'business'
-            })
+        if (!profile) {
+          throw new Error('프로필을 찾을 수 없습니다.')
         }
 
-        // role에 따라 리다이렉트
-        if (profile?.role === 'admin' || userType === 'admin') {
-          router.push('/admin/dashboard')
-        } else if (profile?.role === 'beneficiary' || userType === 'beneficiary') {
-          // beneficiary 사용자인 경우
-          const { data: beneficiary } = await supabase
-            .from('beneficiaries')
-            .select('id, status')
-            .eq('user_id', data.user.id)
-            .single()
-
-          if (!beneficiary) {
-            setError('수혜자 정보를 찾을 수 없습니다. 관리자에게 문의하세요.')
-            return
-          } else if (beneficiary.status === 'pending') {
-            router.push('/registration-pending')
-          } else if (beneficiary.status === 'rejected') {
-            setError('회원가입이 거절되었습니다. 관리자에게 문의하세요.')
-            await supabase.auth.signOut()
-            return
-          } else if (beneficiary.status === 'approved') {
-            router.push('/beneficiary/dashboard')
-          }
-        } else {
-          // business 사용자인 경우 등록 여부 확인
-          const { data: business } = await supabase
-            .from('businesses')
-            .select('id, status')
-            .eq('user_id', data.user.id)
-            .single()
-
-          if (!business) {
-            // 회원가입 시 이미 사업자 정보를 입력받았으므로, business가 없는 경우는 오류
-            setError('사업자 정보를 찾을 수 없습니다. 관리자에게 문의하세요.')
-            return
-          } else if (business.status === 'pending') {
-            // 승인 대기 중인 경우
-            router.push('/registration-pending')
-          } else if (business.status === 'rejected') {
-            // 승인 거절된 경우
-            setError('회원가입이 거절되었습니다. 관리자에게 문의하세요.')
-            await supabase.auth.signOut()
-            return
-          } else if (business.status === 'approved') {
-            // 승인된 경우만 대시보드로 이동
+        // role에 따라 다른 페이지로 리다이렉트
+        switch (profile.role) {
+          case 'admin':
+            router.push('/admin/dashboard')
+            break
+          case 'business':
+            // 기업 승인 상태 확인
+            const { data: business } = await supabase
+              .from('businesses')
+              .select('status')
+              .eq('user_id', authData.user.id)
+              .single()
+            
+            if (business?.status === 'pending') {
+              await supabase.auth.signOut()
+              alert('회원가입 승인 대기 중입니다.\n승인 완료 시 이메일로 안내드리겠습니다.')
+              setEmail('')
+              setPassword('')
+              return
+            } else if (business?.status === 'rejected') {
+              await supabase.auth.signOut()
+              alert('회원가입이 거절되었습니다.\n관리자에게 문의하세요.')
+              setEmail('')
+              setPassword('')
+              return
+            }
             router.push('/business/dashboard')
-          }
+            break
+          case 'beneficiary':
+            // 수혜기관 승인 상태 확인
+            const { data: beneficiary } = await supabase
+              .from('beneficiaries')
+              .select('status')
+              .eq('user_id', authData.user.id)
+              .single()
+            
+            if (beneficiary?.status === 'pending') {
+              await supabase.auth.signOut()
+              alert('회원가입 승인 대기 중입니다.\n승인 완료 시 이메일로 안내드리겠습니다.')
+              setEmail('')
+              setPassword('')
+              return
+            } else if (beneficiary?.status === 'rejected') {
+              await supabase.auth.signOut()
+              alert('회원가입이 거절되었습니다.\n관리자에게 문의하세요.')
+              setEmail('')
+              setPassword('')
+              return
+            }
+            router.push('/beneficiary/dashboard')
+            break
+          default:
+            throw new Error('알 수 없는 사용자 유형입니다.')
         }
       }
     } catch (error: any) {
-      setError(error.message)
+      console.error('Login error:', error)
+      setError(error.message || '로그인에 실패했습니다.')
     } finally {
       setLoading(false)
     }
@@ -123,83 +122,28 @@ export default function LoginPage() {
         backgroundColor: 'white',
         borderRadius: '8px',
         boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+        padding: '48px',
         width: '100%',
-        maxWidth: '400px',
-        padding: '40px 32px'
+        maxWidth: '440px'
       }}>
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           <h1 style={{ 
-            color: '#ffd020', 
-            fontSize: '36px', 
-            fontWeight: 'bold',
-            marginBottom: '8px'
-          }}>MONA</h1>
+            fontSize: '42px', 
+            fontWeight: 'bold', 
+            color: '#ffd020',
+            marginBottom: '8px',
+            textShadow: '2px 2px 4px rgba(0,0,0,0.1)',
+            fontFamily: 'Montserrat, sans-serif'
+          }}>
+            MONA
+          </h1>
           <p style={{ 
             color: '#6C757D', 
-            fontSize: '14px' 
-          }}>기업 ESG 경영을 위한 기부 관리 플랫폼</p>
-        </div>
-
-        {/* 사용자 유형 선택 탭 */}
-        <div style={{ 
-          display: 'flex', 
-          marginBottom: '24px',
-          borderBottom: '1px solid #DEE2E6'
-        }}>
-          <button
-            type="button"
-            onClick={() => setUserType('business')}
-            style={{
-              flex: 1,
-              padding: '12px',
-              border: 'none',
-              borderBottom: userType === 'business' ? '2px solid #02391f' : '2px solid transparent',
-              backgroundColor: 'transparent',
-              color: userType === 'business' ? '#02391f' : '#6C757D',
-              fontWeight: userType === 'business' ? '600' : '400',
-              fontSize: '14px',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-          >
-            기부 기업
-          </button>
-          <button
-            type="button"
-            onClick={() => setUserType('beneficiary')}
-            style={{
-              flex: 1,
-              padding: '12px',
-              border: 'none',
-              borderBottom: userType === 'beneficiary' ? '2px solid #02391f' : '2px solid transparent',
-              backgroundColor: 'transparent',
-              color: userType === 'beneficiary' ? '#02391f' : '#6C757D',
-              fontWeight: userType === 'beneficiary' ? '600' : '400',
-              fontSize: '14px',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-          >
-            수혜 기관
-          </button>
-          <button
-            type="button"
-            onClick={() => setUserType('admin')}
-            style={{
-              flex: 1,
-              padding: '12px',
-              border: 'none',
-              borderBottom: userType === 'admin' ? '2px solid #02391f' : '2px solid transparent',
-              backgroundColor: 'transparent',
-              color: userType === 'admin' ? '#02391f' : '#6C757D',
-              fontWeight: userType === 'admin' ? '600' : '400',
-              fontSize: '14px',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-          >
-            관리자
-          </button>
+            fontSize: '14px',
+            fontFamily: 'Montserrat, sans-serif'
+          }}>
+            모두의 나눔, 함께하는 기부
+          </p>
         </div>
 
         <form onSubmit={handleLogin}>
@@ -209,7 +153,8 @@ export default function LoginPage() {
               marginBottom: '8px', 
               fontSize: '14px', 
               fontWeight: '500',
-              color: '#212529'
+              color: '#212529',
+              fontFamily: 'Montserrat, sans-serif'
             }}>
               이메일
             </label>
@@ -218,21 +163,22 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              placeholder="이메일을 입력하세요"
+              placeholder="이메일 주소를 입력하세요"
               style={{
                 width: '100%',
-                padding: '14px 16px',
-                fontSize: '16px',
+                padding: '12px 16px',
+                fontSize: '15px',
                 border: '1px solid #CED4DA',
                 borderRadius: '6px',
                 outline: 'none',
                 transition: 'all 0.2s',
                 backgroundColor: '#FFFFFF',
-                color: '#212529'
+                color: '#000000',
+                fontFamily: 'Montserrat, sans-serif'
               }}
               onFocus={(e) => {
                 e.currentTarget.style.borderColor = '#02391f'
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(2, 57, 31, 0.1)'
               }}
               onBlur={(e) => {
                 e.currentTarget.style.borderColor = '#CED4DA'
@@ -247,7 +193,8 @@ export default function LoginPage() {
               marginBottom: '8px', 
               fontSize: '14px', 
               fontWeight: '500',
-              color: '#212529'
+              color: '#212529',
+              fontFamily: 'Montserrat, sans-serif'
             }}>
               비밀번호
             </label>
@@ -259,18 +206,19 @@ export default function LoginPage() {
               placeholder="비밀번호를 입력하세요"
               style={{
                 width: '100%',
-                padding: '14px 16px',
-                fontSize: '16px',
+                padding: '12px 16px',
+                fontSize: '15px',
                 border: '1px solid #CED4DA',
                 borderRadius: '6px',
                 outline: 'none',
                 transition: 'all 0.2s',
                 backgroundColor: '#FFFFFF',
-                color: '#212529'
+                color: '#000000',
+                fontFamily: 'Montserrat, sans-serif'
               }}
               onFocus={(e) => {
                 e.currentTarget.style.borderColor = '#02391f'
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(2, 57, 31, 0.1)'
               }}
               onBlur={(e) => {
                 e.currentTarget.style.borderColor = '#CED4DA'
@@ -280,11 +228,15 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <div style={{ 
-              color: '#DC3545', 
-              fontSize: '14px', 
-              marginBottom: '16px',
-              textAlign: 'center' 
+            <div style={{
+              padding: '12px',
+              backgroundColor: '#F8D7DA',
+              border: '1px solid #F5C6CB',
+              borderRadius: '6px',
+              color: '#721C24',
+              fontSize: '14px',
+              marginBottom: '20px',
+              fontFamily: 'Montserrat, sans-serif'
             }}>
               {error}
             </div>
@@ -295,50 +247,46 @@ export default function LoginPage() {
             disabled={loading}
             style={{
               width: '100%',
-              padding: '12px',
+              padding: '14px',
               fontSize: '16px',
               fontWeight: '600',
-              color: '#212529',
-              backgroundColor: '#ffd020',
+              color: loading ? '#6C757D' : '#212529',
+              backgroundColor: loading ? '#E9ECEF' : '#ffd020',
               border: 'none',
-              borderRadius: '4px',
+              borderRadius: '6px',
               cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.7 : 1,
-              transition: 'background-color 0.2s'
+              transition: 'all 0.2s',
+              fontFamily: 'Montserrat, sans-serif'
             }}
-            onMouseEnter={(e) => !loading && (e.currentTarget.style.opacity = '1')}
-            onMouseLeave={(e) => !loading && (e.currentTarget.style.opacity = '1')}
+            onMouseEnter={(e) => !loading && (e.currentTarget.style.transform = 'translateY(-2px)')}
+            onMouseLeave={(e) => !loading && (e.currentTarget.style.transform = 'translateY(0)')}
           >
             {loading ? '로그인 중...' : '로그인'}
           </button>
         </form>
 
-        {userType !== 'admin' && (
-          <p style={{ 
-            textAlign: 'center', 
-            marginTop: '24px',
+        <div style={{
+          marginTop: '24px',
+          textAlign: 'center'
+        }}>
+          <p style={{
+            color: '#6C757D',
             fontSize: '14px',
-            color: '#6C757D'
+            marginBottom: '12px',
+            fontFamily: 'Montserrat, sans-serif'
           }}>
-            {userType === 'business' 
-              ? '회원가입 후 사업자 정보를 등록하여 서비스를 이용하실 수 있습니다.'
-              : '회원가입 후 기관 정보를 등록하여 서비스를 이용하실 수 있습니다.'}
-            <br />
-            <Link 
-              href={userType === 'business' ? '/signup' : '/signup-beneficiary'} 
-              style={{ 
-                color: '#007BFF', 
-                textDecoration: 'none',
-                marginTop: '8px',
-                display: 'inline-block'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-              onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-            >
-              회원가입
-            </Link>
+            아직 계정이 없으신가요?
           </p>
-        )}
+          <Link href="/signup" style={{
+            color: '#02391f',
+            fontSize: '14px',
+            fontWeight: '500',
+            textDecoration: 'none',
+            fontFamily: 'Montserrat, sans-serif'
+          }}>
+            회원가입하기 →
+          </Link>
+        </div>
       </div>
     </div>
   )

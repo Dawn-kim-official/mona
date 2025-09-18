@@ -18,6 +18,8 @@ interface Proposal {
   responded_at: string | null
   receipt_issued: boolean
   receipt_issued_at: string | null
+  accepted_quantity?: number
+  accepted_unit?: string
   donations: {
     id: string
     name: string
@@ -26,6 +28,7 @@ interface Proposal {
     unit: string
     pickup_deadline: string
     pickup_location: string
+    remaining_quantity?: number
     businesses: {
       name: string
       address: string
@@ -77,27 +80,10 @@ export default function BeneficiaryProposalsPage() {
     }
     setBeneficiary(beneficiaryData)
 
-    // Fetch proposals
+    // Fetch proposals from donation_matches
     let query = supabase
       .from('donation_matches')
-      .select(`
-        *,
-        donations!inner (
-          id,
-          name,
-          description,
-          quantity,
-          unit,
-          pickup_deadline,
-          pickup_location,
-          businesses!inner (
-            name,
-            address,
-            phone,
-            representative_name
-          )
-        )
-      `)
+      .select('*, donations(*, businesses(*))')
       .eq('beneficiary_id', beneficiaryData.id)
       .order('proposed_at', { ascending: false })
 
@@ -108,8 +94,10 @@ export default function BeneficiaryProposalsPage() {
     const { data, error } = await query
 
     if (error) {
-      // Error fetching proposals
+      console.error('Error fetching proposals:', error)
+      setProposals([])
     } else {
+      console.log('Fetched proposals:', data)
       
       // quotes 정보를 별도로 가져오기
       if (data && data.length > 0) {
@@ -295,7 +283,10 @@ export default function BeneficiaryProposalsPage() {
                         {proposal.donations?.name || proposal.donations?.description}
                       </td>
                       <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#495057' }}>
-                        {proposal.donations?.quantity}{proposal.donations?.unit || 'kg'}
+                        {proposal.accepted_quantity ? 
+                          `${proposal.accepted_quantity}${proposal.accepted_unit || proposal.donations?.unit || 'kg'} / ${proposal.donations?.quantity}${proposal.donations?.unit || 'kg'}` :
+                          `${proposal.donations?.remaining_quantity || proposal.donations?.quantity}${proposal.donations?.unit || 'kg'}`
+                        }
                       </td>
                       <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#495057' }}>
                         {proposal.donations?.businesses?.name || '-'}

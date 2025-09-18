@@ -6,7 +6,6 @@ import { Database } from '@/lib/supabase-types'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import QuoteDetailModal from '@/components/QuoteDetailModal'
-import MatchingDetailModal from '@/components/MatchingDetailModal'
 
 type Donation = Database['public']['Tables']['donations']['Row']
 type Quote = Database['public']['Tables']['quotes']['Row']
@@ -30,7 +29,6 @@ const tabs = [
   { id: '견적 대기', label: '견적 대기' },
   { id: '견적 수락', label: '견적 수락' },
   { id: '견적 거절', label: '견적 거절' },
-  { id: '픽업 완료', label: '픽업 완료' },
   { id: '기부 완료', label: '기부 완료' }
 ]
 
@@ -44,8 +42,6 @@ export default function BusinessDashboardPage() {
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null)
   const [selectedDonation, setSelectedDonation] = useState<Donation | null>(null)
   const [showQuoteModal, setShowQuoteModal] = useState(false)
-  const [showMatchingModal, setShowMatchingModal] = useState(false)
-  const [selectedMatchingId, setSelectedMatchingId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchDonations()
@@ -101,10 +97,6 @@ export default function BusinessDashboardPage() {
     setShowQuoteModal(true)
   }
 
-  function handleViewMatching(donationId: string) {
-    setSelectedMatchingId(donationId)
-    setShowMatchingModal(true)
-  }
 
   async function handleAcceptQuote(quoteId: string) {
     const { error } = await supabase
@@ -158,7 +150,6 @@ export default function BusinessDashboardPage() {
           case '견적 대기': return donation.status === 'quote_sent' || donation.status === 'matched' || donation.status === 'quote_accepted';
           case '견적 수락': return donation.status === 'pickup_scheduled';
           case '견적 거절': return false;
-          case '픽업 완료': return donation.status === 'completed';
           case '기부 완료': return donation.status === 'completed';
           default: return true;
         }
@@ -365,13 +356,9 @@ export default function BusinessDashboardPage() {
                         </span>
                       </td>
                       <td style={{ padding: '16px', textAlign: 'center' }}>
-                        {/* 매칭된 상태들에 대해 상세보기 버튼 표시 */}
-                        {['matched', 'quote_sent', 'quote_accepted', 'pickup_scheduled', 'completed'].includes(donation.status) && (
+                        {donation.status === 'quote_sent' && (
                           <button 
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleViewMatching(donation.id)
-                            }}
+                            onClick={() => handleViewQuote(donation.id)}
                             style={{ 
                               color: '#02391f', 
                               background: 'transparent', 
@@ -381,8 +368,7 @@ export default function BusinessDashboardPage() {
                               cursor: 'pointer',
                               fontSize: '13px',
                               fontWeight: '500',
-                              transition: 'all 0.2s',
-                              marginRight: '8px'
+                              transition: 'all 0.2s'
                             }}
                             onMouseEnter={(e) => {
                               e.currentTarget.style.backgroundColor = '#02391f';
@@ -392,31 +378,6 @@ export default function BusinessDashboardPage() {
                               e.currentTarget.style.backgroundColor = 'transparent';
                               e.currentTarget.style.color = '#02391f';
                             }}
-                          >
-                            상세보기
-                          </button>
-                        )}
-                        {donation.status === 'quote_sent' && (
-                          <button 
-                            onClick={() => handleViewQuote(donation.id)}
-                            style={{ 
-                            color: '#007BFF', 
-                            background: 'none', 
-                            border: 'none',
-                            padding: '6px 12px',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '13px',
-                            fontWeight: '500',
-                            transition: 'all 0.2s',
-                            textDecoration: 'underline'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.color = '#0056B3';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.color = '#007BFF';
-                          }}
                           >견적서 확인</button>
                         )}
                         {donation.status === 'pickup_scheduled' && (
@@ -427,18 +388,7 @@ export default function BusinessDashboardPage() {
                             </div>
                           </div>
                         )}
-                        {donation.status === 'completed' && (
-                          <button style={{ 
-                            color: '#6C757D', 
-                            background: 'none', 
-                            border: 'none',
-                            padding: '0',
-                            cursor: 'default',
-                            fontSize: '13px',
-                            fontWeight: '400'
-                          }}>-</button>
-                        )}
-                        {!['quote_sent', 'pickup_scheduled', 'completed'].includes(donation.status) && (
+                        {!['quote_sent', 'pickup_scheduled'].includes(donation.status) && (
                           <span style={{ color: '#6C757D', fontSize: '13px' }}>-</span>
                         )}
                       </td>
@@ -472,17 +422,6 @@ export default function BusinessDashboardPage() {
         onReject={handleRejectQuote as any}
       />
       
-      {/* Matching Detail Modal */}
-      {showMatchingModal && selectedMatchingId && (
-        <MatchingDetailModal
-          isOpen={showMatchingModal}
-          onClose={() => {
-            setShowMatchingModal(false)
-            setSelectedMatchingId(null)
-          }}
-          donationId={selectedMatchingId}
-        />
-      )}
     </div>
   )
 }

@@ -13,7 +13,7 @@ export interface Database {
         Row: {
           id: string
           email: string
-          role: 'business' | 'admin'
+          role: 'business' | 'admin' | 'beneficiary'
           created_at: string
           updated_at: string
         }
@@ -43,6 +43,7 @@ export interface Database {
           phone: string
           address: string
           website: string | null
+          business_type: string | null
           status: 'pending' | 'approved' | 'rejected'
           contract_signed: boolean
           contract_signed_at: string | null
@@ -88,6 +89,80 @@ export interface Database {
           updated_at?: string
         }
       }
+      beneficiaries: {
+        Row: {
+          id: string
+          user_id: string | null
+          organization_name: string
+          organization_type: string | null
+          manager_name: string
+          manager_phone: string
+          address: string
+          postcode: string | null
+          website: string | null
+          sns_link: string | null
+          tax_exempt_cert_url: string | null
+          registration_number: string | null
+          desired_items: string[] | null
+          beneficiary_types: string[] | null
+          can_pickup: boolean
+          can_issue_receipt: boolean
+          additional_request: string | null
+          status: 'pending' | 'approved' | 'rejected'
+          contract_signed: boolean
+          approved_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          organization_name: string
+          organization_type?: string | null
+          manager_name: string
+          manager_phone: string
+          address: string
+          postcode?: string | null
+          website?: string | null
+          sns_link?: string | null
+          tax_exempt_cert_url?: string | null
+          registration_number?: string | null
+          desired_items?: string[] | null
+          beneficiary_types?: string[] | null
+          can_pickup?: boolean
+          can_issue_receipt?: boolean
+          additional_request?: string | null
+          status?: 'pending' | 'approved' | 'rejected'
+          contract_signed?: boolean
+          approved_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          organization_name?: string
+          organization_type?: string | null
+          manager_name?: string
+          manager_phone?: string
+          address?: string
+          postcode?: string | null
+          website?: string | null
+          sns_link?: string | null
+          tax_exempt_cert_url?: string | null
+          registration_number?: string | null
+          desired_items?: string[] | null
+          beneficiary_types?: string[] | null
+          can_pickup?: boolean
+          can_issue_receipt?: boolean
+          additional_request?: string | null
+          status?: 'pending' | 'approved' | 'rejected'
+          contract_signed?: boolean
+          approved_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       donations: {
         Row: {
           id: string
@@ -99,6 +174,8 @@ export interface Database {
           pickup_deadline: string
           pickup_location: string
           tax_deduction_needed: boolean
+          tax_invoice_email: string | null
+          business_type: string | null
           status: 'pending_review' | 'quote_sent' | 'quote_accepted' | 'matched' | 'pickup_scheduled' | 'completed'
           matched_charity_name: string | null
           matched_at: string | null

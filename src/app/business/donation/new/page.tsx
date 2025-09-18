@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
@@ -8,18 +8,50 @@ export default function NewDonationPage() {
   const router = useRouter()
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
+  const [businessInfo, setBusinessInfo] = useState<any>(null)
+  const [taxInvoiceRequested, setTaxInvoiceRequested] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     category: '',
     quantity: '',
-    unit: 'kg', // 'kg' or '개'
+    unit: 'kg', // 'kg' or '개' or 'box' etc
+    customUnit: '', // for custom unit input
     expiryDate: '',
     pickupDate: '',
+    pickupTime: '', // 픽업 희망 시간대
     pickupAddress: '',
     additionalInfo: '',
     photos: [] as File[],
-    photoType: 'main' // 'main' or 'sub'
+    photoType: 'main', // 'main' or 'sub'
+    // 세금계산서 정보
+    taxInvoiceEmail: '',
+    businessType: ''
   })
+
+  useEffect(() => {
+    fetchBusinessInfo()
+  }, [])
+
+  async function fetchBusinessInfo() {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { data: business } = await supabase
+      .from('businesses')
+      .select('*')
+      .eq('user_id', user.id)
+      .single()
+
+    if (business) {
+      setBusinessInfo(business)
+      // 기업 정보에서 이메일과 업종 가져오기
+      setFormData(prev => ({
+        ...prev,
+        taxInvoiceEmail: user.email || '',
+        businessType: business.business_type || ''
+      }))
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -64,15 +96,21 @@ export default function NewDonationPage() {
       const donationData = {
         business_id: business.id,
         name: formData.name,
-        description: formData.name, // Using name as description temporarily
+        description: `${formData.name} - ${formData.category}`, // Include category in description
         quantity: parseFloat(formData.quantity) || 0,
-        unit: formData.unit,
+        unit: formData.unit === 'custom' ? formData.customUnit : formData.unit,
         condition: 'good',
+        expiration_date: formData.expiryDate || null,
         pickup_deadline: formData.pickupDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default to 7 days from now
         pickup_location: formData.pickupAddress,
+        pickup_time: formData.pickupTime || null,
         additional_info: formData.additionalInfo || null,
         photos: photoUrls.length > 0 ? photoUrls : null,
-        status: 'pending_review'
+        status: 'pending_review',
+        category: formData.category,
+        tax_deduction_needed: taxInvoiceRequested,
+        tax_invoice_email: taxInvoiceRequested ? formData.taxInvoiceEmail : null,
+        business_type: taxInvoiceRequested ? formData.businessType : null
       }
       
       // Creating donation with data
@@ -96,6 +134,7 @@ export default function NewDonationPage() {
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     if (e.target.files) {
+      // 새로운 파일이 선택되면 기존 파일을 완전히 대체
       setFormData({
         ...formData,
         photos: Array.from(e.target.files)
@@ -124,8 +163,12 @@ export default function NewDonationPage() {
   }
 
   return (
-    <div style={{ padding: '40px', backgroundColor: '#F8F9FA', minHeight: 'calc(100vh - 70px)' }}>
-      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+    <div style={{ 
+      padding: '40px', 
+      backgroundColor: '#F8F9FA', 
+      minHeight: '100%'
+    }}>
+      <div style={{ maxWidth: '900px', margin: '0 auto', paddingBottom: '100px' }}>
         <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h1 style={{ fontSize: '24px', marginBottom: '8px', color: '#212529', fontWeight: '600' }}>기부 등록</h1>
@@ -203,9 +246,9 @@ export default function NewDonationPage() {
                   />
                   <select
                     value={formData.unit}
-                    onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, unit: e.target.value, customUnit: '' })}
                     style={{
-                      width: '100px',
+                      width: formData.unit === 'custom' ? '120px' : '100px',
                       padding: '14px 16px',
                       fontSize: '16px',
                       border: '1px solid #CED4DA',
@@ -226,7 +269,29 @@ export default function NewDonationPage() {
                   >
                     <option value="kg">kg</option>
                     <option value="개">개</option>
+                    <option value="box">박스</option>
+                    <option value="세트">세트</option>
+                    <option value="L">리터(L)</option>
+                    <option value="custom">직접입력</option>
                   </select>
+                  {formData.unit === 'custom' && (
+                    <input
+                      type="text"
+                      value={formData.customUnit}
+                      onChange={(e) => setFormData({ ...formData, customUnit: e.target.value })}
+                      placeholder="단위 입력"
+                      style={{
+                        width: '100px',
+                        padding: '14px 16px',
+                        fontSize: '16px',
+                        border: '1px solid #CED4DA',
+                        borderRadius: '6px',
+                        backgroundColor: '#FFFFFF',
+                        color: '#212529',
+                        outline: 'none'
+                      }}
+                    />
+                  )}
                 </div>
               </div>
             </div>
@@ -236,13 +301,11 @@ export default function NewDonationPage() {
                 <label style={labelStyle}>
                   카테고리 <span style={{ color: '#DC3545' }}>*</span>
                 </label>
-                <input
-                  type="text"
+                <select
                   required
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   style={inputStyle}
-                  placeholder="카테고리를 입력하세요"
                   onFocus={(e) => {
                     e.currentTarget.style.borderColor = '#02391f'
                     e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
@@ -251,17 +314,32 @@ export default function NewDonationPage() {
                     e.currentTarget.style.borderColor = '#CED4DA'
                     e.currentTarget.style.boxShadow = 'none'
                   }}
-                />
+                >
+                  <option value="">카테고리를 선택하세요</option>
+                  <option value="개별포장 식품">개별포장 식품</option>
+                  <option value="캔류">캔류</option>
+                  <option value="통조림">통조림</option>
+                  <option value="라면류">라면류</option>
+                  <option value="가공식품">가공식품</option>
+                  <option value="냉동식품">냉동식품</option>
+                  <option value="음료">음료</option>
+                  <option value="과자/빵">과자/빵</option>
+                  <option value="생활용품">생활용품</option>
+                  <option value="기타">기타</option>
+                </select>
               </div>
               <div>
                 <label style={labelStyle}>
-                  소비기한
+                  소비기한 <span style={{ color: '#DC3545' }}>*</span>
+                  <span style={{ fontSize: '12px', color: '#6C757D', marginLeft: '8px' }}>(개별 포장 식품은 제조일로부터 최소 1개월 이상)</span>
                 </label>
                 <input
                   type="date"
+                  required
                   value={formData.expiryDate}
                   onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
                   style={inputStyle}
+                  min={new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
                   onFocus={(e) => {
                     e.currentTarget.style.borderColor = '#02391f'
                     e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
@@ -272,6 +350,30 @@ export default function NewDonationPage() {
                   }}
                 />
               </div>
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label style={labelStyle}>
+                추가 정보 및 특이사항
+              </label>
+              <textarea
+                value={formData.additionalInfo}
+                onChange={(e) => setFormData({ ...formData, additionalInfo: e.target.value })}
+                style={{
+                  ...inputStyle,
+                  minHeight: '100px',
+                  resize: 'vertical'
+                }}
+                placeholder="예: 냉장보관 필요, 유통기한이 얼마 남지 않은 제품, 대량 기부 가능 등"
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#02391f'
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#CED4DA'
+                  e.currentTarget.style.boxShadow = 'none'
+                }}
+              />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
@@ -286,6 +388,26 @@ export default function NewDonationPage() {
                   onChange={(e) => setFormData({ ...formData, pickupDate: e.target.value })}
                   style={inputStyle}
                   min={new Date().toISOString().split('T')[0]}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#02391f'
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#CED4DA'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>
+                  픽업 희망 시간대
+                </label>
+                <input
+                  type="text"
+                  value={formData.pickupTime}
+                  onChange={(e) => setFormData({ ...formData, pickupTime: e.target.value })}
+                  style={inputStyle}
+                  placeholder="예: 오전 9시-12시"
                   onFocus={(e) => {
                     e.currentTarget.style.borderColor = '#02391f'
                     e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
@@ -318,6 +440,93 @@ export default function NewDonationPage() {
                 />
               </div>
             </div>
+          </div>
+
+          {/* 세금계산서 발행 여부 섹션 */}
+          <div style={{ 
+            backgroundColor: 'white', 
+            padding: '32px',
+            borderRadius: '8px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            marginBottom: '24px'
+          }}>
+            <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', color: '#212529' }}>세금계산서 발행</h2>
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={taxInvoiceRequested}
+                  onChange={(e) => setTaxInvoiceRequested(e.target.checked)}
+                  style={{
+                    width: '18px',
+                    height: '18px',
+                    marginRight: '10px',
+                    cursor: 'pointer'
+                  }}
+                />
+                <span style={{ fontSize: '14px', color: '#212529', fontWeight: '500' }}>
+                  세금계산서 발행을 신청합니다
+                </span>
+              </label>
+            </div>
+
+            {/* 세금계산서 신청 정보 입력 필드 */}
+            {taxInvoiceRequested && (
+              <div style={{ 
+                padding: '20px',
+                backgroundColor: '#F8F9FA',
+                borderRadius: '6px',
+                border: '1px solid #DEE2E6'
+              }}>
+                <p style={{ fontSize: '13px', color: '#6C757D', marginBottom: '16px' }}>
+                  세금계산서 발행을 위한 정보를 입력해주세요. (회원정보에서 자동으로 불러왔습니다)
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                  <div>
+                    <label style={labelStyle}>
+                      수신 이메일 <span style={{ color: '#DC3545' }}>*</span>
+                    </label>
+                    <input
+                      type="email"
+                      required={taxInvoiceRequested}
+                      value={formData.taxInvoiceEmail}
+                      onChange={(e) => setFormData({ ...formData, taxInvoiceEmail: e.target.value })}
+                      style={inputStyle}
+                      placeholder="세금계산서를 받을 이메일"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = '#02391f'
+                        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = '#CED4DA'
+                        e.currentTarget.style.boxShadow = 'none'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>
+                      업종 <span style={{ color: '#DC3545' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required={taxInvoiceRequested}
+                      value={formData.businessType}
+                      onChange={(e) => setFormData({ ...formData, businessType: e.target.value })}
+                      style={inputStyle}
+                      placeholder="예: 제조업, 도소매업, 서비스업 등"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = '#02391f'
+                        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = '#CED4DA'
+                        e.currentTarget.style.boxShadow = 'none'
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 기부 물품 사진 업로드 섹션 */}

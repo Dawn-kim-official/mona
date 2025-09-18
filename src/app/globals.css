@@ -57,19 +57,19 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
-    --foreground: #ededed;
+    --foreground: #000000;
     --card: #171717;
-    --card-foreground: #ededed;
+    --card-foreground: #000000;
     --primary: #ffd020;
     --primary-foreground: #ffffff;
     --secondary: #262626;
-    --secondary-foreground: #ededed;
+    --secondary-foreground: #000000;
     --destructive: #dc2626;
     --destructive-foreground: #ffffff;
     --muted: #262626;
     --muted-foreground: #a3a3a3;
     --accent: #262626;
-    --accent-foreground: #ededed;
+    --accent-foreground: #000000;
     --border: #262626;
     --input: #262626;
     --ring: #ffd020;

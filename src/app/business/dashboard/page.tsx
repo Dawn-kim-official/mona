@@ -5,6 +5,18 @@ import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import MatchingNotificationModal from '@/components/MatchingNotificationModal'
+import PickupReminderModal from '@/components/PickupReminderModal'
+import CircularProgress from '@/components/CircularProgress'
+
+const statusMap: { [key: string]: { text: string; color: string; bgColor: string } } = {
+  'pending_review': { text: '승인 대기', color: '#FF8C00', bgColor: '#FF8C0020' },
+  'rejected': { text: '승인 거절', color: '#DC3545', bgColor: '#DC354520' },
+  'matched': { text: '수혜기관 선정', color: '#17A2B8', bgColor: '#17A2B820' },
+  'quote_sent': { text: '견적 대기', color: '#FF8C00', bgColor: '#FF8C0020' },
+  'quote_accepted': { text: '견적 수락', color: '#007BFF', bgColor: '#007BFF20' },
+  'pickup_scheduled': { text: '픽업 완료', color: '#007BFF', bgColor: '#007BFF20' },
+  'completed': { text: '기부 완료', color: '#28A745', bgColor: '#28A74520' }
+}
 
 export default function BusinessDashboardPage() {
   const router = useRouter()
@@ -19,6 +31,7 @@ export default function BusinessDashboardPage() {
   const [esgReportUrl, setEsgReportUrl] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const [notificationConfirmed, setNotificationConfirmed] = useState(false)
+  const [showEsgModal, setShowEsgModal] = useState(false)
 
   useEffect(() => {
     fetchDashboardData()
@@ -64,8 +77,16 @@ export default function BusinessDashboardPage() {
         pendingDonations: pending
       })
 
-      // 최근 2개 기부 (이미 정렬되어 있으므로 slice 사용)
-      setRecentDonations(allDonations.slice(0, 2))
+      // 한 달 이내의 기부만 필터링
+      const oneMonthAgo = new Date()
+      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+      
+      const recentDonationsData = allDonations.filter(donation => {
+        const donationDate = new Date(donation.created_at)
+        return donationDate >= oneMonthAgo
+      })
+
+      setRecentDonations(recentDonationsData)
     } else {
       setRecentDonations([])
     }
@@ -88,48 +109,95 @@ export default function BusinessDashboardPage() {
           marginBottom: '24px',
           boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
         }}>
-          <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '24px', color: '#212529' }}>
+          <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '32px', color: '#212529' }}>
             기부 현황 요약
           </h2>
           
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '32px' }}>
+            {/* 전체 기부 */}
             <div style={{ 
               textAlign: 'center',
-              padding: '24px',
-              backgroundColor: '#F8F9FA',
-              borderRadius: '8px',
-              border: '1px solid #E9ECEF'
+              padding: '32px',
+              backgroundColor: '#FAFAFA',
+              borderRadius: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '20px'
             }}>
-              <div style={{ fontSize: '48px', fontWeight: '700', color: '#212529', marginBottom: '8px' }}>
-                {stats.totalDonations}
+              <CircularProgress
+                value={stats.totalDonations}
+                maxValue={stats.totalDonations || 1}
+                size={160}
+                strokeWidth={10}
+                primaryColor="#02391f"
+                secondaryColor="#E9ECEF"
+                centerText={false}
+              />
+              <div>
+                <div style={{ fontSize: '36px', fontWeight: '700', color: '#212529', marginBottom: '8px' }}>
+                  {stats.totalDonations}
+                </div>
+                <div style={{ fontSize: '14px', color: '#6C757D' }}>전체 기부 건수</div>
               </div>
-              <div style={{ fontSize: '16px', color: '#6C757D' }}>전체 기부 건수</div>
             </div>
             
+            {/* 완료된 기부 */}
             <div style={{ 
               textAlign: 'center',
-              padding: '24px',
-              backgroundColor: '#F8F9FA',
-              borderRadius: '8px',
-              border: '1px solid #E9ECEF'
+              padding: '32px',
+              backgroundColor: '#FAFAFA',
+              borderRadius: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '20px'
             }}>
-              <div style={{ fontSize: '48px', fontWeight: '700', color: '#212529', marginBottom: '8px' }}>
-                {stats.completedDonations}
+              <CircularProgress
+                value={stats.completedDonations}
+                maxValue={stats.totalDonations || 1}
+                size={160}
+                strokeWidth={10}
+                primaryColor="#28A745"
+                secondaryColor="#E9ECEF"
+                label={`${stats.totalDonations > 0 ? Math.round((stats.completedDonations / stats.totalDonations) * 100) : 0}%`}
+                sublabel="완료율"
+              />
+              <div>
+                <div style={{ fontSize: '36px', fontWeight: '700', color: '#212529', marginBottom: '8px' }}>
+                  {stats.completedDonations}
+                </div>
+                <div style={{ fontSize: '14px', color: '#6C757D' }}>완료된 기부</div>
               </div>
-              <div style={{ fontSize: '16px', color: '#6C757D' }}>완료된 기부</div>
             </div>
             
+            {/* 진행 중인 기부 */}
             <div style={{ 
               textAlign: 'center',
-              padding: '24px',
-              backgroundColor: '#F8F9FA',
-              borderRadius: '8px',
-              border: '1px solid #E9ECEF'
+              padding: '32px',
+              backgroundColor: '#FAFAFA',
+              borderRadius: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '20px'
             }}>
-              <div style={{ fontSize: '48px', fontWeight: '700', color: '#ffd020', marginBottom: '8px' }}>
-                {stats.pendingDonations}
+              <CircularProgress
+                value={stats.pendingDonations}
+                maxValue={stats.totalDonations || 1}
+                size={160}
+                strokeWidth={10}
+                primaryColor="#ffd020"
+                secondaryColor="#E9ECEF"
+                label={`${stats.totalDonations > 0 ? Math.round((stats.pendingDonations / stats.totalDonations) * 100) : 0}%`}
+                sublabel="진행률"
+              />
+              <div>
+                <div style={{ fontSize: '36px', fontWeight: '700', color: '#ffd020', marginBottom: '8px' }}>
+                  {stats.pendingDonations}
+                </div>
+                <div style={{ fontSize: '14px', color: '#6C757D' }}>진행 중인 기부</div>
               </div>
-              <div style={{ fontSize: '16px', color: '#6C757D' }}>진행 중인 기부</div>
             </div>
           </div>
         </div>
@@ -152,28 +220,54 @@ export default function BusinessDashboardPage() {
                   2025년 ESG 리포트가 준비되었습니다. (업데이트: 2025.07.31)
                 </p>
               </div>
-              <a 
-                href={esgReportUrl} 
-                download
-                style={{ textDecoration: 'none' }}
-              >
-                <button style={{
-                  backgroundColor: '#ffd020',
-                  color: '#212529',
-                  border: 'none',
-                  borderRadius: '4px',
-                  padding: '10px 20px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button 
+                  onClick={() => setShowEsgModal(true)}
+                  style={{
+                    backgroundColor: 'white',
+                    color: '#02391f',
+                    border: '2px solid #02391f',
+                    borderRadius: '4px',
+                    padding: '10px 20px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#02391f';
+                    e.currentTarget.style.color = 'white';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'white';
+                    e.currentTarget.style.color = '#02391f';
+                  }}
                 >
-                  ESG 리포트 다운로드
+                  보기
                 </button>
-              </a>
+                <a 
+                  href={esgReportUrl} 
+                  download
+                  style={{ textDecoration: 'none' }}
+                >
+                  <button style={{
+                    backgroundColor: '#ffd020',
+                    color: '#212529',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '10px 20px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    transition: 'opacity 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
+                  onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                  >
+                    ESG 리포트 다운로드
+                  </button>
+                </a>
+              </div>
             </div>
           </div>
         )}
@@ -185,9 +279,14 @@ export default function BusinessDashboardPage() {
           padding: '32px',
           boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
         }}>
-          <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '24px', color: '#212529' }}>
-            최근 기부 이력
-          </h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+            <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#212529', margin: 0 }}>
+              최근 기부 이력
+            </h2>
+            <span style={{ fontSize: '13px', color: '#6C757D' }}>
+              (최근 1개월)
+            </span>
+          </div>
           
           {recentDonations.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#6C757D' }}>
@@ -226,19 +325,34 @@ export default function BusinessDashboardPage() {
                   {recentDonations.map((donation) => (
                     <tr key={donation.id} style={{ borderBottom: '1px solid #DEE2E6' }}>
                       <td style={{ padding: '12px', textAlign: 'center' }}>
-                        <div style={{ 
-                          width: '50px', 
-                          height: '50px', 
-                          backgroundColor: '#F8F9FA',
-                          borderRadius: '4px',
-                          margin: '0 auto',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#ADB5BD'
-                        }}>
-                          <span style={{ fontSize: '12px' }}>이미지</span>
-                        </div>
+                        {donation.photos && donation.photos.length > 0 ? (
+                          <img 
+                            src={donation.photos[0]} 
+                            alt={donation.name || donation.description}
+                            style={{ 
+                              width: '50px', 
+                              height: '50px', 
+                              objectFit: 'cover',
+                              borderRadius: '4px'
+                            }}
+                          />
+                        ) : (
+                          <div style={{ 
+                            width: '50px', 
+                            height: '50px', 
+                            backgroundColor: '#F8F9FA',
+                            borderRadius: '4px',
+                            margin: '0 auto',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#ADB5BD'
+                          }}>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                            </svg>
+                          </div>
+                        )}
                       </td>
                       <td style={{ padding: '12px', textAlign: 'center', fontSize: '14px' }}>
                         {donation.name || donation.description}
@@ -247,23 +361,32 @@ export default function BusinessDashboardPage() {
                         {new Date(donation.created_at).toLocaleDateString('ko-KR')}
                       </td>
                       <td style={{ padding: '12px', textAlign: 'center', fontSize: '14px' }}>
-                        {donation.quantity}kg
+                        {donation.quantity}{donation.unit || 'kg'}
                       </td>
                       <td style={{ padding: '12px', textAlign: 'center', fontSize: '14px', color: '#6C757D' }}>
                         {new Date(donation.pickup_deadline).toLocaleDateString('ko-KR')}
                       </td>
                       <td style={{ padding: '12px', textAlign: 'center' }}>
-                        <span style={{ 
-                          color: '#28A745',
-                          fontWeight: '500',
-                          fontSize: '12px',
-                          backgroundColor: '#28A74520',
-                          padding: '4px 12px',
-                          borderRadius: '4px',
-                          display: 'inline-block'
-                        }}>
-                          기부 완료
-                        </span>
+                        {(() => {
+                          const status = statusMap[donation.status] || { 
+                            text: donation.status, 
+                            color: '#666', 
+                            bgColor: '#66666620' 
+                          };
+                          return (
+                            <span style={{ 
+                              color: status.color,
+                              fontWeight: '500',
+                              fontSize: '12px',
+                              backgroundColor: status.bgColor,
+                              padding: '4px 12px',
+                              borderRadius: '4px',
+                              display: 'inline-block'
+                            }}>
+                              {status.text}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td style={{ padding: '12px', textAlign: 'center' }}>
                         <span style={{ color: '#6C757D', fontSize: '13px' }}>-</span>
@@ -284,6 +407,166 @@ export default function BusinessDashboardPage() {
           userId={userId}
           onConfirm={() => setNotificationConfirmed(true)}
         />
+      )}
+      
+      {/* Pickup Reminder Modal */}
+      {userId && (
+        <PickupReminderModal
+          userType="business"
+          userId={userId}
+        />
+      )}
+      
+      {/* ESG 리포트 모달 */}
+      {showEsgModal && esgReportUrl && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            width: '90%',
+            maxWidth: '900px',
+            height: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
+          }}>
+            {/* 모달 헤더 */}
+            <div style={{
+              padding: '20px 24px',
+              borderBottom: '1px solid #E9ECEF',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexShrink: 0
+            }}>
+              <h2 style={{ 
+                fontSize: '20px', 
+                fontWeight: '600', 
+                color: '#212529',
+                margin: 0
+              }}>
+                ESG 리포트
+              </h2>
+              <button
+                onClick={() => setShowEsgModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#6C757D',
+                  padding: '0',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '4px',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F8F9FA'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                ×
+              </button>
+            </div>
+            
+            {/* PDF 뷰어 */}
+            <div style={{
+              flex: 1,
+              overflow: 'hidden',
+              position: 'relative'
+            }}>
+              {esgReportUrl.toLowerCase().endsWith('.pdf') ? (
+                <iframe
+                  src={esgReportUrl}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    border: 'none'
+                  }}
+                  title="ESG Report"
+                />
+              ) : (
+                <img 
+                  src={esgReportUrl}
+                  alt="ESG Report"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
+                    padding: '20px'
+                  }}
+                />
+              )}
+            </div>
+            
+            {/* 모달 푸터 */}
+            <div style={{
+              padding: '16px 24px',
+              borderTop: '1px solid #E9ECEF',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '12px',
+              flexShrink: 0
+            }}>
+              <button
+                onClick={() => setShowEsgModal(false)}
+                style={{
+                  padding: '10px 24px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#6C757D',
+                  backgroundColor: 'white',
+                  border: '1px solid #DEE2E6',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#F8F9FA';
+                  e.currentTarget.style.borderColor = '#ADB5BD';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.borderColor = '#DEE2E6';
+                }}
+              >
+                닫기
+              </button>
+              <a href={esgReportUrl} download style={{ textDecoration: 'none' }}>
+                <button style={{
+                  padding: '10px 24px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: 'white',
+                  backgroundColor: '#ffd020',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  transition: 'opacity 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                >
+                  다운로드
+                </button>
+              </a>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

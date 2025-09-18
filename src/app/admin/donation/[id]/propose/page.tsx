@@ -142,75 +142,60 @@ export default function ProposeDonationPage() {
       return
     }
 
-    if (selectedBeneficiaries.length > 1) {
-      alert('하나의 수혜 기관만 선택해주세요.')
-      return
-    }
-
     setSubmitting(true)
 
     try {
-      // 1. donation_matches 테이블에 매칭 정보 생성 또는 업데이트
-      const beneficiaryId = selectedBeneficiaries[0]
-      
       // 현재 로그인한 사용자 정보 가져오기
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('User not authenticated')
 
-      // 먼저 기존 매칭이 있는지 확인
-      const { data: existingMatch } = await supabase
-        .from('donation_matches')
-        .select('id')
-        .eq('donation_id', donationId)
-        .eq('beneficiary_id', beneficiaryId)
-        .single()
+      // 선택된 모든 수혜기관에 대해 매칭 정보 생성 또는 업데이트
+      for (const beneficiaryId of selectedBeneficiaries) {
+        // 먼저 기존 매칭이 있는지 확인
+        const { data: existingMatch } = await supabase
+          .from('donation_matches')
+          .select('id')
+          .eq('donation_id', donationId)
+          .eq('beneficiary_id', beneficiaryId)
+          .single()
 
-      let matchError = null
-      
-      if (existingMatch) {
-        // 기존 매칭이 있으면 업데이트
-        const { error } = await supabase
-          .from('donation_matches')
-          .update({
-            status: 'proposed',
-            proposed_at: new Date().toISOString(),
-            proposed_by: user.id
-          })
-          .eq('id', existingMatch.id)
-        
-        matchError = error
-      } else {
-        // 기존 매칭이 없으면 새로 생성
-        const { error } = await supabase
-          .from('donation_matches')
-          .insert({
-            donation_id: donationId,
-            beneficiary_id: beneficiaryId,
-            status: 'proposed',
-            proposed_at: new Date().toISOString(),
-            proposed_by: user.id
-          })
-        
-        matchError = error
+        if (existingMatch) {
+          // 기존 매칭이 있으면 업데이트
+          await supabase
+            .from('donation_matches')
+            .update({
+              status: 'proposed',
+              proposed_at: new Date().toISOString(),
+              proposed_by: user.id
+            })
+            .eq('id', existingMatch.id)
+        } else {
+          // 기존 매칭이 없으면 새로 생성
+          await supabase
+            .from('donation_matches')
+            .insert({
+              donation_id: donationId,
+              beneficiary_id: beneficiaryId,
+              status: 'proposed',
+              proposed_at: new Date().toISOString(),
+              proposed_by: user.id
+            })
+        }
       }
 
-      // RLS 에러는 무시하고 계속 진행
-      if (matchError && !matchError.message?.includes('row-level security')) {
-        // console.log('Match error (not RLS):', matchError)
-      }
-
-      // 2. donations 테이블 상태 업데이트 (RLS 에러와 관계없이 진행)
-      // 'matched' 상태를 사용 (beneficiary_selected가 enum에 없으므로)
+      // donations 테이블 상태 업데이트
       const { error: updateError } = await supabase
         .from('donations')
         .update({ status: 'matched' })
         .eq('id', donationId)
 
       if (updateError) {
-        // console.log('Update error:', updateError)
         alert(`상태 업데이트 중 오류가 발생했습니다: ${updateError.message}`)
       } else {
-        alert('수혜기관이 성공적으로 선정되었습니다.')
+        const message = selectedBeneficiaries.length === 1 
+          ? '수혜기관이 성공적으로 선정되었습니다.'
+          : `${selectedBeneficiaries.length}개의 수혜기관이 성공적으로 선정되었습니다.`
+        alert(message)
         router.push('/admin/donations')
       }
     } catch (error: any) {
@@ -342,7 +327,7 @@ export default function ProposeDonationPage() {
             수혜 기관 선택
           </h2>
           <p style={{ fontSize: '14px', color: '#6C757D', marginBottom: '16px' }}>
-            수혜 기관을 하나 선택해주세요.
+            하나 이상의 수혜 기관을 선택해주세요. (복수 선택 가능)
           </p>
 
           {beneficiaries.length === 0 ? (
@@ -426,15 +411,12 @@ export default function ProposeDonationPage() {
         {selectedBeneficiaries.length > 0 && (
           <p style={{ 
             fontSize: '14px', 
-            color: selectedBeneficiaries.length === 1 ? '#28A745' : '#DC3545', 
+            color: '#28A745', 
             marginBottom: '24px',
             textAlign: 'center',
             fontWeight: '500'
           }}>
-            {selectedBeneficiaries.length === 1 
-              ? '✅ 수혜 기관이 선택되었습니다.'
-              : `⚠️ ${selectedBeneficiaries.length}개의 수혜 기관이 선택되었습니다. 하나만 선택해주세요.`
-            }
+            ✅ {selectedBeneficiaries.length}개의 수혜 기관이 선택되었습니다.
           </p>
         )}
 

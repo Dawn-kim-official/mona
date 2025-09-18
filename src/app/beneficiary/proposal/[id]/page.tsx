@@ -45,6 +45,8 @@ export default function ProposalDetailPage() {
   const [submitting, setSubmitting] = useState(false)
   const [notes, setNotes] = useState('')
   const [generatingPdf, setGeneratingPdf] = useState(false)
+  const [acceptedQuantity, setAcceptedQuantity] = useState<number>(0)
+  const [remainingQuantity, setRemainingQuantity] = useState<number>(0)
 
   useEffect(() => {
     fetchProposal()
@@ -114,6 +116,21 @@ export default function ProposalDetailPage() {
 
           setProposal(proposalWithDetails)
           setNotes(data.response_notes || '')
+          
+          // Calculate remaining quantity
+          const { data: otherMatches } = await supabase
+            .from('donation_matches')
+            .select('accepted_quantity')
+            .eq('donation_id', data.donation_id)
+            .in('status', ['accepted', 'received', 'quote_sent'])
+            .not('id', 'eq', proposalId)
+          
+          const totalAcceptedByOthers = otherMatches?.reduce((sum, match) => 
+            sum + (match.accepted_quantity || 0), 0) || 0
+          
+          const remaining = donationData.quantity - totalAcceptedByOthers
+          setRemainingQuantity(remaining)
+          setAcceptedQuantity(Math.min(remaining, donationData.quantity))
         }
       } else if (error) {
         // Error fetching proposal
@@ -128,21 +145,44 @@ export default function ProposalDetailPage() {
   async function handleResponse(accept: boolean) {
     if (!proposal) return
 
+    // Validate accepted quantity
+    if (accept && (acceptedQuantity <= 0 || acceptedQuantity > remainingQuantity)) {
+      alert(`수령 가능한 수량은 1 ~ ${remainingQuantity}${proposal.donations.unit || 'kg'} 입니다.`)
+      return
+    }
+
     setSubmitting(true)
+
+    const updateData: any = {
+      status: accept ? 'accepted' : 'rejected',
+      responded_at: new Date().toISOString(),
+      response_notes: notes || null
+    }
+    
+    if (accept) {
+      updateData.accepted_quantity = acceptedQuantity
+      updateData.accepted_unit = proposal.donations.unit || 'kg'
+    }
 
     const { error } = await supabase
       .from('donation_matches')
-      .update({
-        status: accept ? 'accepted' : 'rejected',
-        responded_at: new Date().toISOString(),
-        response_notes: notes || null
-      })
+      .update(updateData)
       .eq('id', proposalId)
+
+    if (!error && accept) {
+      // Update the donation's remaining quantity
+      await supabase
+        .from('donations')
+        .update({
+          remaining_quantity: remainingQuantity - acceptedQuantity
+        })
+        .eq('id', proposal.donations.id)
+    }
 
     if (error) {
       alert('응답 처리 중 오류가 발생했습니다.')
     } else {
-      alert(accept ? '제안을 수락했습니다.' : '제안을 거절했습니다.')
+      alert(accept ? `${acceptedQuantity}${proposal.donations.unit || 'kg'} 수락했습니다.` : '제안을 거절했습니다.')
       router.push('/beneficiary/proposals')
     }
 
@@ -180,18 +220,27 @@ export default function ProposalDetailPage() {
             기부 물품 정보
           </h2>
 
-          {(donation as any).image_url && (
-            <div style={{ marginBottom: '24px', textAlign: 'center' }}>
-              <img 
-                src={(donation as any).image_url} 
-                alt={(donation as any).name || donation.description}
-                style={{ 
-                  maxWidth: '400px', 
-                  maxHeight: '300px', 
-                  objectFit: 'contain',
-                  borderRadius: '8px'
-                }}
-              />
+          {donation.photos && donation.photos.length > 0 && (
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                {donation.photos.map((photo, idx) => (
+                  <img 
+                    key={idx}
+                    src={photo} 
+                    alt={`${(donation as any).name || donation.description} - 사진 ${idx + 1}`}
+                    style={{ 
+                      width: '100%',
+                      height: '200px',
+                      objectFit: 'cover',
+                      borderRadius: '8px',
+                      border: '1px solid #E9ECEF'
+                    }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                ))}
+              </div>
             </div>
           )}
 
@@ -239,50 +288,6 @@ export default function ProposalDetailPage() {
           </div>
         </div>
 
-        {/* 기업 정보 */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '8px',
-          padding: '24px',
-          marginBottom: '24px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-        }}>
-          <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '24px', color: '#212529' }}>
-            기부 기업 정보
-          </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-            <div>
-              <label style={{ fontSize: '14px', color: '#6C757D', display: 'block', marginBottom: '4px' }}>
-                기업명
-              </label>
-              <p style={{ fontSize: '16px', color: '#212529', margin: 0 }}>{business?.name}</p>
-            </div>
-            <div>
-              <label style={{ fontSize: '14px', color: '#6C757D', display: 'block', marginBottom: '4px' }}>
-                담당자
-              </label>
-              <p style={{ fontSize: '16px', color: '#212529', margin: 0 }}>{business?.representative_name}</p>
-            </div>
-            <div>
-              <label style={{ fontSize: '14px', color: '#6C757D', display: 'block', marginBottom: '4px' }}>
-                연락처
-              </label>
-              <p style={{ fontSize: '16px', color: '#212529', margin: 0 }}>{business?.phone}</p>
-            </div>
-            <div>
-              <label style={{ fontSize: '14px', color: '#6C757D', display: 'block', marginBottom: '4px' }}>
-                이메일
-              </label>
-              <p style={{ fontSize: '16px', color: '#212529', margin: 0 }}>{business?.email}</p>
-            </div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ fontSize: '14px', color: '#6C757D', display: 'block', marginBottom: '4px' }}>
-                주소
-              </label>
-              <p style={{ fontSize: '16px', color: '#212529', margin: 0 }}>{business?.address}</p>
-            </div>
-          </div>
-        </div>
 
         {/* 응답 섹션 */}
         {proposal.status === 'proposed' && (
@@ -296,6 +301,64 @@ export default function ProposalDetailPage() {
             <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', color: '#212529' }}>
               제안 응답
             </h2>
+            
+            {/* 수량 선택 섹션 */}
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '8px', 
+                fontSize: '14px', 
+                fontWeight: '500',
+                color: '#212529'
+              }}>
+                수령 희망 수량
+              </label>
+              <div style={{ 
+                backgroundColor: '#F8F9FA', 
+                padding: '16px', 
+                borderRadius: '8px',
+                marginBottom: '16px'
+              }}>
+                <p style={{ fontSize: '14px', color: '#6C757D', marginBottom: '12px' }}>
+                  전체 수량: {donation.quantity}{donation.unit || 'kg'} | 
+                  남은 수량: {remainingQuantity}{donation.unit || 'kg'}
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <input
+                    type="number"
+                    min="1"
+                    max={remainingQuantity}
+                    value={acceptedQuantity}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value) || 0
+                      if (value >= 0 && value <= remainingQuantity) {
+                        setAcceptedQuantity(value)
+                      }
+                    }}
+                    style={{
+                      width: '120px',
+                      padding: '8px 12px',
+                      fontSize: '16px',
+                      border: '1px solid #CED4DA',
+                      borderRadius: '6px',
+                      outline: 'none',
+                      backgroundColor: '#FFFFFF'
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = '#02391f'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = '#CED4DA'}
+                  />
+                  <span style={{ fontSize: '16px', color: '#212529' }}>
+                    {donation.unit || 'kg'}
+                  </span>
+                  {remainingQuantity < donation.quantity && (
+                    <span style={{ fontSize: '12px', color: '#FF8C00', marginLeft: 'auto' }}>
+                      * 다른 기관이 이미 {donation.quantity - remainingQuantity}{donation.unit || 'kg'}를 수령 예정입니다
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            
             <div style={{ marginBottom: '24px' }}>
               <label style={{ 
                 display: 'block', 
@@ -511,7 +574,6 @@ export default function ProposalDetailPage() {
                 영수증 정보
               </h3>
               <div style={{ fontSize: '14px', color: '#495057', lineHeight: '1.8' }}>
-                <p><strong>기부기업:</strong> {business?.name}</p>
                 <p><strong>기부물품:</strong> {(donation as any).name || donation.description}</p>
                 <p><strong>수량:</strong> {donation.quantity}{donation.unit}</p>
                 <p><strong>수령일:</strong> {new Date().toLocaleDateString('ko-KR')}</p>
@@ -583,7 +645,7 @@ export default function ProposalDetailPage() {
                       }
                       
                       // PDF 저장
-                      pdf.save(`기부영수증_${donation.businesses.name}_${new Date().toISOString().split('T')[0]}.pdf`)
+                      pdf.save(`기부영수증_${new Date().toISOString().split('T')[0]}.pdf`)
                       
                       // 정리
                       root.unmount()

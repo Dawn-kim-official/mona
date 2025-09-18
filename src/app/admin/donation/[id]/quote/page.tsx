@@ -38,20 +38,45 @@ export default function AdminQuoteUploadPage() {
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [donation, setDonation] = useState<Donation | null>(null)
-  const [beneficiary, setBeneficiary] = useState<Beneficiary | null>(null)
-  const [donationMatch, setDonationMatch] = useState<any>(null)
+  const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([])
+  const [selectedBeneficiaries, setSelectedBeneficiaries] = useState<string[]>([])
+  const [donationMatches, setDonationMatches] = useState<any[]>([])
   const [formData, setFormData] = useState({
     unit_price: '',
-    logistics_cost: '100000', // 기본값 10%
+    logistics_cost: '0', // 부가세를 0으로 변경
     logistics_percent: '10',
-    estimated_pickup_date: '',
-    pickup_time: '',
     special_notes: ''
   })
+  const [savedQuote, setSavedQuote] = useState<any>(null)
 
   useEffect(() => {
     fetchData()
+    loadSavedQuote()
   }, [params.id])
+
+  async function loadSavedQuote() {
+    try {
+      // 임시저장된 견적서 불러오기
+      const { data: quoteData } = await supabase
+        .from('quotes')
+        .select('*')
+        .eq('donation_id', params.id)
+        .eq('status', 'draft')
+        .single()
+
+      if (quoteData) {
+        setSavedQuote(quoteData)
+        setFormData({
+          unit_price: quoteData.unit_price?.toString() || '',
+          logistics_cost: quoteData.logistics_cost?.toString() || '0',
+          logistics_percent: '10',
+          special_notes: quoteData.special_notes || ''
+        })
+      }
+    } catch (error) {
+      // No saved draft
+    }
+  }
 
   async function fetchData() {
     try {
@@ -78,20 +103,22 @@ export default function AdminQuoteUploadPage() {
         `)
         .eq('donation_id', params.id)
         .eq('status', 'proposed')
-        .single()
 
-      if (matchData) {
-        setDonationMatch(matchData)
-        setBeneficiary(matchData.beneficiaries)
+      if (matchData && matchData.length > 0) {
+        setDonationMatches(matchData)
+        const beneficiaryList = matchData.map(match => match.beneficiaries).filter(Boolean)
+        setBeneficiaries(beneficiaryList)
+        // 기본적으로 모든 수혜기관 선택
+        setSelectedBeneficiaries(beneficiaryList.map(b => b.id))
       }
     } catch (error) {
-      // Error fetching data
+      console.error('Error fetching data:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  // 단가 변경시 물류비 자동 계산 (10%)
+  // 단가 변경시 부가세 자동 계산 (10%)
   const handleUnitPriceChange = (value: string) => {
     const unitPrice = parseInt(value) || 0
     const totalPrice = unitPrice * (donation?.quantity || 0)
@@ -103,13 +130,60 @@ export default function AdminQuoteUploadPage() {
     })
   }
 
+  // 임시저장 기능
+  async function handleSaveDraft() {
+    setLoading(true)
+    try {
+      const unitPrice = parseInt(formData.unit_price) || 0
+      const supplyPrice = unitPrice * (donation?.quantity || 0)
+      const logisticsCost = parseInt(formData.logistics_cost) || 0
+      const totalAmount = supplyPrice + logisticsCost
+
+      if (savedQuote) {
+        // 기존 임시저장 업데이트
+        await supabase
+          .from('quotes')
+          .update({
+            unit_price: unitPrice,
+            logistics_cost: logisticsCost,
+            total_amount: totalAmount,
+            special_notes: formData.special_notes,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', savedQuote.id)
+      } else {
+        // 새로운 임시저장
+        const { data } = await supabase
+          .from('quotes')
+          .insert({
+            donation_id: params.id,
+            unit_price: unitPrice,
+            logistics_cost: logisticsCost,
+            total_amount: totalAmount,
+            special_notes: formData.special_notes,
+            status: 'draft'
+          })
+          .select()
+          .single()
+        
+        setSavedQuote(data)
+      }
+
+      alert('견적서가 임시저장되었습니다.')
+    } catch (error) {
+      alert('임시저장 중 오류가 발생했습니다.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
 
     try {
       // 필수 필드 검증
-      if (!formData.unit_price || !formData.estimated_pickup_date) {
+      if (!formData.unit_price || selectedBeneficiaries.length === 0) {
         alert('필수 항목을 모두 입력해주세요.')
         setLoading(false)
         return
@@ -121,58 +195,56 @@ export default function AdminQuoteUploadPage() {
       const logisticsCost = parseInt(formData.logistics_cost) || 0
       const totalAmount = supplyPrice + logisticsCost
 
-      // Get current user (admin)
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('User not authenticated')
-
-      // Create quote
-      // Inserting quote with data
-
-      const { error: insertQuoteError } = await supabase
-        .from('quotes')
-        .insert({
-          donation_id: params.id,
-          unit_price: unitPrice,
-          logistics_cost: logisticsCost,
-          total_amount: totalAmount,
-          estimated_pickup_date: formData.estimated_pickup_date,
-          pickup_time: formData.pickup_time,
-          special_notes: formData.special_notes,
-          status: 'pending'
-        })
-
-      if (insertQuoteError) {
-        // Detailed quote error
-        throw insertQuoteError
+      // 임시저장된 견적서가 있으면 업데이트, 없으면 새로 생성
+      if (savedQuote) {
+        await supabase
+          .from('quotes')
+          .update({
+            unit_price: unitPrice,
+            logistics_cost: logisticsCost,
+            total_amount: totalAmount,
+            special_notes: formData.special_notes,
+            status: 'pending',
+            sent_at: new Date().toISOString()
+          })
+          .eq('id', savedQuote.id)
+      } else {
+        await supabase
+          .from('quotes')
+          .insert({
+            donation_id: params.id,
+            unit_price: unitPrice,
+            logistics_cost: logisticsCost,
+            total_amount: totalAmount,
+            special_notes: formData.special_notes,
+            status: 'pending'
+          })
       }
 
-      // Update donation_matches status to 'quote_sent'
-      if (donationMatch) {
-        const { error: matchUpdateError } = await supabase
-          .from('donation_matches')
-          .update({ 
-            status: 'quote_sent',
-            quote_sent_at: new Date().toISOString()
-          })
-          .eq('id', donationMatch.id)
-
-        if (matchUpdateError) {
-          // console.error('Error updating match:', matchUpdateError)
+      // Update donation_matches status to 'quote_sent' for selected beneficiaries
+      for (const beneficiaryId of selectedBeneficiaries) {
+        const match = donationMatches.find(m => m.beneficiary_id === beneficiaryId)
+        if (match) {
+          await supabase
+            .from('donation_matches')
+            .update({ 
+              status: 'quote_sent',
+              quote_sent_at: new Date().toISOString()
+            })
+            .eq('id', match.id)
         }
       }
 
       // Update donation status
-      const { error: statusError } = await supabase
+      await supabase
         .from('donations')
         .update({ status: 'quote_sent' })
         .eq('id', params.id)
 
-      if (statusError) throw statusError
-
       alert('견적서가 성공적으로 발송되었습니다.')
       router.push('/admin/donations')
     } catch (error) {
-      // Error uploading quote
+      console.error('Error:', error)
       alert('견적서 업로드 중 오류가 발생했습니다.')
     } finally {
       setLoading(false)
@@ -211,44 +283,61 @@ export default function AdminQuoteUploadPage() {
         </div>
 
         <form onSubmit={handleSubmit}>
-          {/* 수혜기관 정보 */}
-          {beneficiary && (
+          {/* 수혜기관 선택 (복수 선택 가능) */}
+          {beneficiaries.length > 0 && (
             <div style={{
-              backgroundColor: '#E8F5E9',
+              backgroundColor: 'white',
               borderRadius: '8px',
-              padding: '20px',
+              padding: '24px',
               marginBottom: '24px',
-              border: '1px solid #A5D6A7'
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
             }}>
-              <h2 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: '#2E7D32' }}>
-                선택된 수혜기관
+              <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', color: '#212529' }}>
+                수혜기관 선택 (복수 선택 가능)
               </h2>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div>
-                  <span style={{ fontSize: '13px', color: '#1B5E20', fontWeight: '500' }}>기관명: </span>
-                  <span style={{ fontSize: '14px', color: '#2E7D32' }}>{beneficiary.organization_name}</span>
-                </div>
-                <div>
-                  <span style={{ fontSize: '13px', color: '#1B5E20', fontWeight: '500' }}>유형: </span>
-                  <span style={{ fontSize: '14px', color: '#2E7D32' }}>{beneficiary.organization_type || '기타'}</span>
-                </div>
-                <div>
-                  <span style={{ fontSize: '13px', color: '#1B5E20', fontWeight: '500' }}>연락처: </span>
-                  <span style={{ fontSize: '14px', color: '#2E7D32' }}>{beneficiary.phone}</span>
-                </div>
-                <div>
-                  <span style={{ fontSize: '13px', color: '#1B5E20', fontWeight: '500' }}>이메일: </span>
-                  <span style={{ fontSize: '14px', color: '#2E7D32' }}>{beneficiary.email}</span>
-                </div>
-              </div>
-              <div style={{ marginTop: '12px' }}>
-                <span style={{ fontSize: '13px', color: '#1B5E20', fontWeight: '500' }}>주소: </span>
-                <span style={{ fontSize: '14px', color: '#2E7D32' }}>{beneficiary.address}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {beneficiaries.map((beneficiary) => (
+                  <label 
+                    key={beneficiary.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      padding: '12px',
+                      border: '1px solid #E9ECEF',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      backgroundColor: selectedBeneficiaries.includes(beneficiary.id) ? '#E8F5E9' : 'white',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedBeneficiaries.includes(beneficiary.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedBeneficiaries([...selectedBeneficiaries, beneficiary.id])
+                        } else {
+                          setSelectedBeneficiaries(selectedBeneficiaries.filter(id => id !== beneficiary.id))
+                        }
+                      }}
+                      style={{ marginRight: '12px', marginTop: '2px' }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: '500', marginBottom: '4px' }}>{beneficiary.organization_name}</div>
+                      <div style={{ fontSize: '13px', color: '#6C757D' }}>
+                        {beneficiary.organization_type} | {beneficiary.phone} | {beneficiary.email}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#6C757D', marginTop: '4px' }}>
+                        {beneficiary.address}
+                      </div>
+                    </div>
+                  </label>
+                ))}
               </div>
             </div>
           )}
 
-          {/* 기부 정보 */}
+          {/* 기부품 정보 */}
           <div style={{
             backgroundColor: 'white',
             borderRadius: '8px',
@@ -257,36 +346,26 @@ export default function AdminQuoteUploadPage() {
             boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
           }}>
             <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px', color: '#212529' }}>
-              기부 정보
+              기부품 정보
             </h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div>
-                <div style={{ marginBottom: '12px' }}>
-                  <span style={{ fontSize: '13px', color: '#495057', fontWeight: '500' }}>회원사: </span>
-                  <span style={{ fontSize: '14px', color: '#212529', fontWeight: '400' }}>{donation.businesses?.name}</span>
-                </div>
-                <div style={{ marginBottom: '12px' }}>
-                  <span style={{ fontSize: '13px', color: '#495057', fontWeight: '500' }}>품명: </span>
-                  <span style={{ fontSize: '14px', color: '#212529', fontWeight: '400' }}>{donation.name || donation.description}</span>
-                </div>
-                <div>
-                  <span style={{ fontSize: '13px', color: '#495057', fontWeight: '500' }}>수량: </span>
-                  <span style={{ fontSize: '14px', color: '#212529', fontWeight: '400' }}>{donation.quantity}{donation.unit || 'kg'}</span>
-                </div>
+                <span style={{ fontSize: '13px', color: '#6C757D', fontWeight: '500' }}>품목: </span>
+                <span style={{ fontSize: '14px', color: '#212529' }}>{donation.name || donation.description}</span>
               </div>
               <div>
-                <div style={{ marginBottom: '12px' }}>
-                  <span style={{ fontSize: '13px', color: '#495057', fontWeight: '500' }}>픽업 희망일: </span>
-                  <span style={{ fontSize: '14px', color: '#212529', fontWeight: '400' }}>{new Date(donation.pickup_deadline).toLocaleDateString('ko-KR')}</span>
-                </div>
-                <div style={{ marginBottom: '12px' }}>
-                  <span style={{ fontSize: '13px', color: '#495057', fontWeight: '500' }}>픽업 장소: </span>
-                  <span style={{ fontSize: '14px', color: '#212529', fontWeight: '400' }}>서울시 강남구 테헤란로 123 ○○빌딩 5층</span>
-                </div>
-                <div>
-                  <span style={{ fontSize: '13px', color: '#495057', fontWeight: '500' }}>등록일: </span>
-                  <span style={{ fontSize: '14px', color: '#212529', fontWeight: '400' }}>{new Date().toLocaleDateString('ko-KR')}</span>
-                </div>
+                <span style={{ fontSize: '13px', color: '#6C757D', fontWeight: '500' }}>수량: </span>
+                <span style={{ fontSize: '14px', color: '#212529' }}>{donation.quantity}{donation.unit || 'kg'}</span>
+              </div>
+              <div>
+                <span style={{ fontSize: '13px', color: '#6C757D', fontWeight: '500' }}>픽업 위치: </span>
+                <span style={{ fontSize: '14px', color: '#212529' }}>{donation.pickup_location}</span>
+              </div>
+              <div>
+                <span style={{ fontSize: '13px', color: '#6C757D', fontWeight: '500' }}>픽업 마감일: </span>
+                <span style={{ fontSize: '14px', color: '#212529' }}>
+                  {new Date(donation.pickup_deadline).toLocaleDateString('ko-KR')}
+                </span>
               </div>
             </div>
           </div>
@@ -367,17 +446,35 @@ export default function AdminQuoteUploadPage() {
                   {((parseInt(formData.unit_price) || 0) * donation.quantity).toLocaleString()} 원
                 </div>
                 <label style={{ fontSize: '14px', color: '#212529', fontWeight: '500' }}>부가세 (10%)</label>
-                <div style={{
-                  padding: '8px 12px',
-                  fontSize: '14px',
-                  color: '#212529',
-                  fontWeight: '500',
-                  backgroundColor: '#F8F9FA',
-                  border: '1px solid #CED4DA',
-                  borderRadius: '4px',
-                  textAlign: 'right'
-                }}>
-                  {formData.logistics_cost.toLocaleString()} 원
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type="text"
+                    value={formData.logistics_cost}
+                    onChange={(e) => setFormData({ ...formData, logistics_cost: e.target.value })}
+                    placeholder="0"
+                    style={{
+                      padding: '8px 60px 8px 12px',
+                      fontSize: '14px',
+                      color: '#212529',
+                      fontWeight: '500',
+                      border: '1px solid #CED4DA',
+                      borderRadius: '4px',
+                      outline: 'none',
+                      textAlign: 'right',
+                      width: '100%'
+                    }}
+                  />
+                  <span style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    fontSize: '13px',
+                    color: '#6C757D',
+                    fontWeight: '400'
+                  }}>
+                    원
+                  </span>
                 </div>
               </div>
 
@@ -392,55 +489,6 @@ export default function AdminQuoteUploadPage() {
             </div>
           </div>
 
-          {/* 견적 조건 */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            padding: '24px',
-            marginBottom: '24px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-          }}>
-            <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px', color: '#212529' }}>
-              견적 조건
-            </h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '16px', alignItems: 'center' }}>
-                <label style={{ fontSize: '14px', color: '#212529', fontWeight: '500' }}>픽업 가능 일정 *</label>
-                <input
-                  type="date"
-                  value={formData.estimated_pickup_date}
-                  onChange={(e) => setFormData({ ...formData, estimated_pickup_date: e.target.value })}
-                  required
-                  style={{
-                    padding: '8px 12px',
-                    fontSize: '14px',
-                    color: '#212529',
-                    border: '1px solid #CED4DA',
-                    borderRadius: '4px',
-                    outline: 'none'
-                  }}
-                />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '16px', alignItems: 'center' }}>
-                <label style={{ fontSize: '14px', color: '#212529', fontWeight: '500' }}>픽업 가능 시간 *</label>
-                <input
-                  type="text"
-                  value={formData.pickup_time}
-                  onChange={(e) => setFormData({ ...formData, pickup_time: e.target.value })}
-                  placeholder="예: 오전 10시 ~ 오후 5시"
-                  style={{
-                    padding: '8px 12px',
-                    fontSize: '14px',
-                    color: '#212529',
-                    border: '1px solid #CED4DA',
-                    borderRadius: '4px',
-                    outline: 'none'
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-
           {/* 특이사항 */}
           <div style={{
             backgroundColor: 'white',
@@ -449,20 +497,14 @@ export default function AdminQuoteUploadPage() {
             marginBottom: '24px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
           }}>
-            <label style={{ 
-              display: 'block',
-              fontSize: '14px',
-              color: '#212529',
-              fontWeight: '500',
-              marginBottom: '8px'
-            }}>
+            <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px', color: '#212529' }}>
               특이사항
-            </label>
+            </h2>
             <textarea
               value={formData.special_notes}
               onChange={(e) => setFormData({ ...formData, special_notes: e.target.value })}
+              placeholder="특이사항이 있으면 입력하세요"
               rows={4}
-              placeholder="추가 조건이나 안내사항을 입력하세요."
               style={{
                 width: '100%',
                 padding: '12px',
@@ -476,99 +518,44 @@ export default function AdminQuoteUploadPage() {
             />
           </div>
 
-          {/* 새금계산서 정보 */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            padding: '24px',
-            marginBottom: '24px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-          }}>
-            <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px', color: '#212529' }}>
-              세금계산서 정보
-            </h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 120px 1fr', gap: '16px' }}>
-              <span style={{ fontSize: '14px', color: '#212529', fontWeight: '500' }}>공급받는자 (사업자명)</span>
-              <div style={{
-                padding: '8px 12px',
+          {/* 버튼 영역 */}
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              disabled={loading}
+              style={{
+                padding: '12px 24px',
                 fontSize: '14px',
+                fontWeight: '500',
                 color: '#212529',
-                backgroundColor: '#F8F9FA',
+                backgroundColor: 'white',
                 border: '1px solid #CED4DA',
-                borderRadius: '4px'
-              }}>
-                {donation.businesses?.name}
-              </div>
-              <span style={{ fontSize: '14px', color: '#212529', fontWeight: '500' }}>사업자등록번호</span>
-              <div style={{
-                padding: '8px 12px',
-                fontSize: '14px',
-                color: '#212529',
-                backgroundColor: '#F8F9FA',
-                border: '1px solid #CED4DA',
-                borderRadius: '4px'
-              }}>
-                {donation.businesses?.address || '123-45-67890'}
-              </div>
-              <span style={{ fontSize: '14px', color: '#212529', fontWeight: '500' }}>대표자명</span>
-              <div style={{
-                padding: '8px 12px',
-                fontSize: '14px',
-                color: '#212529',
-                backgroundColor: '#F8F9FA',
-                border: '1px solid #CED4DA',
-                borderRadius: '4px'
-              }}>
-                {donation.businesses?.representative_name || '홍길동'}
-              </div>
-              <span style={{ fontSize: '14px', color: '#212529', fontWeight: '500' }}>발행일자 *</span>
-              <div style={{
-                padding: '8px 12px',
-                fontSize: '14px',
-                color: '#212529',
-                backgroundColor: '#F8F9FA',
-                border: '1px solid #CED4DA',
-                borderRadius: '4px'
-              }}>
-                {new Date().toLocaleDateString('ko-KR')}
-              </div>
-            </div>
-          </div>
-
-          {/* Submit Buttons */}
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-            <Link href="/admin/donations">
-              <button
-                type="button"
-                style={{
-                  padding: '12px 32px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#6C757D',
-                  backgroundColor: 'white',
-                  border: '1px solid #6C757D',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                임시 저장
-              </button>
-            </Link>
+                borderRadius: '4px',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.5 : 1,
+                transition: 'all 0.2s'
+              }}
+            >
+              임시저장
+            </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || selectedBeneficiaries.length === 0}
               style={{
                 padding: '12px 32px',
                 fontSize: '14px',
-                fontWeight: '500',
+                fontWeight: '600',
                 color: 'white',
-                backgroundColor: loading ? '#6C757D' : '#ffd020',
+                backgroundColor: (loading || selectedBeneficiaries.length === 0) ? '#6C757D' : '#28A745',
                 border: 'none',
                 borderRadius: '4px',
-                cursor: loading ? 'not-allowed' : 'pointer'
+                cursor: (loading || selectedBeneficiaries.length === 0) ? 'not-allowed' : 'pointer',
+                opacity: (loading || selectedBeneficiaries.length === 0) ? 0.5 : 1,
+                transition: 'all 0.2s'
               }}
             >
-              {loading ? '발송 중...' : '견적서 발송'}
+              {loading ? '처리 중...' : '견적서 발송'}
             </button>
           </div>
         </form>

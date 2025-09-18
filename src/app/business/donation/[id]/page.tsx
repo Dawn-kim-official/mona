@@ -280,20 +280,45 @@ export default function DonationDetailPage() {
             기부 물품 사진
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-            {[1, 2, 3].map((idx) => (
-              <div key={idx} style={{
-                aspectRatio: '1',
-                backgroundColor: '#F8F9FA',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#ADB5BD',
-                fontSize: '14px'
-              }}>
-                이미지
-              </div>
-            ))}
+            {donation.photos && donation.photos.length > 0 ? (
+              donation.photos.map((photo, idx) => (
+                <div key={idx} style={{
+                  aspectRatio: '1',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  backgroundColor: '#F8F9FA'
+                }}>
+                  <img 
+                    src={photo} 
+                    alt={`기부 물품 사진 ${idx + 1}`}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover'
+                    }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.parentElement!.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #ADB5BD; fontSize: 14px">이미지 로드 실패</div>';
+                    }}
+                  />
+                </div>
+              ))
+            ) : (
+              [1, 2, 3].map((idx) => (
+                <div key={idx} style={{
+                  aspectRatio: '1',
+                  backgroundColor: '#F8F9FA',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#ADB5BD',
+                  fontSize: '14px'
+                }}>
+                  이미지 없음
+                </div>
+              ))
+            )}
           </div>
         </div>
 

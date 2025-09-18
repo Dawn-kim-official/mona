@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import MatchingNotificationModal from '@/components/MatchingNotificationModal'
+import PickupReminderModal from '@/components/PickupReminderModal'
+import CircularProgress from '@/components/CircularProgress'
 
 interface DashboardStats {
   totalProposals: number
@@ -98,82 +100,138 @@ export default function BeneficiaryDashboardPage() {
         대시보드
       </h1>
 
-      {/* Statistics Cards */}
+      {/* Statistics Cards with Circular Progress */}
       <div style={{ 
         display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
         gap: '24px',
         marginBottom: '40px'
       }}>
+        {/* 전체 제안 */}
         <div style={{
           backgroundColor: 'white',
-          borderRadius: '8px',
-          padding: '24px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+          borderRadius: '12px',
+          padding: '32px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '24px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <span style={{ fontSize: '14px', color: '#6C757D' }}>전체 제안</span>
-            <span style={{ fontSize: '24px', color: '#ffd020' }}>📋</span>
-          </div>
-          <div style={{ fontSize: '32px', fontWeight: '700', color: '#212529' }}>
-            {stats.totalProposals}
-          </div>
-          <div style={{ fontSize: '12px', color: '#6C757D', marginTop: '8px' }}>
-            총 제안받은 기부
+          <CircularProgress
+            value={stats.totalProposals}
+            maxValue={stats.totalProposals || 1}
+            size={120}
+            strokeWidth={8}
+            primaryColor="#02391f"
+            secondaryColor="#E9ECEF"
+            centerText={false}
+          />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '14px', color: '#6C757D', marginBottom: '8px' }}>
+              전체 제안
+            </div>
+            <div style={{ fontSize: '36px', fontWeight: '700', color: '#212529', lineHeight: 1 }}>
+              {stats.totalProposals}
+            </div>
+            <div style={{ fontSize: '12px', color: '#ADB5BD', marginTop: '4px' }}>
+              총 제안받은 기부
+            </div>
           </div>
         </div>
 
+        {/* 대기 중 */}
         <div style={{
           backgroundColor: 'white',
-          borderRadius: '8px',
-          padding: '24px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+          borderRadius: '12px',
+          padding: '32px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '24px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <span style={{ fontSize: '14px', color: '#6C757D' }}>대기 중</span>
-            <span style={{ fontSize: '24px', color: '#FF8C00' }}>⏳</span>
-          </div>
-          <div style={{ fontSize: '32px', fontWeight: '700', color: '#212529' }}>
-            {stats.pendingProposals}
-          </div>
-          <div style={{ fontSize: '12px', color: '#6C757D', marginTop: '8px' }}>
-            응답 대기 중인 제안
+          <CircularProgress
+            value={stats.pendingProposals}
+            maxValue={stats.totalProposals || 1}
+            size={120}
+            strokeWidth={8}
+            primaryColor="#FF8C00"
+            secondaryColor="#E9ECEF"
+            label={`${stats.totalProposals > 0 ? Math.round((stats.pendingProposals / stats.totalProposals) * 100) : 0}%`}
+          />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '14px', color: '#6C757D', marginBottom: '8px' }}>
+              대기 중
+            </div>
+            <div style={{ fontSize: '36px', fontWeight: '700', color: '#212529', lineHeight: 1 }}>
+              {stats.pendingProposals}
+            </div>
+            <div style={{ fontSize: '12px', color: '#ADB5BD', marginTop: '4px' }}>
+              응답 대기 중인 제안
+            </div>
           </div>
         </div>
 
+        {/* 수령 완료 */}
         <div style={{
           backgroundColor: 'white',
-          borderRadius: '8px',
-          padding: '24px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+          borderRadius: '12px',
+          padding: '32px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '24px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <span style={{ fontSize: '14px', color: '#6C757D' }}>수령 완료</span>
-            <span style={{ fontSize: '24px', color: '#28A745' }}>✅</span>
-          </div>
-          <div style={{ fontSize: '32px', fontWeight: '700', color: '#212529' }}>
-            {stats.totalReceived}
-          </div>
-          <div style={{ fontSize: '12px', color: '#6C757D', marginTop: '8px' }}>
-            총 수령한 기부
+          <CircularProgress
+            value={stats.totalReceived}
+            maxValue={stats.totalProposals || 1}
+            size={120}
+            strokeWidth={8}
+            primaryColor="#28A745"
+            secondaryColor="#E9ECEF"
+            label={`${stats.totalProposals > 0 ? Math.round((stats.totalReceived / stats.totalProposals) * 100) : 0}%`}
+          />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '14px', color: '#6C757D', marginBottom: '8px' }}>
+              수령 완료
+            </div>
+            <div style={{ fontSize: '36px', fontWeight: '700', color: '#212529', lineHeight: 1 }}>
+              {stats.totalReceived}
+            </div>
+            <div style={{ fontSize: '12px', color: '#ADB5BD', marginTop: '4px' }}>
+              총 수령한 기부
+            </div>
           </div>
         </div>
 
+        {/* 이번 달 */}
         <div style={{
           backgroundColor: 'white',
-          borderRadius: '8px',
-          padding: '24px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+          borderRadius: '12px',
+          padding: '32px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '24px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <span style={{ fontSize: '14px', color: '#6C757D' }}>이번 달</span>
-            <span style={{ fontSize: '24px', color: '#007BFF' }}>📅</span>
-          </div>
-          <div style={{ fontSize: '32px', fontWeight: '700', color: '#212529' }}>
-            {stats.thisMonthReceived}
-          </div>
-          <div style={{ fontSize: '12px', color: '#6C757D', marginTop: '8px' }}>
-            이번 달 수령
+          <CircularProgress
+            value={stats.thisMonthReceived}
+            maxValue={stats.thisMonthReceived || 1}
+            size={120}
+            strokeWidth={8}
+            primaryColor="#ffd020"
+            secondaryColor="#E9ECEF"
+            centerText={false}
+          />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '14px', color: '#6C757D', marginBottom: '8px' }}>
+              이번 달
+            </div>
+            <div style={{ fontSize: '36px', fontWeight: '700', color: '#212529', lineHeight: 1 }}>
+              {stats.thisMonthReceived}
+            </div>
+            <div style={{ fontSize: '12px', color: '#ADB5BD', marginTop: '4px' }}>
+              이번 달 수령
+            </div>
           </div>
         </div>
       </div>
@@ -282,6 +340,14 @@ export default function BeneficiaryDashboardPage() {
           userType="beneficiary"
           userId={userId}
           onConfirm={() => setNotificationConfirmed(true)}
+        />
+      )}
+      
+      {/* Pickup Reminder Modal */}
+      {userId && (
+        <PickupReminderModal
+          userType="beneficiary"
+          userId={userId}
         />
       )}
     </div>
