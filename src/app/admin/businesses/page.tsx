@@ -108,14 +108,11 @@ export default function AdminBusinessesPage() {
 
   async function updateBeneficiaryStatus(beneficiaryId: string, status: 'approved' | 'rejected', reason?: string) {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      
       const { error } = await supabase
         .from('beneficiaries')
         .update({ 
           status, 
-          approved_at: status === 'approved' ? new Date().toISOString() : null,
-          approved_by: user?.id
+          approved_at: status === 'approved' ? new Date().toISOString() : null
         })
         .eq('id', beneficiaryId)
 
