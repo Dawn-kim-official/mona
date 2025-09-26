@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import Footer from '@/components/Footer'
 
 export default function RegistrationPendingPage() {
   const router = useRouter()
@@ -17,11 +18,16 @@ export default function RegistrationPendingPage() {
       minHeight: '100vh', 
       backgroundColor: '#F5F5F5',
       display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px'
+      flexDirection: 'column'
     }}>
       <div style={{
+        flex: 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px'
+      }}>
+        <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',
         boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
@@ -113,7 +119,9 @@ export default function RegistrationPendingPage() {
         >
           로그아웃
         </button>
+        </div>
       </div>
+      <Footer />
     </div>
   )
 }

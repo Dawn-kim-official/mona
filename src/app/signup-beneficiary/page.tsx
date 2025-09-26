@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
+import Footer from '@/components/Footer'
 
 export default function SignupBeneficiaryPage() {
   // 단계 관리
@@ -141,10 +142,15 @@ export default function SignupBeneficiaryPage() {
       minHeight: '100vh', 
       backgroundColor: '#F5F5F5',
       display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px'
+      flexDirection: 'column'
     }}>
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px'
+      }}>
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',
@@ -650,6 +656,8 @@ export default function SignupBeneficiaryPage() {
           </form>
         )}
       </div>
+      </div>
+      <Footer />
     </div>
   )
 }

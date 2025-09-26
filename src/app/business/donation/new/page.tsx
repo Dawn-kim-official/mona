@@ -4,12 +4,19 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
+declare global {
+  interface Window {
+    daum: any
+  }
+}
+
 export default function NewDonationPage() {
   const router = useRouter()
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [businessInfo, setBusinessInfo] = useState<any>(null)
   const [taxInvoiceRequested, setTaxInvoiceRequested] = useState(false)
+  const [useBusinessAddress, setUseBusinessAddress] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     category: '',
@@ -20,9 +27,13 @@ export default function NewDonationPage() {
     pickupDate: '',
     pickupTime: '', // 픽업 희망 시간대
     pickupAddress: '',
+    pickupPostcode: '',
+    pickupDetailAddress: '',
     additionalInfo: '',
     photos: [] as File[],
     photoType: 'main', // 'main' or 'sub'
+    directDelivery: false, // 직접 배달 가능 여부
+    productDetailUrl: '', // 제품 상세정보 링크
     // 세금계산서 정보
     taxInvoiceEmail: '',
     businessType: ''
@@ -30,6 +41,14 @@ export default function NewDonationPage() {
 
   useEffect(() => {
     fetchBusinessInfo()
+    
+    // Load Daum postcode script
+    if (typeof window !== 'undefined' && !window.daum) {
+      const script = document.createElement('script')
+      script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
+      script.async = true
+      document.body.appendChild(script)
+    }
   }, [])
 
   async function fetchBusinessInfo() {
@@ -93,6 +112,10 @@ export default function NewDonationPage() {
       }
 
       // Create donation
+      const fullPickupAddress = formData.pickupDetailAddress 
+        ? `${formData.pickupAddress} ${formData.pickupDetailAddress}`
+        : formData.pickupAddress
+      
       const donationData = {
         business_id: business.id,
         name: formData.name,
@@ -100,14 +123,16 @@ export default function NewDonationPage() {
         quantity: parseFloat(formData.quantity) || 0,
         unit: formData.unit === 'custom' ? formData.customUnit : formData.unit,
         condition: 'good',
-        expiration_date: formData.expiryDate || null,
+        expiration_date: formData.expiryDate || '',
         pickup_deadline: formData.pickupDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default to 7 days from now
-        pickup_location: formData.pickupAddress,
+        pickup_location: fullPickupAddress,
         pickup_time: formData.pickupTime || null,
         additional_info: formData.additionalInfo || null,
         photos: photoUrls.length > 0 ? photoUrls : null,
         status: 'pending_review',
         category: formData.category,
+        direct_delivery_available: formData.directDelivery, // 직접 배달 가능 여부
+        product_detail_url: formData.productDetailUrl || null, // 제품 상세정보 링크
         tax_deduction_needed: taxInvoiceRequested,
         tax_invoice_email: taxInvoiceRequested ? formData.taxInvoiceEmail : null,
         business_type: taxInvoiceRequested ? formData.businessType : null
@@ -134,12 +159,96 @@ export default function NewDonationPage() {
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     if (e.target.files) {
-      // 새로운 파일이 선택되면 기존 파일을 완전히 대체
+      const newFiles = Array.from(e.target.files)
+      const currentCount = formData.photos.length
+      const newCount = newFiles.length
+      
+      // 현재 사진이 3장 이상이면 추가 불가
+      if (currentCount >= 3) {
+        alert('사진은 최대 3장까지만 등록할 수 있습니다.')
+        e.target.value = '' // input 초기화
+        return
+      }
+      
+      // 추가하려는 사진을 포함해서 3장을 초과하는 경우
+      if (currentCount + newCount > 3) {
+        const allowedCount = 3 - currentCount
+        alert(`현재 ${currentCount}장이 등록되어 있습니다. ${allowedCount}장만 더 추가할 수 있습니다.`)
+        
+        // 3장 제한에 맞춰서만 추가
+        setFormData({
+          ...formData,
+          photos: [...formData.photos, ...newFiles.slice(0, allowedCount)]
+        })
+      } else {
+        // 3장 이하인 경우 정상 추가
+        setFormData({
+          ...formData,
+          photos: [...formData.photos, ...newFiles]
+        })
+      }
+      
+      e.target.value = '' // input 초기화
+    }
+  }
+
+  function removePhoto(index: number) {
+    setFormData({
+      ...formData,
+      photos: formData.photos.filter((_, i) => i !== index)
+    })
+  }
+
+  // 주소 검색 함수
+  const handleAddressSearch = () => {
+    if (typeof window !== 'undefined' && window.daum && window.daum.Postcode) {
+      new window.daum.Postcode({
+        oncomplete: function(data: any) {
+          setFormData({
+            ...formData,
+            pickupPostcode: data.zonecode,
+            pickupAddress: data.roadAddress || data.jibunAddress
+          })
+        }
+      }).open()
+    }
+  }
+
+  // 사업지 주소 자동입력 토글
+  const toggleBusinessAddress = () => {
+    const newUseBusinessAddress = !useBusinessAddress
+    setUseBusinessAddress(newUseBusinessAddress)
+    
+    if (newUseBusinessAddress && businessInfo) {
+      // address 필드가 없으면 경고 메시지
+      if (!businessInfo.address && !businessInfo.postcode) {
+        alert('등록된 사업지 주소가 없습니다. 회원정보에서 주소를 등록해주세요.')
+        setUseBusinessAddress(false)
+        return
+      }
+      
+      // 사업지 주소로 자동 입력
       setFormData({
         ...formData,
-        photos: Array.from(e.target.files)
+        pickupPostcode: businessInfo.postcode || '',
+        pickupAddress: businessInfo.address || '',
+        pickupDetailAddress: businessInfo.detail_address || ''
+      })
+    } else if (!newUseBusinessAddress) {
+      // 주소 초기화
+      setFormData({
+        ...formData,
+        pickupPostcode: '',
+        pickupAddress: '',
+        pickupDetailAddress: ''
       })
     }
+  }
+
+  // 식품 카테고리 체크 함수
+  function isFoodCategory() {
+    const foodCategories = ['식품']
+    return foodCategories.includes(formData.category)
   }
 
   const inputStyle = {
@@ -269,9 +378,6 @@ export default function NewDonationPage() {
                   >
                     <option value="kg">kg</option>
                     <option value="개">개</option>
-                    <option value="box">박스</option>
-                    <option value="세트">세트</option>
-                    <option value="L">리터(L)</option>
                     <option value="custom">직접입력</option>
                   </select>
                   {formData.unit === 'custom' && (
@@ -304,7 +410,16 @@ export default function NewDonationPage() {
                 <select
                   required
                   value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  onChange={(e) => {
+                    const newCategory = e.target.value
+                    const foodCategories = ['식품', '생필품', '가구', '가전제품', '의류', '기타']
+                    // 비식품 카테고리로 변경 시 소비기한 초기화
+                    if (!foodCategories.includes(newCategory)) {
+                      setFormData({ ...formData, category: newCategory, expiryDate: '' })
+                    } else {
+                      setFormData({ ...formData, category: newCategory })
+                    }
+                  }}
                   style={inputStyle}
                   onFocus={(e) => {
                     e.currentTarget.style.borderColor = '#02391f'
@@ -316,30 +431,62 @@ export default function NewDonationPage() {
                   }}
                 >
                   <option value="">카테고리를 선택하세요</option>
-                  <option value="개별포장 식품">개별포장 식품</option>
-                  <option value="캔류">캔류</option>
-                  <option value="통조림">통조림</option>
-                  <option value="라면류">라면류</option>
-                  <option value="가공식품">가공식품</option>
-                  <option value="냉동식품">냉동식품</option>
-                  <option value="음료">음료</option>
-                  <option value="과자/빵">과자/빵</option>
-                  <option value="생활용품">생활용품</option>
+                  <option value="식품">식품 (과잉재고, 유통기한 임박 식품 등)</option>
+                  <option value="생필품">생필품 (세면도구, 생활용품 등)</option>
+                  <option value="가구">가구</option>
+                  <option value="가전제품">가전제품</option>
+                  <option value="의류">의류</option>
                   <option value="기타">기타</option>
                 </select>
               </div>
               <div>
                 <label style={labelStyle}>
-                  소비기한 <span style={{ color: '#DC3545' }}>*</span>
-                  <span style={{ fontSize: '12px', color: '#6C757D', marginLeft: '8px' }}>(개별 포장 식품은 제조일로부터 최소 1개월 이상)</span>
+                  소비기한 {isFoodCategory() && <span style={{ color: '#DC3545' }}>*</span>}
+                  {isFoodCategory() && <span style={{ fontSize: '12px', color: '#6C757D', marginLeft: '8px' }}>(개별 포장 식품은 제조일로부터 최소 1개월 이상)</span>}
                 </label>
                 <input
                   type="date"
-                  required
+                  required={isFoodCategory()}
+                  disabled={!isFoodCategory()}
                   value={formData.expiryDate}
                   onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
-                  style={inputStyle}
+                  style={{
+                    ...inputStyle,
+                    backgroundColor: !isFoodCategory() ? '#F8F9FA' : '#FFFFFF',
+                    cursor: !isFoodCategory() ? 'not-allowed' : 'text'
+                  }}
                   min={new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                  onFocus={(e) => {
+                    if (isFoodCategory()) {
+                      e.currentTarget.style.borderColor = '#02391f'
+                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
+                    }
+                  }}
+                  onBlur={(e) => {
+                    if (isFoodCategory()) {
+                      e.currentTarget.style.borderColor = '#CED4DA'
+                      e.currentTarget.style.boxShadow = 'none'
+                    }
+                  }}
+                />
+                {!isFoodCategory() && formData.category && (
+                  <small style={{ fontSize: '12px', color: '#6C757D', marginTop: '4px', display: 'block' }}>
+                    식품 카테고리만 소비기한 입력이 필요합니다.
+                  </small>
+                )}
+              </div>
+            </div>
+
+            <div>
+                <label style={labelStyle}>
+                  제품 상세정보 링크
+                </label>
+                <input
+                  type="url"
+                  value={formData.productDetailUrl}
+                  onChange={(e) => setFormData({ ...formData, productDetailUrl: e.target.value })}
+                  style={{...inputStyle, marginBottom: '24px'}}
+                  placeholder="예: https://www.example.com/product-detail"
                   onFocus={(e) => {
                     e.currentTarget.style.borderColor = '#02391f'
                     e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
@@ -350,7 +497,6 @@ export default function NewDonationPage() {
                   }}
                 />
               </div>
-            </div>
 
             <div style={{ marginBottom: '24px' }}>
               <label style={labelStyle}>
@@ -364,7 +510,7 @@ export default function NewDonationPage() {
                   minHeight: '100px',
                   resize: 'vertical'
                 }}
-                placeholder="예: 냉장보관 필요, 유통기한이 얼마 남지 않은 제품, 대량 기부 가능 등"
+                placeholder="예: 냉장보관 필요, 유통기한 임박, 매달 반복적으로 발생 등"
                 onFocus={(e) => {
                   e.currentTarget.style.borderColor = '#02391f'
                   e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
@@ -376,7 +522,7 @@ export default function NewDonationPage() {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px'}}>
               <div>
                 <label style={labelStyle}>
                   픽업 희망일 <span style={{ color: '#DC3545' }}>*</span>
@@ -418,27 +564,145 @@ export default function NewDonationPage() {
                   }}
                 />
               </div>
-              <div>
+            </div>
+            
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                 <label style={labelStyle}>
                   픽업 장소 <span style={{ color: '#DC3545' }}>*</span>
                 </label>
+                <button
+                  type="button"
+                  onClick={toggleBusinessAddress}
+                  style={{
+                    padding: '8px 16px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: useBusinessAddress ? '#FFFFFF' : '#02391f',
+                    backgroundColor: useBusinessAddress ? '#02391f' : '#FFFFFF',
+                    border: `1px solid ${useBusinessAddress ? '#02391f' : '#CED4DA'}`,
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (useBusinessAddress) {
+                      e.currentTarget.style.backgroundColor = '#024d29'
+                    } else {
+                      e.currentTarget.style.backgroundColor = '#F8F9FA'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (useBusinessAddress) {
+                      e.currentTarget.style.backgroundColor = '#02391f'
+                    } else {
+                      e.currentTarget.style.backgroundColor = '#FFFFFF'
+                    }
+                  }}
+                >
+                  {useBusinessAddress ? '✓ 사업지 주소 사용중' : '사업지 주소로 자동입력'}
+                </button>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                 <input
                   type="text"
                   required
                   value={formData.pickupAddress}
-                  onChange={(e) => setFormData({ ...formData, pickupAddress: e.target.value })}
-                  style={inputStyle}
-                  placeholder="픽업 장소를 입력하세요"
+                  onChange={(e) => !useBusinessAddress && setFormData({ ...formData, pickupAddress: e.target.value })}
+                  style={{ 
+                    ...inputStyle, 
+                    flex: 1,
+                    backgroundColor: useBusinessAddress ? '#F8F9FA' : '#FFFFFF',
+                    cursor: useBusinessAddress ? 'not-allowed' : 'text'
+                  }}
+                  placeholder="주소를 검색하세요"
+                  readOnly
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = '#02391f'
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
+                    if (!useBusinessAddress) {
+                      e.currentTarget.style.borderColor = '#02391f'
+                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
+                    }
                   }}
                   onBlur={(e) => {
                     e.currentTarget.style.borderColor = '#CED4DA'
                     e.currentTarget.style.boxShadow = 'none'
                   }}
                 />
+                <button
+                  type="button"
+                  onClick={handleAddressSearch}
+                  disabled={useBusinessAddress}
+                  style={{
+                    padding: '14px 20px',
+                    fontSize: '16px',
+                    fontWeight: '500',
+                    color: useBusinessAddress ? '#ADB5BD' : '#FFFFFF',
+                    backgroundColor: useBusinessAddress ? '#E9ECEF' : '#02391f',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: useBusinessAddress ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!useBusinessAddress) {
+                      e.currentTarget.style.backgroundColor = '#024d29'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!useBusinessAddress) {
+                      e.currentTarget.style.backgroundColor = '#02391f'
+                    }
+                  }}
+                >
+                  주소 검색
+                </button>
               </div>
+              <input
+                type="text"
+                value={formData.pickupDetailAddress}
+                onChange={(e) => !useBusinessAddress && setFormData({ ...formData, pickupDetailAddress: e.target.value })}
+                style={{ 
+                  ...inputStyle,
+                  backgroundColor: useBusinessAddress ? '#F8F9FA' : '#FFFFFF',
+                  cursor: useBusinessAddress ? 'not-allowed' : 'text'
+                }}
+                placeholder="상세주소"
+                readOnly={useBusinessAddress}
+                onFocus={(e) => {
+                  if (!useBusinessAddress) {
+                    e.currentTarget.style.borderColor = '#02391f'
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
+                  }
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#CED4DA'
+                  e.currentTarget.style.boxShadow = 'none'
+                }}
+              />
+            </div>
+            
+            {/* 직접 배달 가능 여부 및 제품 상세정보 */}
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginBottom: '16px' }}>
+                <input
+                  type="checkbox"
+                  checked={formData.directDelivery}
+                  onChange={(e) => setFormData({ ...formData, directDelivery: e.target.checked })}
+                  style={{
+                    width: '18px',
+                    height: '18px',
+                    marginRight: '10px',
+                    cursor: 'pointer'
+                  }}
+                />
+                <span style={{ fontSize: '14px', color: '#212529', fontWeight: '500' }}>
+                  직접 배달 가능
+                </span>
+                <span style={{ fontSize: '12px', color: '#6C757D', marginLeft: '8px' }}>
+                  (체크 시 직접 배달이 가능함을 표시합니다)
+                </span>
+              </label>
+            
             </div>
           </div>
 
@@ -539,42 +803,109 @@ export default function NewDonationPage() {
           }}>
             <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', color: '#212529' }}>기부 물품 사진 (최대 3장)</h2>
             <label htmlFor="photo-upload" style={{ 
-              border: '2px dashed #DEE2E6',
+              border: formData.photos.length >= 3 ? '2px dashed #CED4DA' : '2px dashed #DEE2E6',
               borderRadius: '8px',
               padding: '40px',
               textAlign: 'center',
-              backgroundColor: '#F8F9FA',
+              backgroundColor: formData.photos.length >= 3 ? '#E9ECEF' : '#F8F9FA',
               marginBottom: '24px',
               position: 'relative',
-              cursor: 'pointer',
+              cursor: formData.photos.length >= 3 ? 'not-allowed' : 'pointer',
+              opacity: formData.photos.length >= 3 ? 0.6 : 1,
               display: 'block'
             }}>
               <svg width="48" height="48" viewBox="0 0 24 24" fill="#ADB5BD" style={{ marginBottom: '16px' }}>
                 <path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>
               </svg>
-              <p style={{ color: '#6C757D', fontSize: '14px', marginBottom: '16px' }}>클릭하여 업로드 또는 이미지 드래그하세요.</p>
-              <p style={{ color: '#ADB5BD', fontSize: '12px' }}>최대 5MB</p>
+              <p style={{ color: '#6C757D', fontSize: '14px', marginBottom: '8px' }}>클릭하여 업로드 또는 이미지 드래그하세요.</p>
+              <p style={{ color: '#ADB5BD', fontSize: '12px', marginBottom: '4px' }}>최대 3장까지 업로드 가능</p>
+              <p style={{ color: '#ADB5BD', fontSize: '12px' }}>파일당 최대 5MB</p>
               <input
                 type="file"
                 multiple
                 accept="image/*"
                 onChange={handlePhotoChange}
+                disabled={formData.photos.length >= 3}
                 style={{ display: 'none' }}
                 id="photo-upload"
               />
             </label>
             {formData.photos.length > 0 && (
               <div style={{ marginTop: '16px' }}>
-                <p style={{ fontSize: '14px', color: '#495057', marginBottom: '8px' }}>
-                  선택된 파일: {formData.photos.length}개
+                <p style={{ fontSize: '14px', color: '#495057', marginBottom: '12px' }}>
+                  선택된 파일: {formData.photos.length}/3
                 </p>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', 
+                  gap: '12px' 
+                }}>
                   {formData.photos.map((photo, index) => (
-                    <li key={index} style={{ fontSize: '13px', color: '#6C757D', marginBottom: '4px' }}>
-                      • {photo.name}
-                    </li>
+                    <div key={index} style={{ position: 'relative' }}>
+                      <div style={{
+                        width: '100%',
+                        height: '120px',
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                        border: '1px solid #DEE2E6',
+                        position: 'relative',
+                        backgroundColor: '#F8F9FA'
+                      }}>
+                        <img 
+                          src={URL.createObjectURL(photo)} 
+                          alt={photo.name}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover'
+                          }}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removePhoto(index)}
+                        style={{
+                          position: 'absolute',
+                          top: '4px',
+                          right: '4px',
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          backgroundColor: 'rgba(220, 53, 69, 0.9)',
+                          border: 'none',
+                          color: 'white',
+                          fontSize: '16px',
+                          lineHeight: '1',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#DC3545'
+                          e.currentTarget.style.transform = 'scale(1.1)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'rgba(220, 53, 69, 0.9)'
+                          e.currentTarget.style.transform = 'scale(1)'
+                        }}
+                      >
+                        ×
+                      </button>
+                      <p style={{ 
+                        fontSize: '11px', 
+                        color: '#6C757D', 
+                        marginTop: '4px',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>
+                        {photo.name}
+                      </p>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
           </div>

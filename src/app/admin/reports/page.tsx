@@ -14,8 +14,11 @@ export default function AdminReportsPage() {
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null)
   const [reports, setReports] = useState<any[]>([])
   const [showReportModal, setShowReportModal] = useState(false)
+  const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [mediaLinks, setMediaLinks] = useState<string[]>([''])
-  const [reportType, setReportType] = useState('ESG')
+  const [latestReports, setLatestReports] = useState<Record<string, string>>({})
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  // Report type removed - no longer needed
 
   useEffect(() => {
     fetchBusinesses()
@@ -30,6 +33,23 @@ export default function AdminReportsPage() {
 
     if (!error && data) {
       setBusinesses(data)
+      
+      // Fetch latest report date for each business
+      const reportDates: Record<string, string> = {}
+      for (const business of data) {
+        const { data: reportData } = await supabase
+          .from('reports')
+          .select('created_at')
+          .eq('business_id', business.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single()
+        
+        if (reportData) {
+          reportDates[business.id] = new Date(reportData.created_at).toLocaleDateString('ko-KR')
+        }
+      }
+      setLatestReports(reportDates)
     }
     setLoading(false)
   }
@@ -57,7 +77,6 @@ export default function AdminReportsPage() {
           business_id: businessId,
           report_url: businessData.esg_report_url,
           media_links: [],
-          report_type: 'ESG',
           report_date: new Date().toISOString(),
           created_at: new Date().toISOString()
         }])
@@ -67,17 +86,43 @@ export default function AdminReportsPage() {
     }
   }
 
-  async function handleReportUpload(businessId: string, file: File) {
-    setUploadingId(businessId)
+  async function deleteReport(reportId: string) {
+    if (!confirm('정말로 이 리포트를 삭제하시겠습니까?')) {
+      return
+    }
+
+    const { error } = await supabase
+      .from('reports')
+      .delete()
+      .eq('id', reportId)
+
+    if (error) {
+      alert('리포트 삭제 중 오류가 발생했습니다.')
+    } else {
+      alert('리포트가 삭제되었습니다.')
+      // Refresh reports
+      if (selectedBusiness) {
+        await fetchReports(selectedBusiness.id)
+      }
+    }
+  }
+
+  async function handleReportUpload() {
+    if (!selectedFile || !selectedBusiness) {
+      alert('파일을 선택해주세요.')
+      return
+    }
+    
+    setUploadingId(selectedBusiness.id)
     
     try {
       // Upload file to storage
-      const fileExt = file.name.split('.').pop()
-      const fileName = `esg-reports/${businessId}_${Date.now()}.${fileExt}`
+      const fileExt = selectedFile.name.split('.').pop()
+      const fileName = `esg-reports/${selectedBusiness.id}_${Date.now()}.${fileExt}`
       
       const { error: uploadError } = await supabase.storage
         .from('esg-reports')
-        .upload(fileName, file)
+        .upload(fileName, selectedFile)
       
       if (uploadError) throw uploadError
       
@@ -92,10 +137,9 @@ export default function AdminReportsPage() {
       const { error: insertError } = await supabase
         .from('reports')
         .insert({
-          business_id: businessId,
+          business_id: selectedBusiness.id,
           report_url: publicUrl,
           media_links: validMediaLinks,
-          report_type: reportType,
           report_date: new Date().toISOString()
         })
       
@@ -104,7 +148,7 @@ export default function AdminReportsPage() {
         const { error: updateError } = await supabase
           .from('businesses')
           .update({ esg_report_url: publicUrl })
-          .eq('id', businessId)
+          .eq('id', selectedBusiness.id)
         
         if (updateError) throw updateError
       }
@@ -114,7 +158,11 @@ export default function AdminReportsPage() {
       if (selectedBusiness) {
         await fetchReports(selectedBusiness.id)
       }
+      
+      // Reset form
       setMediaLinks([''])
+      setSelectedFile(null)
+      setShowReportModal(false)  // Close the modal after successful upload
       alert('리포트가 성공적으로 업로드되었습니다.')
     } catch (error) {
       // Error uploading report
@@ -158,12 +206,10 @@ export default function AdminReportsPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ backgroundColor: '#F8F9FA', borderBottom: '1px solid #DEE2E6' }}>
-                <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>사업자명</th>
-                <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>대표자명</th>
-                <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>연락처</th>
-                <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>리포트 상태</th>
-                <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>누적 리포트</th>
-                <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>작업</th>
+                <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px', width: '30%' }}>사업자명</th>
+                <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px', width: '25%' }}>리포트 상태 (마지막 업로드 일)</th>
+                <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px', width: '20%' }}>히스토리</th>
+                <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px', width: '25%' }}>작업</th>
               </tr>
             </thead>
             <tbody>
@@ -172,31 +218,40 @@ export default function AdminReportsPage() {
                   <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>
                     {business.name}
                   </td>
-                  <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#212529' }}>
-                    {business.representative_name}
-                  </td>
-                  <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#6C757D' }}>
-                    {business.phone}
-                  </td>
                   <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px' }}>
-                    {(business as any).esg_report_url ? (
-                      <a 
-                        href={(business as any).esg_report_url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        style={{ 
-                          color: '#28A745', 
-                          textDecoration: 'none',
-                          fontWeight: '500'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                        onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-                      >
-                        최신 리포트
-                      </a>
-                    ) : (
-                      <span style={{ color: '#6C757D' }}>미업로드</span>
-                    )}
+                    <span style={{ color: latestReports[business.id] ? '#212529' : '#6C757D' }}>
+                      {latestReports[business.id] || '미업로드'}
+                    </span>
+                  </td>
+                  <td style={{ padding: '16px', textAlign: 'center' }}>
+                    <button
+                      onClick={async () => {
+                        setSelectedBusiness(business)
+                        await fetchReports(business.id)
+                        setShowHistoryModal(true)
+                      }}
+                      style={{
+                        padding: '6px 16px',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        color: '#007BFF',
+                        backgroundColor: 'white',
+                        border: '1px solid #007BFF',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#007BFF'
+                        e.currentTarget.style.color = 'white'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'white'
+                        e.currentTarget.style.color = '#007BFF'
+                      }}
+                    >
+                      보기
+                    </button>
                   </td>
                   <td style={{ padding: '16px', textAlign: 'center' }}>
                     <button
@@ -205,40 +260,30 @@ export default function AdminReportsPage() {
                         await fetchReports(business.id)
                         setShowReportModal(true)
                       }}
-                      style={{
-                        padding: '4px 12px',
-                        fontSize: '12px',
-                        fontWeight: '400',
-                        color: '#007BFF',
-                        backgroundColor: 'transparent',
-                        border: '1px solid #007BFF',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      히스토리 보기
-                    </button>
-                  </td>
-                  <td style={{ padding: '16px', textAlign: 'center' }}>
-                    <button
-                      onClick={() => {
-                        setSelectedBusiness(business)
-                        setShowReportModal(true)
-                      }}
                       disabled={uploadingId === business.id}
                       style={{
                         padding: '6px 16px',
                         fontSize: '13px',
                         fontWeight: '500',
                         color: 'white',
-                        backgroundColor: uploadingId === business.id ? '#6C757D' : '#007BFF',
+                        backgroundColor: uploadingId === business.id ? '#6C757D' : '#28A745',
                         border: 'none',
                         borderRadius: '4px',
                         cursor: uploadingId === business.id ? 'not-allowed' : 'pointer',
                         transition: 'background-color 0.2s'
                       }}
+                      onMouseEnter={(e) => {
+                        if (uploadingId !== business.id) {
+                          e.currentTarget.style.backgroundColor = '#218838'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (uploadingId !== business.id) {
+                          e.currentTarget.style.backgroundColor = '#28A745'
+                        }
+                      }}
                     >
-                      {uploadingId === business.id ? '업로드 중...' : '새 리포트'}
+                      {uploadingId === business.id ? '업로드 중...' : '추가/삭제'}
                     </button>
                   </td>
                 </tr>
@@ -281,6 +326,7 @@ export default function AdminReportsPage() {
                   setSelectedBusiness(null)
                   setReports([])
                   setMediaLinks([''])
+                  setSelectedFile(null)
                 }}
                 style={{
                   background: 'none',
@@ -303,28 +349,6 @@ export default function AdminReportsPage() {
             }}>
               <h4 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#495057' }}>새 리포트 추가</h4>
               
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500' }}>
-                  리포트 유형
-                </label>
-                <select
-                  value={reportType}
-                  onChange={(e) => setReportType(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: '1px solid #DEE2E6',
-                    borderRadius: '4px',
-                    fontSize: '14px'
-                  }}
-                >
-                  <option value="ESG">ESG 리포트</option>
-                  <option value="기부">기부 리포트</option>
-                  <option value="활동">활동 리포트</option>
-                  <option value="기타">기타</option>
-                </select>
-              </div>
-
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500' }}>
                   미디어 링크 (사진/영상 URL)
@@ -377,14 +401,17 @@ export default function AdminReportsPage() {
                 </button>
               </div>
 
-              <div>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500' }}>
+                  리포트 파일 선택
+                </label>
                 <input
                   type="file"
                   accept=".pdf,.doc,.docx"
                   onChange={(e) => {
                     const file = e.target.files?.[0]
-                    if (file && selectedBusiness) {
-                      handleReportUpload(selectedBusiness.id, file)
+                    if (file) {
+                      setSelectedFile(file)
                     }
                   }}
                   style={{ display: 'none' }}
@@ -395,7 +422,7 @@ export default function AdminReportsPage() {
                   style={{
                     display: 'inline-block',
                     padding: '8px 24px',
-                    backgroundColor: '#007BFF',
+                    backgroundColor: '#6C757D',
                     color: 'white',
                     borderRadius: '4px',
                     cursor: 'pointer',
@@ -403,8 +430,83 @@ export default function AdminReportsPage() {
                     fontWeight: '500'
                   }}
                 >
-                  리포트 파일 선택 및 업로드
+                  파일 선택
                 </label>
+                
+                {selectedFile && (
+                  <div style={{ 
+                    marginTop: '12px', 
+                    padding: '12px',
+                    backgroundColor: '#F8F9FA',
+                    borderRadius: '4px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <div>
+                      <div style={{ fontWeight: '500', marginBottom: '4px' }}>
+                        📄 {selectedFile.name}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#6C757D' }}>
+                        크기: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setSelectedFile(null)}
+                      style={{
+                        padding: '4px 12px',
+                        backgroundColor: '#DC3545',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      삭제
+                    </button>
+                  </div>
+                )}
+              </div>
+              
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #DEE2E6' }}>
+                <button
+                  onClick={() => {
+                    setShowReportModal(false)
+                    setSelectedBusiness(null)
+                    setReports([])
+                    setMediaLinks([''])
+                    setSelectedFile(null)
+                  }}
+                  style={{
+                    padding: '8px 24px',
+                    backgroundColor: '#6C757D',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500'
+                  }}
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleReportUpload}
+                  disabled={!selectedFile || uploadingId === selectedBusiness?.id}
+                  style={{
+                    padding: '8px 24px',
+                    backgroundColor: (!selectedFile || uploadingId === selectedBusiness?.id) ? '#CED4DA' : '#007BFF',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: (!selectedFile || uploadingId === selectedBusiness?.id) ? 'not-allowed' : 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500'
+                  }}
+                >
+                  {uploadingId === selectedBusiness?.id ? '업로드 중...' : '업로드'}
+                </button>
               </div>
             </div>
 
@@ -421,12 +523,135 @@ export default function AdminReportsPage() {
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <span style={{ fontWeight: '500', color: '#212529' }}>
-                          {report.report_type} 리포트
+                          리포트 #{reports.length - idx}
                         </span>
                         <span style={{ color: '#6C757D', fontSize: '13px' }}>
                           {new Date(report.created_at).toLocaleDateString('ko-KR')}
                         </span>
                       </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                          <a
+                            href={report.report_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              color: '#007BFF',
+                              fontSize: '13px',
+                              textDecoration: 'none'
+                            }}
+                          >
+                            📄 리포트 보기
+                          </a>
+                          {report.media_links && report.media_links.length > 0 && (
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              {report.media_links.map((link: string, linkIdx: number) => (
+                                <a
+                                  key={linkIdx}
+                                  href={link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    color: '#17A2B8',
+                                    fontSize: '13px',
+                                    textDecoration: 'none'
+                                  }}
+                                >
+                                  📷 미디어 {linkIdx + 1}
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => deleteReport(report.id)}
+                          style={{
+                            padding: '4px 12px',
+                            backgroundColor: '#DC3545',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ color: '#6C757D', textAlign: 'center' }}>아직 업로드된 리포트가 없습니다.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 히스토리 전용 모달 */}
+      {showHistoryModal && selectedBusiness && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '24px',
+            borderRadius: '8px',
+            width: '600px',
+            maxWidth: '90%',
+            maxHeight: '70vh',
+            overflow: 'auto'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h3 style={{ margin: 0, color: '#212529' }}>
+                {selectedBusiness.name} - 리포트 히스토리
+              </h3>
+              <button
+                onClick={() => {
+                  setShowHistoryModal(false)
+                  setSelectedBusiness(null)
+                  setReports([])
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#6C757D'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* 리포트 목록 - 추가 모달과 동일한 형식 */}
+            {reports.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {reports.map((report, idx) => (
+                  <div key={report.id || idx} style={{
+                    padding: '12px',
+                    border: '1px solid #DEE2E6',
+                    borderRadius: '4px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ fontWeight: '500', color: '#212529' }}>
+                        리포트 #{reports.length - idx}
+                      </span>
+                      <span style={{ color: '#6C757D', fontSize: '13px' }}>
+                        {new Date(report.created_at).toLocaleDateString('ko-KR')}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                         <a
                           href={report.report_url}
@@ -460,13 +685,29 @@ export default function AdminReportsPage() {
                           </div>
                         )}
                       </div>
+                      <button
+                        onClick={() => deleteReport(report.id)}
+                        style={{
+                          padding: '4px 12px',
+                          backgroundColor: '#DC3545',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        삭제
+                      </button>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p style={{ color: '#6C757D', textAlign: 'center' }}>아직 업로드된 리포트가 없습니다.</p>
-              )}
-            </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ color: '#6C757D', textAlign: 'center', padding: '32px' }}>
+                아직 업로드된 리포트가 없습니다.
+              </p>
+            )}
           </div>
         </div>
       )}

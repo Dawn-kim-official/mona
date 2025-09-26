@@ -79,37 +79,81 @@ export default function AdminQuoteUploadPage() {
   }
 
   async function fetchData() {
+    console.log('Fetching data for donation:', params.id)
     try {
-      // 1. 기부 정보 가져오기
-      const { data: donationData } = await supabase
+      // 1. 기부 정보 가져오기 (businesses 테이블 조인 제거)
+      const { data: donationData, error: donationError } = await supabase
         .from('donations')
-        .select(`
-          *,
-          businesses(name, email, phone, representative_name, address)
-        `)
+        .select('*')
         .eq('id', params.id)
         .single()
+
+      console.log('Donation data:', donationData)
+      console.log('Donation error:', donationError)
+      
+      // 2. businesses 정보 별도로 가져오기
+      if (donationData && donationData.business_id) {
+        const { data: businessData } = await supabase
+          .from('businesses')
+          .select('*')
+          .eq('id', donationData.business_id)
+          .single()
+        
+        if (businessData) {
+          donationData.businesses = businessData
+        }
+        console.log('Business data:', businessData)
+      }
 
       if (donationData) {
         setDonation(donationData)
       }
 
-      // 2. donation_matches에서 proposed 상태의 매칭 정보 가져오기
-      const { data: matchData } = await supabase
+      // 3. donation_matches에서 매칭 정보 가져오기
+      const { data: matchData, error: matchError } = await supabase
         .from('donation_matches')
-        .select(`
-          *,
-          beneficiaries(*)
-        `)
+        .select('*')
         .eq('donation_id', params.id)
-        .eq('status', 'proposed')
+        .in('status', ['proposed', 'pending'])  // proposed 또는 pending 상태
+
+      console.log('Match data:', matchData)
+      console.log('Match error:', matchError)
 
       if (matchData && matchData.length > 0) {
-        setDonationMatches(matchData)
-        const beneficiaryList = matchData.map(match => match.beneficiaries).filter(Boolean)
-        setBeneficiaries(beneficiaryList)
-        // 기본적으로 모든 수혜기관 선택
-        setSelectedBeneficiaries(beneficiaryList.map(b => b.id))
+        // 수혜기관 정보 별도로 가져오기
+        const beneficiaryIds = matchData.map(m => m.beneficiary_id).filter(Boolean)
+        console.log('Beneficiary IDs:', beneficiaryIds)
+        
+        if (beneficiaryIds.length > 0) {
+          const { data: beneficiariesData } = await supabase
+            .from('beneficiaries')
+            .select('*')
+            .in('id', beneficiaryIds)
+          
+          console.log('Beneficiaries data:', beneficiariesData)
+          
+          if (beneficiariesData) {
+            // matchData에 beneficiary 정보 추가
+            const matchesWithBeneficiaries = matchData.map(match => ({
+              ...match,
+              beneficiaries: beneficiariesData.find(b => b.id === match.beneficiary_id)
+            }))
+            
+            setDonationMatches(matchesWithBeneficiaries)
+            setBeneficiaries(beneficiariesData)
+            // 기본적으로 모든 수혜기관 선택
+            setSelectedBeneficiaries(beneficiariesData.map(b => b.id))
+          }
+        }
+      } else {
+        console.log('No matches found')
+        // 매칭이 없으면 모든 상태 확인
+        const { data: allMatchData } = await supabase
+          .from('donation_matches')
+          .select('*')
+          .eq('donation_id', params.id)
+        
+        console.log('All matches for this donation:', allMatchData)
       }
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -179,6 +223,8 @@ export default function AdminQuoteUploadPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    console.log('Submit clicked - Starting quote submission')
+    console.log('Donation ID:', params.id)
     setLoading(true)
 
     try {
@@ -189,63 +235,175 @@ export default function AdminQuoteUploadPage() {
         return
       }
 
+      console.log('Form data:', formData)
+      console.log('Selected beneficiaries:', selectedBeneficiaries)
+      console.log('Donation matches:', donationMatches)
+
       // Calculate total amount
       const unitPrice = parseInt(formData.unit_price) || 0
       const supplyPrice = unitPrice * (donation?.quantity || 0)
       const logisticsCost = parseInt(formData.logistics_cost) || 0
       const totalAmount = supplyPrice + logisticsCost
 
+      console.log('Calculated amounts:', { unitPrice, supplyPrice, logisticsCost, totalAmount })
+
+      let quoteId = savedQuote?.id
+
       // 임시저장된 견적서가 있으면 업데이트, 없으면 새로 생성
       if (savedQuote) {
-        await supabase
+        console.log('Updating existing quote:', savedQuote.id)
+        
+        // Try with sent_at first
+        let updatePayload: any = {
+          unit_price: unitPrice,
+          logistics_cost: logisticsCost,
+          total_amount: totalAmount,
+          special_notes: formData.special_notes,
+          status: 'pending'
+        }
+        
+        // First attempt with sent_at
+        const { data: updateData, error } = await supabase
           .from('quotes')
-          .update({
-            unit_price: unitPrice,
-            logistics_cost: logisticsCost,
-            total_amount: totalAmount,
-            special_notes: formData.special_notes,
-            status: 'pending',
-            sent_at: new Date().toISOString()
-          })
+          .update(updatePayload)
           .eq('id', savedQuote.id)
+          .select()
+        
+        if (error) {
+          console.error('Quote update error details:', error)
+          console.error('Error code:', error.code)
+          console.error('Error message:', error.message)
+          console.error('Error details:', error.details)
+          
+          // If it fails due to sent_at, try without it
+          if (error.message?.includes('sent_at') || error.code === '42703') {
+            console.log('Retrying without sent_at column')
+            const { data: retryData, error: retryError } = await supabase
+              .from('quotes')
+              .update(updatePayload)
+              .eq('id', savedQuote.id)
+              .select()
+              
+            if (retryError) {
+              console.error('Retry error:', retryError)
+              throw retryError
+            }
+            console.log('Quote updated successfully (without sent_at):', retryData)
+          } else {
+            throw error
+          }
+        } else {
+          console.log('Quote updated successfully:', updateData)
+        }
       } else {
-        await supabase
+        console.log('Creating new quote for donation_id:', params.id)
+        
+        // Basic insert data without potentially missing columns
+        const insertData: any = {
+          donation_id: params.id,
+          unit_price: unitPrice,
+          logistics_cost: logisticsCost,
+          total_amount: totalAmount,
+          special_notes: formData.special_notes,
+          status: 'pending'
+        }
+        console.log('Insert data:', insertData)
+        
+        const { data: insertedData, error } = await supabase
           .from('quotes')
-          .insert({
-            donation_id: params.id,
-            unit_price: unitPrice,
-            logistics_cost: logisticsCost,
-            total_amount: totalAmount,
-            special_notes: formData.special_notes,
-            status: 'pending'
-          })
-      }
-
-      // Update donation_matches status to 'quote_sent' for selected beneficiaries
-      for (const beneficiaryId of selectedBeneficiaries) {
-        const match = donationMatches.find(m => m.beneficiary_id === beneficiaryId)
-        if (match) {
-          await supabase
-            .from('donation_matches')
-            .update({ 
-              status: 'quote_sent',
-              quote_sent_at: new Date().toISOString()
-            })
-            .eq('id', match.id)
+          .insert(insertData)
+          .select()
+        
+        if (error) {
+          console.error('Quote insert error details:', error)
+          console.error('Error code:', error.code)
+          console.error('Error message:', error.message)
+          console.error('Error details:', error.details)
+          console.error('Error hint:', error.hint)
+          
+          // If it's a column error, provide more specific guidance
+          if (error.code === '42703') {
+            console.error('Column does not exist. Check your quotes table schema.')
+          }
+          throw error
+        }
+        console.log('Quote inserted successfully:', insertedData)
+        if (insertedData && insertedData[0]) {
+          quoteId = insertedData[0].id
         }
       }
 
-      // Update donation status
-      await supabase
-        .from('donations')
-        .update({ status: 'quote_sent' })
-        .eq('id', params.id)
+      // Update donation_matches status to 'quote_sent' for selected beneficiaries
+      console.log('Updating donation matches for beneficiaries:', selectedBeneficiaries)
+      console.log('Available donation matches:', donationMatches.map(m => ({ id: m.id, beneficiary_id: m.beneficiary_id, beneficiary: m.beneficiaries?.id })))
+      
+      let matchUpdateCount = 0
+      for (const beneficiaryId of selectedBeneficiaries) {
+        // Check both beneficiary_id and beneficiaries.id since the structure might vary
+        const match = donationMatches.find(m => 
+          m.beneficiary_id === beneficiaryId || 
+          (m.beneficiaries && m.beneficiaries.id === beneficiaryId)
+        )
+        
+        if (match) {
+          console.log(`Updating match ${match.id} for beneficiary ${beneficiaryId}`)
+          
+          // Try updating with minimal fields first
+          const { data: matchData, error } = await supabase
+            .from('donation_matches')
+            .update({ 
+              status: 'quote_sent'
+            })
+            .eq('id', match.id)
+            .select()
+          
+          if (error) {
+            console.error(`Match update error for ${match.id}:`, error)
+            console.error('Error code:', error.code)
+            console.error('Error message:', error.message)
+            
+            // Don't throw on match update errors, just log them
+            console.warn(`Failed to update match ${match.id}, continuing...`)
+          } else {
+            console.log(`Match ${match.id} updated:`, matchData)
+            matchUpdateCount++
+          }
+        } else {
+          console.warn(`No match found for beneficiary ${beneficiaryId}`)
+          console.warn('Available matches:', donationMatches)
+        }
+      }
+      console.log(`Updated ${matchUpdateCount} donation matches`)
 
+      // Update donation status
+      console.log('Updating donation status for donation_id:', params.id)
+      const { data: donationData, error: donationError } = await supabase
+        .from('donations')
+        .update({ 
+          status: 'quote_sent'
+        })
+        .eq('id', params.id)
+        .select()
+      
+      if (donationError) {
+        console.error('Donation update error:', donationError)
+        console.error('Error code:', donationError.code)
+        console.error('Error message:', donationError.message)
+        console.error('Error details:', donationError.details)
+        
+        // Don't let donation update failure block the whole process
+        console.warn('Failed to update donation status, but quote was sent successfully')
+      } else {
+        console.log('Donation status updated:', donationData)
+      }
+
+      console.log('All updates completed successfully')
       alert('견적서가 성공적으로 발송되었습니다.')
       router.push('/admin/donations')
-    } catch (error) {
-      console.error('Error:', error)
-      alert('견적서 업로드 중 오류가 발생했습니다.')
+    } catch (error: any) {
+      console.error('Error during submission:', error)
+      console.error('Full error object:', JSON.stringify(error, null, 2))
+      alert(`견적서 업로드 중 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}`)
     } finally {
       setLoading(false)
     }
@@ -282,7 +440,10 @@ export default function AdminQuoteUploadPage() {
           </h1>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={(e) => {
+          console.log('Form onSubmit triggered!')
+          handleSubmit(e)
+        }}>
           {/* 수혜기관 선택 (복수 선택 가능) */}
           {beneficiaries.length > 0 && (
             <div style={{
@@ -540,18 +701,38 @@ export default function AdminQuoteUploadPage() {
               임시저장
             </button>
             <button
-              type="submit"
-              disabled={loading || selectedBeneficiaries.length === 0}
+              type="button"
+              onClick={(e) => {
+                console.log('=== 견적서 발송 버튼 클릭됨 ===')
+                console.log('Loading state:', loading)
+                console.log('Selected beneficiaries:', selectedBeneficiaries)
+                console.log('Form data:', formData)
+                console.log('Donation matches:', donationMatches)
+                
+                if (!formData.unit_price) {
+                  alert('단가를 입력해주세요.')
+                  return
+                }
+                
+                if (selectedBeneficiaries.length === 0) {
+                  alert('수혜기관을 선택해주세요.')
+                  return
+                }
+                
+                console.log('Calling handleSubmit...')
+                handleSubmit(e as any)
+              }}
+              disabled={loading}
               style={{
                 padding: '12px 32px',
                 fontSize: '14px',
                 fontWeight: '600',
                 color: 'white',
-                backgroundColor: (loading || selectedBeneficiaries.length === 0) ? '#6C757D' : '#28A745',
+                backgroundColor: loading ? '#6C757D' : '#28A745',
                 border: 'none',
                 borderRadius: '4px',
-                cursor: (loading || selectedBeneficiaries.length === 0) ? 'not-allowed' : 'pointer',
-                opacity: (loading || selectedBeneficiaries.length === 0) ? 0.5 : 1,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.5 : 1,
                 transition: 'all 0.2s'
               }}
             >

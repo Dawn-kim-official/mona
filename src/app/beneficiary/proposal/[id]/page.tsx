@@ -153,40 +153,59 @@ export default function ProposalDetailPage() {
 
     setSubmitting(true)
 
-    const updateData: any = {
-      status: accept ? 'accepted' : 'rejected',
-      responded_at: new Date().toISOString(),
-      response_notes: notes || null
-    }
-    
-    if (accept) {
-      updateData.accepted_quantity = acceptedQuantity
-      updateData.accepted_unit = proposal.donations.unit || 'kg'
-    }
+    try {
+      const updateData: any = {
+        status: accept ? 'accepted' : 'rejected',
+        responded_at: new Date().toISOString(),
+        response_notes: notes || null
+      }
+      
+      if (accept) {
+        updateData.accepted_quantity = acceptedQuantity
+        updateData.accepted_unit = proposal.donations.unit || 'kg'
+      }
 
-    const { error } = await supabase
-      .from('donation_matches')
-      .update(updateData)
-      .eq('id', proposalId)
+      console.log('Updating donation_matches with:', updateData)
+      const { data: matchData, error: matchError } = await supabase
+        .from('donation_matches')
+        .update(updateData)
+        .eq('id', proposalId)
+        .select()
 
-    if (!error && accept) {
-      // Update the donation's remaining quantity
-      await supabase
-        .from('donations')
-        .update({
-          remaining_quantity: remainingQuantity - acceptedQuantity
-        })
-        .eq('id', proposal.donations.id)
-    }
+      if (matchError) {
+        console.error('Error updating donation_matches:', matchError)
+        throw matchError
+      }
 
-    if (error) {
-      alert('응답 처리 중 오류가 발생했습니다.')
-    } else {
+      console.log('Match updated:', matchData)
+
+      if (accept) {
+        // donations 테이블에 remaining_quantity 컬럼이 없을 수 있으므로 에러 처리 추가
+        const newRemainingQuantity = remainingQuantity - acceptedQuantity
+        console.log('Updating donation remaining quantity to:', newRemainingQuantity)
+        
+        const { error: donationError } = await supabase
+          .from('donations')
+          .update({
+            remaining_quantity: newRemainingQuantity
+          })
+          .eq('id', proposal.donations.id)
+        
+        if (donationError) {
+          console.warn('Could not update remaining_quantity:', donationError)
+          // remaining_quantity 업데이트 실패는 무시하고 진행
+        }
+      }
+
       alert(accept ? `${acceptedQuantity}${proposal.donations.unit || 'kg'} 수락했습니다.` : '제안을 거절했습니다.')
       router.push('/beneficiary/proposals')
+      
+    } catch (error: any) {
+      console.error('응답 처리 중 오류:', error)
+      alert(`응답 처리 중 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}`)
+    } finally {
+      setSubmitting(false)
     }
-
-    setSubmitting(false)
   }
 
 

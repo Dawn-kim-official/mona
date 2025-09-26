@@ -4,6 +4,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import Link from 'next/link'
+import Footer from '@/components/Footer'
 
 export default function BusinessLayout({
   children,
@@ -208,6 +209,7 @@ export default function BusinessLayout({
         WebkitOverflowScrolling: 'touch'
       }}>
         {children}
+        <Footer />
       </main>
     </div>
   )

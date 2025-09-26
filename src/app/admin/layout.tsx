@@ -4,6 +4,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import Link from 'next/link'
+import Footer from '@/components/Footer'
 
 export default function AdminLayout({
   children,
@@ -80,14 +81,53 @@ export default function AdminLayout({
               margin: 0
             }}>MONA</h1>
           </div>
-          <div style={{ display: 'flex', gap: '30px' }}>
-            <Link href="/admin/businesses" style={{ color: 'white', textDecoration: 'none', fontSize: '16px' }}>
+          <div style={{ display: 'flex', gap: '20px' }}>
+            <Link href="/admin/dashboard" style={{ 
+              color: pathname === '/admin/dashboard' ? '#ffd020' : 'white', 
+              textDecoration: 'none', 
+              fontSize: '16px',
+              fontWeight: pathname === '/admin/dashboard' ? '600' : '400',
+              padding: '8px 16px',
+              backgroundColor: pathname === '/admin/dashboard' ? 'rgba(255, 208, 32, 0.1)' : 'transparent',
+              borderRadius: '6px',
+              transition: 'all 0.2s ease'
+            }}>
+              대시보드
+            </Link>
+            <Link href="/admin/businesses" style={{ 
+              color: pathname === '/admin/businesses' ? '#ffd020' : 'white', 
+              textDecoration: 'none', 
+              fontSize: '16px',
+              fontWeight: pathname === '/admin/businesses' ? '600' : '400',
+              padding: '8px 16px',
+              backgroundColor: pathname === '/admin/businesses' ? 'rgba(255, 208, 32, 0.1)' : 'transparent',
+              borderRadius: '6px',
+              transition: 'all 0.2s ease'
+            }}>
               회원 관리
             </Link>
-            <Link href="/admin/donations" style={{ color: 'white', textDecoration: 'none', fontSize: '16px' }}>
+            <Link href="/admin/donations" style={{ 
+              color: pathname.startsWith('/admin/donation') ? '#ffd020' : 'white', 
+              textDecoration: 'none', 
+              fontSize: '16px',
+              fontWeight: pathname.startsWith('/admin/donation') ? '600' : '400',
+              padding: '8px 16px',
+              backgroundColor: pathname.startsWith('/admin/donation') ? 'rgba(255, 208, 32, 0.1)' : 'transparent',
+              borderRadius: '6px',
+              transition: 'all 0.2s ease'
+            }}>
               기부 관리
             </Link>
-            <Link href="/admin/reports" style={{ color: 'white', textDecoration: 'none', fontSize: '16px' }}>
+            <Link href="/admin/reports" style={{ 
+              color: pathname === '/admin/reports' ? '#ffd020' : 'white', 
+              textDecoration: 'none', 
+              fontSize: '16px',
+              fontWeight: pathname === '/admin/reports' ? '600' : '400',
+              padding: '8px 16px',
+              backgroundColor: pathname === '/admin/reports' ? 'rgba(255, 208, 32, 0.1)' : 'transparent',
+              borderRadius: '6px',
+              transition: 'all 0.2s ease'
+            }}>
               리포트 관리
             </Link>
           </div>
@@ -180,8 +220,9 @@ export default function AdminLayout({
       </nav>
       
       {/* Main Content */}
-      <main style={{ flex: 1 }}>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {children}
+        <Footer />
       </main>
     </div>
   )

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
+import Footer from '@/components/Footer'
 
 export default function BeneficiaryLayout({
   children,
@@ -290,8 +291,11 @@ export default function BeneficiaryLayout({
 
 
       {/* Main Content */}
-      <main>
-        {children}
+      <main style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 60px)' }}>
+        <div style={{ flex: 1 }}>
+          {children}
+        </div>
+        <Footer />
       </main>
     </div>
   )

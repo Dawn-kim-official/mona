@@ -279,28 +279,64 @@ export default function AdminBusinessesPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#F8F9FA', borderBottom: '1px solid #DEE2E6' }}>
-                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>회사명</th>
-                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>담당자명</th>
-                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>담당자 연락처</th>
-                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>담당자 이메일</th>
-                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>사업자번호</th>
-                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>등록일</th>
-                    <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>상태</th>
-                    <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>작업</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>기관/기업명</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>등록번호</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>담당자명</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>담당자 연락처</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>이메일</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>주소</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>웹사이트</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>SNS</th>
+                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '12px' }}>등록증</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>가입일</th>
+                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '12px' }}>상태</th>
+                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '12px' }}>작업</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredBusinesses.map((business) => (
                     <tr key={business.id} style={{ borderBottom: '1px solid #DEE2E6' }}>
-                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>{business.name || '-'}</td>
-                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>{business.representative_name || '-'}</td>
-                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>{business.phone || '-'}</td>
-                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>{business.email || '-'}</td>
-                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>{business.address || '-'}</td>
-                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>
+                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{business.name || '-'}</td>
+                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{business.business_registration_number || business.business_number || '-'}</td>
+                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{business.manager_name || '-'}</td>
+                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{business.manager_phone || '-'}</td>
+                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
+                        {/* 이메일 - auth.users 테이블과 조인 필요하므로 일단 '-' */}
+                        -
+                      </td>
+                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
+                        {business.postcode && business.detail_address 
+                          ? `[${business.postcode}] ${business.detail_address}`
+                          : '-'}
+                      </td>
+                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
+                        {business.website ? (
+                          <a href={business.website} target="_blank" rel="noopener noreferrer" 
+                             style={{ color: '#007BFF', textDecoration: 'none', fontSize: '12px' }}>
+                            보기
+                          </a>
+                        ) : '-'}
+                      </td>
+                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
+                        {business.sns_link ? (
+                          <a href={business.sns_link} target="_blank" rel="noopener noreferrer" 
+                             style={{ color: '#007BFF', textDecoration: 'none', fontSize: '12px' }}>
+                            보기
+                          </a>
+                        ) : '-'}
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'center' }}>
+                        {business.business_license_url ? (
+                          <a href={business.business_license_url} target="_blank" rel="noopener noreferrer" 
+                             style={{ color: '#007BFF', textDecoration: 'none', fontSize: '12px' }}>
+                            보기
+                          </a>
+                        ) : '-'}
+                      </td>
+                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
                         {business.created_at ? new Date(business.created_at).toLocaleDateString('ko-KR') : '-'}
                       </td>
-                      <td style={{ padding: '16px', textAlign: 'center' }}>
+                      <td style={{ padding: '12px', textAlign: 'center' }}>
                         <span style={{ 
                           color: business.status === 'approved' ? '#28A745' : business.status === 'rejected' ? '#DC3545' : '#FF8C00',
                           fontWeight: '500',
@@ -315,7 +351,7 @@ export default function AdminBusinessesPage() {
                           {business.status === 'pending' && '대기중'}
                         </span>
                       </td>
-                      <td style={{ padding: '16px', textAlign: 'center' }}>
+                      <td style={{ padding: '12px', textAlign: 'center' }}>
                         {business.status === 'pending' && (
                           <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                             <button
@@ -378,36 +414,61 @@ export default function AdminBusinessesPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#F8F9FA', borderBottom: '1px solid #DEE2E6' }}>
-                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>기관명</th>
-                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>기관유형</th>
-                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>담당자명</th>
-                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>연락처</th>
-                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>주소</th>
-                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>웹사이트</th>
-                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>등록일</th>
-                    <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>상태</th>
-                    <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>작업</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>기관/기업명</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>등록번호</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>담당자명</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>담당자 연락처</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>이메일</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>주소</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>웹사이트</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>SNS</th>
+                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '12px' }}>등록증</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>가입일</th>
+                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '12px' }}>상태</th>
+                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '12px' }}>작업</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredBeneficiaries.map((beneficiary) => (
                     <tr key={beneficiary.id} style={{ borderBottom: '1px solid #DEE2E6' }}>
-                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>{beneficiary.organization_name || '-'}</td>
-                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>{beneficiary.organization_type || '-'}</td>
-                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>{beneficiary.representative_name || '-'}</td>
-                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>{beneficiary.phone || '-'}</td>
-                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>{beneficiary.address || '-'}</td>
-                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>
+                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{beneficiary.organization_name || '-'}</td>
+                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{beneficiary.registration_number || '-'}</td>
+                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{beneficiary.representative_name || beneficiary.manager_name || '-'}</td>
+                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{beneficiary.phone || beneficiary.manager_phone || '-'}</td>
+                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{beneficiary.email || '-'}</td>
+                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
+                        {beneficiary.postcode && beneficiary.detail_address 
+                          ? `[${beneficiary.postcode}] ${beneficiary.detail_address}`
+                          : beneficiary.address || '-'}
+                      </td>
+                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
                         {beneficiary.website ? (
-                          <a href={beneficiary.website} target="_blank" rel="noopener noreferrer" style={{ color: '#007BFF' }}>
-                            링크
+                          <a href={beneficiary.website} target="_blank" rel="noopener noreferrer" 
+                             style={{ color: '#007BFF', textDecoration: 'none', fontSize: '12px' }}>
+                            보기
                           </a>
                         ) : '-'}
                       </td>
-                      <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>
+                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
+                        {beneficiary.sns_link ? (
+                          <a href={beneficiary.sns_link} target="_blank" rel="noopener noreferrer" 
+                             style={{ color: '#007BFF', textDecoration: 'none', fontSize: '12px' }}>
+                            보기
+                          </a>
+                        ) : '-'}
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'center' }}>
+                        {beneficiary.tax_exempt_cert_url ? (
+                          <a href={beneficiary.tax_exempt_cert_url} target="_blank" rel="noopener noreferrer" 
+                             style={{ color: '#007BFF', textDecoration: 'none', fontSize: '12px' }}>
+                            보기
+                          </a>
+                        ) : '-'}
+                      </td>
+                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
                         {beneficiary.created_at ? new Date(beneficiary.created_at).toLocaleDateString('ko-KR') : '-'}
                       </td>
-                      <td style={{ padding: '16px', textAlign: 'center' }}>
+                      <td style={{ padding: '12px', textAlign: 'center' }}>
                         <span style={{ 
                           color: beneficiary.status === 'approved' ? '#28A745' : beneficiary.status === 'rejected' ? '#DC3545' : '#FF8C00',
                           fontWeight: '500',
@@ -422,7 +483,7 @@ export default function AdminBusinessesPage() {
                           {beneficiary.status === 'pending' && '대기중'}
                         </span>
                       </td>
-                      <td style={{ padding: '16px', textAlign: 'center' }}>
+                      <td style={{ padding: '12px', textAlign: 'center' }}>
                         {beneficiary.status === 'pending' && (
                           <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                             <button

@@ -20,6 +20,7 @@ interface Donation {
   businesses?: {
     name: string
   }
+  has_accepted_match?: boolean
 }
 
 const statusMap: { [key: string]: { text: string; color: string; bgColor: string } } = {
@@ -69,14 +70,40 @@ export default function AdminDonationsPage() {
       .order('created_at', { ascending: false })
 
     if (error) {
-      // Error fetching donations
+      console.error('Error fetching donations:', error)
     } else {
-      setAllDonations(data || [])
+      // 각 donation에 대해 accepted 상태의 match가 있는지 확인
+      const donationsWithMatchStatus = await Promise.all(
+        (data || []).map(async (donation) => {
+          // 모든 donation에 대해 accepted 상태 확인 (matched 상태뿐만 아니라)
+          const { data: matchData, error: matchError } = await supabase
+            .from('donation_matches')
+            .select('status')
+            .eq('donation_id', donation.id)
+            .eq('status', 'accepted')
+          
+          if (donation.name?.includes('방사능') || donation.description?.includes('방사능')) {
+            console.log(`방사능덩어리 항목 상세 정보:`, {
+              donation_id: donation.id,
+              donation_status: donation.status,
+              matchData: matchData,
+              has_accepted: matchData && matchData.length > 0
+            })
+          }
+          
+          return {
+            ...donation,
+            has_accepted_match: matchData && matchData.length > 0
+          }
+        })
+      )
+      
+      setAllDonations(donationsWithMatchStatus)
       // 상태 변경 후에도 필터링 유지
       if (activeTab) {
-        setFilteredDonations(data?.filter(donation => donation.status === activeTab) || [])
+        setFilteredDonations(donationsWithMatchStatus.filter(donation => donation.status === activeTab))
       } else {
-        setFilteredDonations(data || [])
+        setFilteredDonations(donationsWithMatchStatus)
       }
     }
     setLoading(false)
@@ -207,9 +234,13 @@ export default function AdminDonationsPage() {
           </div>
         </div>
 
-        <h1 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '32px', color: '#212529' }}>
+        <h1 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '16px', color: '#212529' }}>
           기부 관리
         </h1>
+        
+        <p style={{ fontSize: '13px', color: '#6C757D', marginBottom: '24px' }}>
+          💡 항목을 클릭하면 상세 정보를 볼 수 있습니다
+        </p>
 
         {/* 기부 목록 테이블 */}
         <div style={{
@@ -234,7 +265,27 @@ export default function AdminDonationsPage() {
               {filteredDonations.map((donation) => {
                 const status = statusMap[donation.status] || { text: donation.status, color: '#666' }
                 return (
-                  <tr key={donation.id} style={{ borderBottom: '1px solid #DEE2E6' }}>
+                  <tr 
+                    key={donation.id} 
+                    style={{ 
+                      borderBottom: '1px solid #DEE2E6',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#F8F9FA'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent'
+                    }}
+                    onClick={(e) => {
+                      // 버튼 클릭이 아닌 경우에만 상세 페이지로 이동
+                      const target = e.target as HTMLElement
+                      if (!target.closest('button') && !target.closest('a')) {
+                        router.push(`/admin/donation/${donation.id}/detail`)
+                      }
+                    }}
+                  >
                     <td style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                       {donation.photos && donation.photos.length > 0 ? (
                         <img 
@@ -347,22 +398,25 @@ export default function AdminDonationsPage() {
                                 매칭 현황
                               </button>
                             </Link>
-                            <Link href={`/admin/donation/${donation.id}/quote`}>
-                              <button style={{
-                            padding: '6px 16px',
-                            fontSize: '13px',
-                            fontWeight: '500',
-                            color: '#212529',
-                            backgroundColor: '#ffd020',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer'
-                          }}>
-                            견적서 발송
-                          </button>
-                        </Link>
-                        </>
-                      )}
+                            {/* donation_matches에 accepted 상태가 있는지 확인 */}
+                            {donation.has_accepted_match && (
+                              <Link href={`/admin/donation/${donation.id}/quote`}>
+                                <button style={{
+                                  padding: '6px 16px',
+                                  fontSize: '13px',
+                                  fontWeight: '500',
+                                  color: '#212529',
+                                  backgroundColor: '#ffd020',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer'
+                                }}>
+                                  견적서 발송
+                                </button>
+                              </Link>
+                            )}
+                          </>
+                        )}
                       {donation.status === 'pickup_scheduled' && (
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                           <Link href={`/admin/donation/${donation.id}/propose`}>
@@ -396,7 +450,7 @@ export default function AdminDonationsPage() {
                         </div>
                       )}
                       {donation.status === 'quote_sent' && (
-                        <span style={{ fontSize: '12px', color: '#666' }}>견적서 확인</span>
+                        <span style={{ fontSize: '12px', color: '#666' }}>견적서 발송 완료</span>
                       )}
                       {donation.status === 'quote_accepted' && (
                         <Link href={`/admin/donation/${donation.id}/pickup`}>
@@ -437,20 +491,7 @@ export default function AdminDonationsPage() {
                         </div>
                       )}
                       {donation.status === 'completed' && (
-                        <Link href={`/admin/donation/${donation.id}/detail`}>
-                          <button style={{
-                            padding: '6px 16px',
-                            fontSize: '13px',
-                            fontWeight: '500',
-                            color: '#007BFF',
-                            backgroundColor: 'transparent',
-                            border: '1px solid #007BFF',
-                            borderRadius: '4px',
-                            cursor: 'pointer'
-                          }}>
-                            상세보기
-                          </button>
-                        </Link>
+                        <span style={{ color: '#28A745', fontSize: '12px' }}>✓ 완료</span>
                       )}
                       {(donation.status === 'rejected' || !['pending_review', 'matched', 'quote_sent', 'quote_accepted', 'pickup_scheduled', 'completed'].includes(donation.status)) && (
                         <span style={{ color: '#6C757D', fontSize: '12px' }}>-</span>
