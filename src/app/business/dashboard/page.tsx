@@ -12,9 +12,10 @@ const statusMap: { [key: string]: { text: string; color: string; bgColor: string
   'pending_review': { text: '승인 대기', color: '#FF8C00', bgColor: '#FF8C0020' },
   'rejected': { text: '승인 거절', color: '#DC3545', bgColor: '#DC354520' },
   'matched': { text: '수혜기관 선정', color: '#17A2B8', bgColor: '#17A2B820' },
-  'quote_sent': { text: '견적 대기', color: '#FF8C00', bgColor: '#FF8C0020' },
+  'quote_sent': { text: '견적서 도착', color: '#FF8C00', bgColor: '#FF8C0020' },
   'quote_accepted': { text: '견적 수락', color: '#007BFF', bgColor: '#007BFF20' },
-  'pickup_scheduled': { text: '픽업 완료', color: '#007BFF', bgColor: '#007BFF20' },
+  'pickup_coordinating': { text: '픽업 일정 조율', color: '#6F42C1', bgColor: '#6F42C120' },
+  'pickup_scheduled': { text: '픽업 예정', color: '#007BFF', bgColor: '#007BFF20' },
   'completed': { text: '기부 완료', color: '#28A745', bgColor: '#28A74520' }
 }
 
@@ -68,7 +69,7 @@ export default function BusinessDashboardPage() {
       const total = allDonations.length
       const completed = allDonations.filter(d => d.status === 'completed').length
       const pending = allDonations.filter(d => 
-        ['pending_review', 'quote_sent', 'matched', 'quote_accepted', 'pickup_scheduled'].includes(d.status)
+        ['pending_review', 'quote_sent', 'matched', 'quote_accepted', 'pickup_coordinating', 'pickup_scheduled'].includes(d.status)
       ).length
 
       setStats({

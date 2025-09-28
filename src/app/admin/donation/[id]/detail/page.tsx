@@ -5,7 +5,12 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import Link from 'next/link'
 
-export default function DonationDetailPage({ params }: { params: { id: string } }) {
+export default async function DonationDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params
+  return <DonationDetailContent params={resolvedParams} />
+}
+
+function DonationDetailContent({ params }: { params: { id: string } }) {
   const router = useRouter()
   const supabase = createClient()
   const [donation, setDonation] = useState<any>(null)
@@ -366,11 +371,29 @@ export default function DonationDetailPage({ params }: { params: { id: string } 
             backgroundColor: 'white',
             borderRadius: '8px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-            padding: '24px'
+            padding: '24px',
+            marginBottom: '24px'
           }}>
-            <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px', color: '#212529' }}>
-              매칭된 수혜기관 정보
-            </h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+              <div>
+                <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px', color: '#212529' }}>
+                  매칭된 수혜기관 정보
+                </h2>
+                {(() => {
+                  // 수락된 수량 계산
+                  const totalAccepted = donation.donation_matches
+                    .filter((match: any) => match.status === 'accepted' || match.status === 'quote_sent')
+                    .reduce((sum: number, match: any) => sum + (match.accepted_quantity || 0), 0);
+                  const remainingQuantity = donation.quantity - totalAccepted;
+                  
+                  return remainingQuantity > 0 ? (
+                    <p style={{ fontSize: '14px', color: '#666', margin: '0' }}>
+                      남은 수량: {remainingQuantity}{donation.unit || 'kg'} / 전체: {donation.quantity}{donation.unit || 'kg'}
+                    </p>
+                  ) : null;
+                })()}
+              </div>
+            </div>
             {donation.donation_matches.map((match: any, index: number) => (
               <div key={match.id} style={{ 
                 padding: '16px', 
@@ -451,6 +474,45 @@ export default function DonationDetailPage({ params }: { params: { id: string } 
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+                
+                {/* 영수증 정보 */}
+                {match.receipt_issued && (
+                  <div style={{ 
+                    marginTop: '16px', 
+                    paddingTop: '16px', 
+                    borderTop: '1px solid #DEE2E6' 
+                  }}>
+                    <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: '#495057' }}>
+                      기부영수증
+                    </h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ fontSize: '13px', color: '#6C757D' }}>
+                        발행일: {match.receipt_issued_at ? new Date(match.receipt_issued_at).toLocaleDateString('ko-KR') : '-'}
+                      </span>
+                      {match.receipt_file_url && (
+                        <a
+                          href={match.receipt_file_url}
+                          download
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            padding: '4px 12px',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            color: 'white',
+                            backgroundColor: '#02391f',
+                            border: 'none',
+                            borderRadius: '4px',
+                            textDecoration: 'none',
+                            display: 'inline-block'
+                          }}
+                        >
+                          영수증 다운로드
+                        </a>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

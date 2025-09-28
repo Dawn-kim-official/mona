@@ -330,9 +330,9 @@ export default function SignupPage() {
               website: organizationWebsite || '',
               sns_link: organizationSns || '',
               desired_items: desiredItems.includes('기타') && otherDesiredItem
-                ? [...desiredItems.filter(i => i !== '기타'), otherDesiredItem].join(', ')
-                : desiredItems.join(', '),
-              beneficiary_types: beneficiaryTypes.includes('기타') 
+                ? [...desiredItems.filter(i => i !== '기타'), otherDesiredItem]
+                : desiredItems,
+              beneficiary_types: beneficiaryTypes.includes('기타') && otherBeneficiaryType
                 ? [...beneficiaryTypes.filter(t => t !== '기타'), otherBeneficiaryType]
                 : beneficiaryTypes,
               can_pickup: canPickup === 'yes',

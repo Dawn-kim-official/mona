@@ -29,6 +29,7 @@ interface Proposal {
     pickup_deadline: string
     pickup_location: string
     remaining_quantity?: number
+    status?: string
     businesses: {
       name: string
       address: string
@@ -47,6 +48,9 @@ interface Proposal {
 const statusMap: { [key: string]: { text: string; color: string } } = {
   'proposed': { text: '응답 대기', color: '#FF8C00' },
   'accepted': { text: '수락', color: '#28A745' },
+  'quote_sent': { text: '픽업 대기', color: '#17A2B8' },
+  'pickup_coordinating': { text: '픽업 일정 조율', color: '#6F42C1' },
+  'pickup_scheduled': { text: '픽업 예정', color: '#007BFF' },
   'rejected': { text: '거절', color: '#DC3545' },
   'received': { text: '수령 완료', color: '#007BFF' }
 }
@@ -276,7 +280,16 @@ export default function BeneficiaryProposalsPage() {
               </thead>
               <tbody>
                 {proposals.map((proposal) => {
-                  const status = statusMap[proposal.status] || { text: proposal.status, color: '#666' }
+                  // donation_matches status가 quote_sent이고 donation status에 따라 상태 표시 변경
+                  let statusKey = proposal.status;
+                  if (proposal.status === 'quote_sent') {
+                    if (proposal.donations?.status === 'pickup_coordinating') {
+                      statusKey = 'pickup_coordinating';
+                    } else if (proposal.donations?.status === 'pickup_scheduled') {
+                      statusKey = 'pickup_scheduled';
+                    }
+                  }
+                  const status = statusMap[statusKey] || { text: statusKey, color: '#666' }
                   return (
                     <tr key={proposal.id} style={{ borderBottom: '1px solid #F8F9FA' }}>
                       <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>
@@ -311,13 +324,13 @@ export default function BeneficiaryProposalsPage() {
                         </span>
                       </td>
                       <td style={{ padding: '16px', textAlign: 'center' }}>
-                        {(proposal.status === 'accepted' || proposal.status === 'received') && !proposal.receipt_issued ? (
+                        {proposal.status === 'received' && !proposal.receipt_issued ? (
                           <button
                             onClick={() => handleReceiptUpload(proposal)}
                             disabled={generatingPdf === proposal.id}
                             style={{
-                              padding: '6px 16px',
-                              fontSize: '13px',
+                              padding: '4px 12px',
+                              fontSize: '12px',
                               fontWeight: '500',
                               color: 'white',
                               backgroundColor: generatingPdf === proposal.id ? '#6C757D' : '#02391f',
@@ -337,8 +350,8 @@ export default function BeneficiaryProposalsPage() {
                         <button
                           onClick={() => router.push(`/beneficiary/proposal/${proposal.id}`)}
                           style={{
-                            padding: '6px 16px',
-                            fontSize: '13px',
+                            padding: '4px 12px',
+                            fontSize: '12px',
                             fontWeight: '500',
                             color: '#007BFF',
                             backgroundColor: 'transparent',

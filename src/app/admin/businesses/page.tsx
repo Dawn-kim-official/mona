@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
-import { Database } from '@/lib/supabase-types'
-
-type Business = Database['public']['Tables']['businesses']['Row']
+import { Business } from '@/types/database'
 
 export default function AdminBusinessesPage() {
   const supabase = createClient()

@@ -13,12 +13,12 @@ type Quote = Database['public']['Tables']['quotes']['Row']
 const statusMap: { [key: string]: { text: string; color: string } } = {
   'pending_review': { text: '승인 대기', color: '#FF8C00' },
   'rejected': { text: '승인 거절', color: '#DC3545' },
-  'beneficiary_selected': { text: '수혜기관 선정', color: '#17A2B8' },
-  'quote_sent': { text: '견적 대기', color: '#FF8C00' },
-  'quote_accepted': { text: '견적 대기', color: '#FF8C00' },
-  'matched': { text: '견적 대기', color: '#FF8C00' },
-  'pickup_scheduled': { text: '견적 수락', color: '#007BFF' },
-  'completed': { text: '픽업 완료', color: '#28A745' }
+  'matched': { text: '수혜기관 선정', color: '#17A2B8' },
+  'quote_sent': { text: '견적서 도착', color: '#FF8C00' },
+  'quote_accepted': { text: '견적 수락', color: '#007BFF' },
+  'pickup_coordinating': { text: '픽업 일정 조율', color: '#6F42C1' },
+  'pickup_scheduled': { text: '픽업 예정', color: '#007BFF' },
+  'completed': { text: '기부 완료', color: '#28A745' }
 }
 
 const tabs = [
@@ -26,9 +26,10 @@ const tabs = [
   { id: '승인 대기', label: '승인 대기' },
   { id: '승인 거절', label: '승인 거절' },
   { id: '수혜기관 선정', label: '수혜기관 선정' },
-  { id: '견적 대기', label: '견적 대기' },
+  { id: '견적서 도착', label: '견적서 도착' },
   { id: '견적 수락', label: '견적 수락' },
-  { id: '견적 거절', label: '견적 거절' },
+  { id: '픽업 일정 조율', label: '픽업 일정 조율' },
+  { id: '픽업 예정', label: '픽업 예정' },
   { id: '기부 완료', label: '기부 완료' }
 ]
 
@@ -146,10 +147,11 @@ export default function BusinessDashboardPage() {
         switch(activeTab) {
           case '승인 대기': return donation.status === 'pending_review';
           case '승인 거절': return (donation.status as any) === 'rejected';
-          case '수혜기관 선정': return (donation.status as any) === 'beneficiary_selected';
-          case '견적 대기': return donation.status === 'quote_sent' || donation.status === 'matched' || donation.status === 'quote_accepted';
-          case '견적 수락': return donation.status === 'pickup_scheduled';
-          case '견적 거절': return false;
+          case '수혜기관 선정': return donation.status === 'matched';
+          case '견적서 도착': return donation.status === 'quote_sent';
+          case '견적 수락': return donation.status === 'quote_accepted';
+          case '픽업 일정 조율': return (donation.status as any) === 'pickup_coordinating';
+          case '픽업 예정': return donation.status === 'pickup_scheduled';
           case '기부 완료': return donation.status === 'completed';
           default: return true;
         }
@@ -356,41 +358,94 @@ export default function BusinessDashboardPage() {
                         </span>
                       </td>
                       <td style={{ padding: '16px', textAlign: 'center' }}>
-                        {donation.status === 'quote_sent' && (
-                          <button 
-                            onClick={() => handleViewQuote(donation.id)}
-                            style={{ 
-                              color: '#02391f', 
-                              background: 'transparent', 
-                              border: '1px solid #02391f',
-                              padding: '6px 12px',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '13px',
-                              fontWeight: '500',
-                              transition: 'all 0.2s'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = '#02391f';
-                              e.currentTarget.style.color = 'white';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = 'transparent';
-                              e.currentTarget.style.color = '#02391f';
-                            }}
-                          >견적서 확인</button>
-                        )}
-                        {donation.status === 'pickup_scheduled' && (
-                          <div style={{ fontSize: '13px' }}>
-                            <div style={{ color: '#6C757D', marginBottom: '2px' }}>픽업 일정:</div>
-                            <div style={{ color: '#212529', fontWeight: '500' }}>
-                              {donation.completed_at ? new Date(donation.completed_at).toLocaleDateString('ko-KR') : '2025.08.12'}
-                            </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+                          {/* 상태별 정보 표시 */}
+                          {(donation.status as any) === 'pickup_coordinating' && (
+                            <span style={{ fontSize: '12px', color: '#6F42C1', fontWeight: '500' }}>
+                              픽업 일정 조율 중
+                            </span>
+                          )}
+                          
+                          {/* 버튼들을 가로로 배치 */}
+                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                            {donation.status === 'quote_sent' && (
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewQuote(donation.id);
+                                }}
+                                style={{ 
+                                  color: '#02391f', 
+                                  background: 'transparent', 
+                                  border: '1px solid #02391f',
+                                  padding: '4px 12px',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontSize: '12px',
+                                  fontWeight: '500',
+                                  transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.backgroundColor = '#02391f';
+                                  e.currentTarget.style.color = 'white';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                  e.currentTarget.style.color = '#02391f';
+                                }}
+                              >견적서 확인</button>
+                            )}
+                            {donation.status === 'completed' && (
+                              <Link href={`/business/donation/${donation.id}`}>
+                                <button style={{
+                                  padding: '4px 12px',
+                                  fontSize: '12px',
+                                  fontWeight: '500',
+                                  color: 'white',
+                                  backgroundColor: '#02391f',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#164137'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#02391f'}
+                                onClick={(e) => e.stopPropagation()}
+                                >
+                                  영수증 확인
+                                </button>
+                              </Link>
+                            )}
+                            {/* 모든 상태에서 상세보기 버튼 표시 */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/business/donation/${donation.id}`);
+                              }}
+                              style={{
+                                padding: '4px 12px',
+                                fontSize: '12px',
+                                fontWeight: '500',
+                                color: '#007BFF',
+                                backgroundColor: 'transparent',
+                                border: '1px solid #007BFF',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = '#007BFF';
+                                e.currentTarget.style.color = 'white';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                                e.currentTarget.style.color = '#007BFF';
+                              }}
+                            >
+                              상세 보기
+                            </button>
                           </div>
-                        )}
-                        {!['quote_sent', 'pickup_scheduled'].includes(donation.status) && (
-                          <span style={{ color: '#6C757D', fontSize: '13px' }}>-</span>
-                        )}
+                        </div>
                       </td>
                     </tr>
                 )

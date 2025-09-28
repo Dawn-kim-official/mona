@@ -109,12 +109,11 @@ export default function AdminQuoteUploadPage() {
         setDonation(donationData)
       }
 
-      // 3. donation_matches에서 매칭 정보 가져오기
+      // 3. donation_matches에서 매칭 정보 가져오기 (모든 상태)
       const { data: matchData, error: matchError } = await supabase
         .from('donation_matches')
         .select('*')
         .eq('donation_id', params.id)
-        .in('status', ['proposed', 'pending'])  // proposed 또는 pending 상태
 
       console.log('Match data:', matchData)
       console.log('Match error:', matchError)
@@ -141,8 +140,8 @@ export default function AdminQuoteUploadPage() {
             
             setDonationMatches(matchesWithBeneficiaries)
             setBeneficiaries(beneficiariesData)
-            // 기본적으로 모든 수혜기관 선택
-            setSelectedBeneficiaries(beneficiariesData.map(b => b.id))
+            // 매칭된 모든 수혜기관을 자동으로 선택 (수정할 수 없음)
+            setSelectedBeneficiaries(matchData.map(m => m.beneficiary_id))
           }
         }
       } else {
@@ -154,6 +153,29 @@ export default function AdminQuoteUploadPage() {
           .eq('donation_id', params.id)
         
         console.log('All matches for this donation:', allMatchData)
+        if (allMatchData && allMatchData.length > 0) {
+          console.log('Match status:', allMatchData.map(m => ({ id: m.id, status: m.status, accepted_quantity: m.accepted_quantity })))
+          // status에 관계없이 모든 매칭을 처리
+          const beneficiaryIds = allMatchData.map(m => m.beneficiary_id).filter(Boolean)
+          
+          if (beneficiaryIds.length > 0) {
+            const { data: beneficiariesData } = await supabase
+              .from('beneficiaries')
+              .select('*')
+              .in('id', beneficiaryIds)
+            
+            if (beneficiariesData) {
+              const matchesWithBeneficiaries = allMatchData.map(match => ({
+                ...match,
+                beneficiaries: beneficiariesData.find(b => b.id === match.beneficiary_id)
+              }))
+              
+              setDonationMatches(matchesWithBeneficiaries)
+              setBeneficiaries(beneficiariesData)
+              setSelectedBeneficiaries(allMatchData.map(m => m.beneficiary_id))
+            }
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -165,7 +187,10 @@ export default function AdminQuoteUploadPage() {
   // 단가 변경시 부가세 자동 계산 (10%)
   const handleUnitPriceChange = (value: string) => {
     const unitPrice = parseInt(value) || 0
-    const totalPrice = unitPrice * (donation?.quantity || 0)
+    const totalAcceptedQuantity = donationMatches.reduce((sum, match) => 
+      sum + (match.accepted_quantity || 0), 0
+    )
+    const totalPrice = unitPrice * totalAcceptedQuantity
     const logisticsCost = Math.round(totalPrice * 0.1)
     setFormData({
       ...formData,
@@ -179,7 +204,10 @@ export default function AdminQuoteUploadPage() {
     setLoading(true)
     try {
       const unitPrice = parseInt(formData.unit_price) || 0
-      const supplyPrice = unitPrice * (donation?.quantity || 0)
+      const totalAcceptedQuantity = donationMatches.reduce((sum, match) => 
+        sum + (match.accepted_quantity || 0), 0
+      )
+      const supplyPrice = unitPrice * totalAcceptedQuantity
       const logisticsCost = parseInt(formData.logistics_cost) || 0
       const totalAmount = supplyPrice + logisticsCost
 
@@ -229,8 +257,15 @@ export default function AdminQuoteUploadPage() {
 
     try {
       // 필수 필드 검증
-      if (!formData.unit_price || selectedBeneficiaries.length === 0) {
-        alert('필수 항목을 모두 입력해주세요.')
+      if (!formData.unit_price) {
+        alert('단가를 입력해주세요.')
+        setLoading(false)
+        return
+      }
+      
+      // 매칭된 수혜기관이 없는 경우
+      if (donationMatches.length === 0) {
+        alert('매칭된 수혜기관이 없습니다. 먼저 수혜기관을 매칭해주세요.')
         setLoading(false)
         return
       }
@@ -239,9 +274,12 @@ export default function AdminQuoteUploadPage() {
       console.log('Selected beneficiaries:', selectedBeneficiaries)
       console.log('Donation matches:', donationMatches)
 
-      // Calculate total amount
+      // Calculate total amount based on all matched beneficiaries' accepted quantities
       const unitPrice = parseInt(formData.unit_price) || 0
-      const supplyPrice = unitPrice * (donation?.quantity || 0)
+      const totalAcceptedQuantity = donationMatches.reduce((sum, match) => 
+        sum + (match.accepted_quantity || 0), 0
+      )
+      const supplyPrice = unitPrice * totalAcceptedQuantity
       const logisticsCost = parseInt(formData.logistics_cost) || 0
       const totalAmount = supplyPrice + logisticsCost
 
@@ -413,7 +451,11 @@ export default function AdminQuoteUploadPage() {
     return <div style={{ padding: '40px', textAlign: 'center' }}>로딩 중...</div>
   }
 
-  const supplyPrice = (parseInt(formData.unit_price) || 0) * (donation?.quantity || 0)
+  // 화면에 표시할 총 금액 계산 (매칭된 모든 수혜기관의 수량 합계)
+  const totalAcceptedQuantity = donationMatches.reduce((sum, match) => 
+    sum + (match.accepted_quantity || 0), 0
+  )
+  const supplyPrice = (parseInt(formData.unit_price) || 0) * totalAcceptedQuantity
   const totalAmount = supplyPrice + (parseInt(formData.logistics_cost) || 0)
 
   return (
@@ -454,46 +496,39 @@ export default function AdminQuoteUploadPage() {
               boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
             }}>
               <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', color: '#212529' }}>
-                수혜기관 선택 (복수 선택 가능)
+                매칭된 수혜기관 ({donationMatches.length}개)
               </h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {beneficiaries.map((beneficiary) => (
-                  <label 
-                    key={beneficiary.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      padding: '12px',
-                      border: '1px solid #E9ECEF',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      backgroundColor: selectedBeneficiaries.includes(beneficiary.id) ? '#E8F5E9' : 'white',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedBeneficiaries.includes(beneficiary.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedBeneficiaries([...selectedBeneficiaries, beneficiary.id])
-                        } else {
-                          setSelectedBeneficiaries(selectedBeneficiaries.filter(id => id !== beneficiary.id))
-                        }
+                {donationMatches.map((match) => {
+                  const beneficiary = match.beneficiaries;
+                  if (!beneficiary) return null;
+                  return (
+                    <div 
+                      key={match.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        padding: '12px',
+                        border: '1px solid #E9ECEF',
+                        borderRadius: '8px',
+                        backgroundColor: '#F8F9FA'
                       }}
-                      style={{ marginRight: '12px', marginTop: '2px' }}
-                    />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: '500', marginBottom: '4px' }}>{beneficiary.organization_name}</div>
-                      <div style={{ fontSize: '13px', color: '#6C757D' }}>
-                        {beneficiary.organization_type} | {beneficiary.phone} | {beneficiary.email}
-                      </div>
-                      <div style={{ fontSize: '13px', color: '#6C757D', marginTop: '4px' }}>
-                        {beneficiary.address}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: '500', marginBottom: '4px' }}>{beneficiary.organization_name}</div>
+                        <div style={{ fontSize: '13px', color: '#6C757D' }}>
+                          {beneficiary.organization_type} | {beneficiary.phone} | {beneficiary.email}
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#6C757D', marginTop: '4px' }}>
+                          {beneficiary.address}
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#02391f', marginTop: '4px', fontWeight: '500' }}>
+                          수락 수량: {match.accepted_quantity} {donation?.unit}
+                        </div>
                       </div>
                     </div>
-                  </label>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -588,7 +623,7 @@ export default function AdminQuoteUploadPage() {
                   borderRadius: '4px',
                   textAlign: 'right'
                 }}>
-                  {donation.quantity}{donation.unit || 'kg'}
+                  {totalAcceptedQuantity}{donation.unit || 'kg'}
                 </div>
               </div>
 
@@ -604,7 +639,7 @@ export default function AdminQuoteUploadPage() {
                   borderRadius: '4px',
                   textAlign: 'right'
                 }}>
-                  {((parseInt(formData.unit_price) || 0) * donation.quantity).toLocaleString()} 원
+                  {supplyPrice.toLocaleString()} 원
                 </div>
                 <label style={{ fontSize: '14px', color: '#212529', fontWeight: '500' }}>부가세 (10%)</label>
                 <div style={{ position: 'relative' }}>

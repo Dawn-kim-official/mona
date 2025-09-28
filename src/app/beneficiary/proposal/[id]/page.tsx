@@ -23,6 +23,7 @@ interface ProposalDetail {
     pickup_deadline: string
     pickup_location: string
     photos: string[] | null
+    status?: string
     businesses: {
       name: string
       address: string
@@ -47,6 +48,7 @@ export default function ProposalDetailPage() {
   const [generatingPdf, setGeneratingPdf] = useState(false)
   const [acceptedQuantity, setAcceptedQuantity] = useState<number>(0)
   const [remainingQuantity, setRemainingQuantity] = useState<number>(0)
+  const [pickupSchedule, setPickupSchedule] = useState<any>(null)
 
   useEffect(() => {
     fetchProposal()
@@ -116,6 +118,18 @@ export default function ProposalDetailPage() {
 
           setProposal(proposalWithDetails)
           setNotes(data.response_notes || '')
+          
+          // Fetch pickup schedule
+          const { data: scheduleData, error: scheduleError } = await supabase
+            .from('pickup_schedules')
+            .select('*')
+            .eq('donation_id', donationData.id)
+            .eq('status', 'scheduled')
+            .single()
+          
+          if (scheduleData) {
+            setPickupSchedule(scheduleData)
+          }
           
           // Calculate remaining quantity
           const { data: otherMatches } = await supabase
@@ -471,12 +485,18 @@ export default function ProposalDetailPage() {
               </label>
               <span style={{ 
                 color: proposal.status === 'accepted' ? '#28A745' : 
-                      proposal.status === 'received' ? '#17A2B8' : '#DC3545',
+                      proposal.status === 'received' ? '#17A2B8' : 
+                      proposal.status === 'quote_sent' ? '#17A2B8' :
+                      proposal.status === 'rejected' ? '#DC3545' :
+                      proposal.status === 'proposed' ? '#FF8C00' : '#6C757D',
                 fontWeight: '600',
                 fontSize: '16px'
               }}>
                 {proposal.status === 'accepted' ? '수락됨' : 
-                 proposal.status === 'received' ? '기부완료' : '거절됨'}
+                 proposal.status === 'received' ? '기부완료' : 
+                 proposal.status === 'quote_sent' ? '픽업 대기' :
+                 proposal.status === 'rejected' ? '거절됨' : 
+                 proposal.status === 'proposed' ? '응답 대기' : proposal.status}
               </span>
             </div>
             {proposal.responded_at && (
@@ -503,7 +523,7 @@ export default function ProposalDetailPage() {
         )}
 
         {/* 픽업 일정 및 수령 확인 섹션 */}
-        {proposal.status === 'quote_sent' && (donation as any).status === 'pickup_scheduled' && (
+        {(proposal.status === 'quote_sent' && (donation?.status === 'pickup_scheduled' || donation?.status === 'pickup_coordinating')) && (
           <div style={{
             backgroundColor: 'white',
             borderRadius: '8px',
@@ -520,18 +540,45 @@ export default function ProposalDetailPage() {
               borderRadius: '8px',
               marginBottom: '24px' 
             }}>
-              <p style={{ fontSize: '16px', color: '#2E7D32', marginBottom: '8px' }}>
-                <strong>픽업 예정일:</strong> {new Date(donation.pickup_deadline).toLocaleDateString('ko-KR')}
-              </p>
-              <p style={{ fontSize: '14px', color: '#388E3C' }}>
-                <strong>픽업 장소:</strong> {donation.pickup_location}
-              </p>
+              {pickupSchedule ? (
+                <>
+                  <p style={{ fontSize: '16px', color: '#2E7D32', marginBottom: '8px' }}>
+                    <strong>픽업 예정일:</strong> {new Date(pickupSchedule.pickup_date).toLocaleDateString('ko-KR')}
+                  </p>
+                  <p style={{ fontSize: '14px', color: '#388E3C', marginBottom: '8px' }}>
+                    <strong>픽업 시간:</strong> {pickupSchedule.pickup_time}
+                  </p>
+                  <p style={{ fontSize: '14px', color: '#388E3C', marginBottom: '8px' }}>
+                    <strong>픽업 담당자:</strong> {pickupSchedule.pickup_staff}
+                  </p>
+                  <p style={{ fontSize: '14px', color: '#388E3C', marginBottom: '8px' }}>
+                    <strong>차량 정보:</strong> {pickupSchedule.vehicle_info}
+                  </p>
+                  <p style={{ fontSize: '14px', color: '#388E3C' }}>
+                    <strong>픽업 장소:</strong> {donation.pickup_location}
+                  </p>
+                  {pickupSchedule.notes && (
+                    <p style={{ fontSize: '14px', color: '#388E3C', marginTop: '8px' }}>
+                      <strong>참고사항:</strong> {pickupSchedule.notes}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p style={{ fontSize: '16px', color: '#2E7D32', marginBottom: '8px' }}>
+                    <strong>픽업 예정일:</strong> {new Date(donation.pickup_deadline).toLocaleDateString('ko-KR')}
+                  </p>
+                  <p style={{ fontSize: '14px', color: '#388E3C' }}>
+                    <strong>픽업 장소:</strong> {donation.pickup_location}
+                  </p>
+                </>
+              )}
             </div>
             <div style={{ textAlign: 'center' }}>
               <button
                 onClick={async () => {
                   if (confirm('물품을 수령하셨습니까?')) {
-                    await supabase
+                    const { error } = await supabase
                       .from('donation_matches')
                       .update({ 
                         status: 'received',
@@ -539,13 +586,11 @@ export default function ProposalDetailPage() {
                       })
                       .eq('id', proposalId)
                     
-                    await supabase
-                      .from('donations')
-                      .update({ 
-                        status: 'completed',
-                        completed_at: new Date().toISOString()
-                      })
-                      .eq('id', donation.id)
+                    if (error) {
+                      console.error('Error updating status:', error)
+                      alert('수령 완료 처리 중 오류가 발생했습니다.')
+                      return
+                    }
                     
                     alert('수령이 완료되었습니다. 기부영수증을 발급해주세요.')
                     fetchProposal()
@@ -663,8 +708,29 @@ export default function ProposalDetailPage() {
                         heightLeft -= pageHeight
                       }
                       
-                      // PDF 저장
+                      // PDF를 Blob으로 변환
+                      const pdfBlob = pdf.output('blob')
+                      const pdfFile = new File([pdfBlob], `기부영수증_${new Date().toISOString().split('T')[0]}.pdf`, {
+                        type: 'application/pdf'
+                      })
+                      
+                      // PDF 다운로드
                       pdf.save(`기부영수증_${new Date().toISOString().split('T')[0]}.pdf`)
+                      
+                      // Supabase Storage에 업로드
+                      const fileName = `${proposalId}_${Date.now()}.pdf`
+                      const { data: uploadData, error: uploadError } = await supabase.storage
+                        .from('donation-receipts')
+                        .upload(fileName, pdfFile)
+                      
+                      if (uploadError) {
+                        throw new Error('영수증 업로드 실패: ' + uploadError.message)
+                      }
+                      
+                      // Public URL 가져오기
+                      const { data: { publicUrl } } = supabase.storage
+                        .from('donation-receipts')
+                        .getPublicUrl(fileName)
                       
                       // 정리
                       root.unmount()
@@ -675,14 +741,25 @@ export default function ProposalDetailPage() {
                         .from('donation_matches')
                         .update({ 
                           receipt_issued: true,
-                          receipt_issued_at: new Date().toISOString()
+                          receipt_issued_at: new Date().toISOString(),
+                          receipt_file_url: publicUrl
                         })
                         .eq('id', proposalId)
+                      
+                      // donations 테이블도 completed로 변경
+                      await supabase
+                        .from('donations')
+                        .update({ 
+                          status: 'completed',
+                          completed_at: new Date().toISOString()
+                        })
+                        .eq('id', donation.id)
                       
                       alert('기부영수증이 발행되었습니다.')
                       router.push('/beneficiary/proposals')
                     } catch (error) {
-                      alert('영수증 발행 중 오류가 발생했습니다.')
+                      console.error('영수증 발행 오류:', error);
+                      alert(`영수증 발행 중 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`)
                     } finally {
                       setGeneratingPdf(false)
                     }

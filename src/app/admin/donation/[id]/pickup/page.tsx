@@ -70,10 +70,10 @@ export default function AdminPickupSchedulePage() {
 
       if (scheduleError) throw scheduleError
 
-      // Update donation status to completed
+      // Update donation status to pickup_coordinating
       const { error: donationError } = await supabase
         .from('donations')
-        .update({ status: 'completed' })
+        .update({ status: 'pickup_coordinating' })
         .eq('id', params.id)
 
       if (donationError) throw donationError

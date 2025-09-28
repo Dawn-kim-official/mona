@@ -29,7 +29,8 @@ const statusMap: { [key: string]: { text: string; color: string; bgColor: string
   'matched': { text: '수혜기관 선정', color: '#17A2B8', bgColor: '#D1ECF1' },
   'quote_sent': { text: '견적 대기', color: '#FF8C00', bgColor: '#FFF3CD' },
   'quote_accepted': { text: '견적 수락', color: '#007BFF', bgColor: '#CCE5FF' },
-  'pickup_scheduled': { text: '픽업 완료', color: '#007BFF', bgColor: '#CCE5FF' },
+  'pickup_coordinating': { text: '픽업 일정 조율', color: '#6F42C1', bgColor: '#E2D9F3' },
+  'pickup_scheduled': { text: '픽업 예정', color: '#007BFF', bgColor: '#CCE5FF' },
   'completed': { text: '기부 완료', color: '#28A745', bgColor: '#D4EDDA' }
 }
 
@@ -72,28 +73,31 @@ export default function AdminDonationsPage() {
     if (error) {
       console.error('Error fetching donations:', error)
     } else {
-      // 각 donation에 대해 accepted 상태의 match가 있는지 확인
+      // 각 donation에 대해 accepted 상태의 match가 있는지 확인하고 남은 수량 계산
       const donationsWithMatchStatus = await Promise.all(
         (data || []).map(async (donation) => {
-          // 모든 donation에 대해 accepted 상태 확인 (matched 상태뿐만 아니라)
-          const { data: matchData, error: matchError } = await supabase
+          // 모든 매칭 정보 가져오기
+          const { data: allMatches } = await supabase
             .from('donation_matches')
-            .select('status')
+            .select('status, accepted_quantity')
             .eq('donation_id', donation.id)
-            .eq('status', 'accepted')
           
-          if (donation.name?.includes('방사능') || donation.description?.includes('방사능')) {
-            console.log(`방사능덩어리 항목 상세 정보:`, {
-              donation_id: donation.id,
-              donation_status: donation.status,
-              matchData: matchData,
-              has_accepted: matchData && matchData.length > 0
-            })
-          }
+          // accepted 상태 확인
+          const hasAcceptedMatch = allMatches?.some(match => match.status === 'accepted') || false
+          
+          // 수락된 총 수량 계산
+          const totalAcceptedQuantity = allMatches
+            ?.filter(match => match.status === 'accepted' || match.status === 'quote_sent')
+            .reduce((sum, match) => sum + (match.accepted_quantity || 0), 0) || 0
+          
+          const remainingQuantity = donation.quantity - totalAcceptedQuantity
           
           return {
             ...donation,
-            has_accepted_match: matchData && matchData.length > 0
+            has_accepted_match: hasAcceptedMatch,
+            remaining_quantity: remainingQuantity,
+            total_accepted_quantity: totalAcceptedQuantity,
+            match_count: allMatches?.length || 0
           }
         })
       )
@@ -183,7 +187,8 @@ export default function AdminDonationsPage() {
     { id: 'matched', label: '수혜기관 선정' },
     { id: 'quote_sent', label: '견적 발송' },
     { id: 'quote_accepted', label: '견적 수락' },
-    { id: 'pickup_scheduled', label: '픽업 완료' },
+    { id: 'pickup_coordinating', label: '픽업 일정 조율' },
+    { id: 'pickup_scheduled', label: '픽업 예정' },
     { id: 'completed', label: '기부 완료' }
   ]
 
@@ -418,39 +423,27 @@ export default function AdminDonationsPage() {
                           </>
                         )}
                       {donation.status === 'pickup_scheduled' && (
-                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                          <Link href={`/admin/donation/${donation.id}/propose`}>
-                            <button style={{
-                              padding: '6px 16px',
-                              fontSize: '13px',
-                              fontWeight: '500',
-                              color: 'white',
-                              backgroundColor: '#28A745',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer'
-                            }}>
-                              수혜자 제안
-                            </button>
-                          </Link>
-                          <Link href={`/admin/donation/${donation.id}/quote`}>
-                            <button style={{
-                              padding: '6px 16px',
-                              fontSize: '13px',
-                              fontWeight: '500',
-                              color: '#212529',
-                              backgroundColor: '#ffd020',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer'
-                            }}>
-                              견적서 업로드
-                            </button>
-                          </Link>
-                        </div>
+                        <button
+                          onClick={() => handleComplete(donation.id)}
+                          style={{
+                            padding: '6px 16px',
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            color: 'white',
+                            backgroundColor: '#28A745',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          완료 처리
+                        </button>
                       )}
                       {donation.status === 'quote_sent' && (
-                        <span style={{ fontSize: '12px', color: '#666' }}>견적서 발송 완료</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+                          <span style={{ fontSize: '12px', color: '#666' }}>견적서 발송 완료</span>
+                          <span style={{ fontSize: '11px', color: '#999' }}>견적 수락 대기중</span>
+                        </div>
                       )}
                       {donation.status === 'quote_accepted' && (
                         <Link href={`/admin/donation/${donation.id}/pickup`}>
@@ -468,32 +461,72 @@ export default function AdminDonationsPage() {
                           </button>
                         </Link>
                       )}
-                      {donation.status === 'pickup_scheduled' && (
+                      {donation.status === 'pickup_coordinating' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
-                          <span style={{ fontSize: '12px', color: '#666' }}>
-                            픽업 일정: {new Date(donation.pickup_deadline).toLocaleDateString('ko-KR')}
-                          </span>
+                          <span style={{ fontSize: '12px', color: '#666' }}>픽업 일정 조율 중</span>
                           <button
-                            onClick={() => handleComplete(donation.id)}
+                            onClick={async () => {
+                              if (confirm('픽업 일정이 확정되었습니까?')) {
+                                await supabase
+                                  .from('donations')
+                                  .update({ status: 'pickup_scheduled' })
+                                  .eq('id', donation.id);
+                                await fetchAllDonations();
+                              }
+                            }}
                             style={{
-                              padding: '6px 16px',
-                              fontSize: '13px',
-                              fontWeight: '500',
-                              color: 'white',
-                              backgroundColor: '#28A745',
+                              padding: '4px 12px',
+                              fontSize: '12px',
+                              fontWeight: '400',
+                              color: '#fff',
+                              backgroundColor: '#007BFF',
                               border: 'none',
                               borderRadius: '4px',
                               cursor: 'pointer'
                             }}
                           >
-                            완료 처리
+                            일정 확정
                           </button>
                         </div>
                       )}
-                      {donation.status === 'completed' && (
-                        <span style={{ color: '#28A745', fontSize: '12px' }}>✓ 완료</span>
+                      {donation.status === 'pickup_scheduled' && (
+                        <button
+                          onClick={() => handleComplete(donation.id)}
+                          style={{
+                            padding: '6px 16px',
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            color: 'white',
+                            backgroundColor: '#28A745',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          완료 처리
+                        </button>
                       )}
-                      {(donation.status === 'rejected' || !['pending_review', 'matched', 'quote_sent', 'quote_accepted', 'pickup_scheduled', 'completed'].includes(donation.status)) && (
+                      {donation.status === 'completed' && (
+                        <Link href={`/admin/donation/${donation.id}/detail`}>
+                          <button style={{
+                            padding: '6px 16px',
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            color: 'white',
+                            backgroundColor: '#28A745',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#218838'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#28A745'}
+                          >
+                            영수증 확인
+                          </button>
+                        </Link>
+                      )}
+                      {(donation.status === 'rejected' || !['pending_review', 'matched', 'quote_sent', 'quote_accepted', 'pickup_coordinating', 'pickup_scheduled', 'completed'].includes(donation.status)) && (
                         <span style={{ color: '#6C757D', fontSize: '12px' }}>-</span>
                       )}
                       </div>
