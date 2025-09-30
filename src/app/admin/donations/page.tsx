@@ -448,14 +448,15 @@ export default function AdminDonationsPage() {
                       {donation.status === 'quote_accepted' && (
                         <Link href={`/admin/donation/${donation.id}/pickup`}>
                           <button style={{
-                            padding: '4px 12px',
-                            fontSize: '12px',
-                            fontWeight: '400',
+                            padding: '6px 16px',
+                            fontSize: '13px',
+                            fontWeight: '500',
                             color: '#212529',
                             backgroundColor: 'transparent',
                             border: '1px solid #212529',
                             borderRadius: '4px',
-                            cursor: 'pointer'
+                            cursor: 'pointer',
+                            minWidth: '90px'
                           }}>
                             픽업 일정 설정
                           </button>
@@ -475,14 +476,15 @@ export default function AdminDonationsPage() {
                               }
                             }}
                             style={{
-                              padding: '4px 12px',
-                              fontSize: '12px',
-                              fontWeight: '400',
+                              padding: '6px 16px',
+                              fontSize: '13px',
+                              fontWeight: '500',
                               color: '#fff',
                               backgroundColor: '#007BFF',
                               border: 'none',
                               borderRadius: '4px',
-                              cursor: 'pointer'
+                              cursor: 'pointer',
+                              minWidth: '90px'
                             }}
                           >
                             일정 확정

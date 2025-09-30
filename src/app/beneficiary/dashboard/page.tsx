@@ -313,7 +313,8 @@ export default function BeneficiaryDashboardPage() {
                         border: '1px solid #007BFF',
                         borderRadius: '4px',
                         cursor: 'pointer',
-                        transition: 'all 0.2s'
+                        transition: 'all 0.2s',
+                        minWidth: '90px'
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.backgroundColor = '#007BFF';

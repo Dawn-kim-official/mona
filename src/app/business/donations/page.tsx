@@ -378,12 +378,13 @@ export default function BusinessDashboardPage() {
                                   color: '#02391f', 
                                   background: 'transparent', 
                                   border: '1px solid #02391f',
-                                  padding: '4px 12px',
+                                  padding: '6px 16px',
                                   borderRadius: '4px',
                                   cursor: 'pointer',
-                                  fontSize: '12px',
+                                  fontSize: '13px',
                                   fontWeight: '500',
-                                  transition: 'all 0.2s'
+                                  transition: 'all 0.2s',
+                                  minWidth: '90px'
                                 }}
                                 onMouseEnter={(e) => {
                                   e.currentTarget.style.backgroundColor = '#02391f';
@@ -398,15 +399,16 @@ export default function BusinessDashboardPage() {
                             {donation.status === 'completed' && (
                               <Link href={`/business/donation/${donation.id}`}>
                                 <button style={{
-                                  padding: '4px 12px',
-                                  fontSize: '12px',
+                                  padding: '6px 16px',
+                                  fontSize: '13px',
                                   fontWeight: '500',
                                   color: 'white',
                                   backgroundColor: '#02391f',
                                   border: 'none',
                                   borderRadius: '4px',
                                   cursor: 'pointer',
-                                  transition: 'all 0.2s'
+                                  transition: 'all 0.2s',
+                                  minWidth: '90px'
                                 }}
                                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#164137'}
                                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#02391f'}
@@ -423,10 +425,11 @@ export default function BusinessDashboardPage() {
                                 router.push(`/business/donation/${donation.id}`);
                               }}
                               style={{
-                                padding: '4px 12px',
-                                fontSize: '12px',
+                                padding: '6px 16px',
+                                fontSize: '13px',
                                 fontWeight: '500',
                                 color: '#007BFF',
+                                minWidth: '90px',
                                 backgroundColor: 'transparent',
                                 border: '1px solid #007BFF',
                                 borderRadius: '4px',

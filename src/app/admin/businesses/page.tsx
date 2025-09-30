@@ -682,14 +682,15 @@ export default function AdminBusinessesPage() {
               <button
                 onClick={() => setRejectModal({ show: false, id: '', type: 'business' })}
                 style={{
-                  padding: '10px 20px',
+                  padding: '10px 24px',
                   fontSize: '14px',
                   fontWeight: '500',
                   color: '#6C757D',
                   backgroundColor: 'white',
                   border: '1px solid #CED4DA',
                   borderRadius: '4px',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  minWidth: '100px'
                 }}
               >
                 취소
@@ -697,14 +698,15 @@ export default function AdminBusinessesPage() {
               <button
                 onClick={handleRejectSubmit}
                 style={{
-                  padding: '10px 20px',
+                  padding: '10px 24px',
                   fontSize: '14px',
                   fontWeight: '500',
                   color: 'white',
                   backgroundColor: '#DC3545',
                   border: 'none',
                   borderRadius: '4px',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  minWidth: '100px'
                 }}
               >
                 거절하기

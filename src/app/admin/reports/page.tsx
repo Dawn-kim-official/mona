@@ -479,14 +479,15 @@ export default function AdminReportsPage() {
                     setSelectedFile(null)
                   }}
                   style={{
-                    padding: '8px 24px',
+                    padding: '10px 24px',
                     backgroundColor: '#6C757D',
                     color: 'white',
                     border: 'none',
                     borderRadius: '4px',
                     cursor: 'pointer',
                     fontSize: '14px',
-                    fontWeight: '500'
+                    fontWeight: '500',
+                    minWidth: '100px'
                   }}
                 >
                   취소
@@ -495,14 +496,15 @@ export default function AdminReportsPage() {
                   onClick={handleReportUpload}
                   disabled={!selectedFile || uploadingId === selectedBusiness?.id}
                   style={{
-                    padding: '8px 24px',
+                    padding: '10px 24px',
                     backgroundColor: (!selectedFile || uploadingId === selectedBusiness?.id) ? '#CED4DA' : '#007BFF',
                     color: 'white',
                     border: 'none',
                     borderRadius: '4px',
                     cursor: (!selectedFile || uploadingId === selectedBusiness?.id) ? 'not-allowed' : 'pointer',
                     fontSize: '14px',
-                    fontWeight: '500'
+                    fontWeight: '500',
+                    minWidth: '100px'
                   }}
                 >
                   {uploadingId === selectedBusiness?.id ? '업로드 중...' : '업로드'}
@@ -566,13 +568,14 @@ export default function AdminReportsPage() {
                         <button
                           onClick={() => deleteReport(report.id)}
                           style={{
-                            padding: '4px 12px',
+                            padding: '6px 16px',
                             backgroundColor: '#DC3545',
                             color: 'white',
                             border: 'none',
                             borderRadius: '4px',
-                            fontSize: '12px',
-                            cursor: 'pointer'
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                            minWidth: '60px'
                           }}
                         >
                           삭제

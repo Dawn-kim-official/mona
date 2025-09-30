@@ -329,15 +329,16 @@ export default function BeneficiaryProposalsPage() {
                             onClick={() => handleReceiptUpload(proposal)}
                             disabled={generatingPdf === proposal.id}
                             style={{
-                              padding: '4px 12px',
-                              fontSize: '12px',
+                              padding: '6px 16px',
+                              fontSize: '13px',
                               fontWeight: '500',
                               color: 'white',
                               backgroundColor: generatingPdf === proposal.id ? '#6C757D' : '#02391f',
                               border: 'none',
                               borderRadius: '4px',
                               cursor: generatingPdf === proposal.id ? 'not-allowed' : 'pointer',
-                              marginRight: '8px'
+                              marginRight: '8px',
+                              minWidth: '110px'
                             }}
                           >
                             {generatingPdf === proposal.id ? '업로드 중...' : '영수증 업로드'}
@@ -350,15 +351,16 @@ export default function BeneficiaryProposalsPage() {
                         <button
                           onClick={() => router.push(`/beneficiary/proposal/${proposal.id}`)}
                           style={{
-                            padding: '4px 12px',
-                            fontSize: '12px',
+                            padding: '6px 16px',
+                            fontSize: '13px',
                             fontWeight: '500',
                             color: '#007BFF',
                             backgroundColor: 'transparent',
                             border: '1px solid #007BFF',
                             borderRadius: '4px',
                             cursor: 'pointer',
-                            transition: 'all 0.2s'
+                            transition: 'all 0.2s',
+                            minWidth: '90px'
                           }}
                           onMouseEnter={(e) => {
                             e.currentTarget.style.backgroundColor = '#007BFF';
