@@ -23,6 +23,8 @@ export interface Business {
   postcode: string | null
   detail_address: string | null
   address: string | null
+  email?: string  // profiles 테이블에서 조인해서 가져오는 이메일
+  profiles?: { email: string }  // 조인 데이터를 위한 옵션 필드
 }
 
 export interface Donation {

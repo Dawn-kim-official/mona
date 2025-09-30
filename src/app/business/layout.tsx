@@ -114,6 +114,16 @@ export default function BusinessLayout({
               borderRadius: '6px',
               transition: 'all 0.2s ease'
             }}>내 기부 목록</Link>
+            <Link href="/business/receipts" style={{ 
+              color: pathname === '/business/receipts' ? '#ffd020' : 'white', 
+              textDecoration: 'none',
+              fontSize: '16px',
+              fontWeight: pathname === '/business/receipts' ? '600' : '400',
+              padding: '8px 16px',
+              backgroundColor: pathname === '/business/receipts' ? 'rgba(255, 208, 32, 0.1)' : 'transparent',
+              borderRadius: '6px',
+              transition: 'all 0.2s ease'
+            }}>영수증 조회</Link>
           </div>
         </div>
         <div style={{ position: 'relative' }}>

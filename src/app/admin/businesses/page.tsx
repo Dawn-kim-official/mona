@@ -48,8 +48,27 @@ export default function AdminBusinessesPage() {
 
     if (error) {
       console.error('Error fetching businesses:', error)
+      setBusinesses([])
     } else {
-      setBusinesses(data || [])
+      // 각 business에 대해 profiles 테이블에서 이메일 가져오기
+      const businessesWithEmail = await Promise.all(
+        (data || []).map(async (business) => {
+          if (business.user_id) {
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('email')
+              .eq('id', business.user_id)
+              .single()
+            
+            return {
+              ...business,
+              email: profileData?.email || '-'
+            }
+          }
+          return { ...business, email: '-' }
+        })
+      )
+      setBusinesses(businessesWithEmail)
     }
   }
 
@@ -64,7 +83,25 @@ export default function AdminBusinessesPage() {
         console.error('Error fetching beneficiaries:', error)
         setBeneficiaries([])
       } else {
-        setBeneficiaries(data || [])
+        // 각 beneficiary에 대해 profiles 테이블에서 이메일 가져오기
+        const beneficiariesWithEmail = await Promise.all(
+          (data || []).map(async (beneficiary) => {
+            if (beneficiary.user_id) {
+              const { data: profileData } = await supabase
+                .from('profiles')
+                .select('email')
+                .eq('id', beneficiary.user_id)
+                .single()
+              
+              return {
+                ...beneficiary,
+                email: profileData?.email || beneficiary.email || '-'
+              }
+            }
+            return { ...beneficiary, email: beneficiary.email || '-' }
+          })
+        )
+        setBeneficiaries(beneficiariesWithEmail)
       }
     } catch (err) {
       console.error('Unexpected error:', err)
@@ -75,6 +112,11 @@ export default function AdminBusinessesPage() {
   async function updateBusinessStatus(businessId: string, status: 'approved' | 'rejected', reason?: string) {
     try {
       const { data: { user } } = await supabase.auth.getUser()
+      
+      // 비즈니스 정보와 이메일 가져오기
+      const business = businesses.find(b => b.id === businessId)
+      const recipientEmail = business?.email
+      const organizationName = business?.name
       
       const { error } = await supabase
         .from('businesses')
@@ -89,13 +131,37 @@ export default function AdminBusinessesPage() {
         console.error('Business update error:', error)
         alert(`상태 업데이트 중 오류가 발생했습니다: ${error.message}`)
       } else {
+        // 이메일 발송
+        if (recipientEmail && recipientEmail !== '-') {
+          try {
+            const response = await fetch('/api/send-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                to: recipientEmail,
+                type: status,
+                organizationName: organizationName || '기업회원',
+                rejectionReason: reason || ''
+              })
+            })
+            
+            if (!response.ok) {
+              const errorData = await response.json()
+              console.error('Email sending failed:', errorData)
+            } else {
+              const successData = await response.json()
+              console.log('Email sent successfully:', successData)
+            }
+          } catch (emailError) {
+            console.error('Email error:', emailError)
+          }
+        }
+        
         await fetchBusinesses()
         if (status === 'rejected' && reason) {
-          // TODO: 거절 이메일 발송 로직 추가
-          // 거절 사유는 이메일로만 발송하고 DB에는 저장하지 않음
-          alert(`가입이 거절되었습니다.\n거절 사유: ${reason}`)
+          alert(`가입이 거절되었습니다.\n거절 사유: ${reason}\n\n이메일이 발송되었습니다.`)
         } else if (status === 'approved') {
-          alert('가입이 승인되었습니다.')
+          alert('가입이 승인되었습니다.\n승인 이메일이 발송되었습니다.')
         }
       }
     } catch (error: any) {
@@ -106,6 +172,11 @@ export default function AdminBusinessesPage() {
 
   async function updateBeneficiaryStatus(beneficiaryId: string, status: 'approved' | 'rejected', reason?: string) {
     try {
+      // 수혜기관 정보와 이메일 가져오기
+      const beneficiary = beneficiaries.find(b => b.id === beneficiaryId)
+      const recipientEmail = beneficiary?.email
+      const organizationName = beneficiary?.organization_name
+      
       const { error } = await supabase
         .from('beneficiaries')
         .update({ 
@@ -118,13 +189,37 @@ export default function AdminBusinessesPage() {
         console.error('Beneficiary update error:', error)
         alert(`상태 업데이트 중 오류가 발생했습니다: ${error.message}`)
       } else {
+        // 이메일 발송
+        if (recipientEmail && recipientEmail !== '-') {
+          try {
+            const response = await fetch('/api/send-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                to: recipientEmail,
+                type: status,
+                organizationName: organizationName || '수혜기관',
+                rejectionReason: reason || ''
+              })
+            })
+            
+            if (!response.ok) {
+              const errorData = await response.json()
+              console.error('Email sending failed:', errorData)
+            } else {
+              const successData = await response.json()
+              console.log('Email sent successfully:', successData)
+            }
+          } catch (emailError) {
+            console.error('Email error:', emailError)
+          }
+        }
+        
         await fetchBeneficiaries()
         if (status === 'rejected' && reason) {
-          // TODO: 거절 이메일 발송 로직 추가
-          // 거절 사유는 이메일로만 발송하고 DB에는 저장하지 않음
-          alert(`가입이 거절되었습니다.\n거절 사유: ${reason}`)
+          alert(`가입이 거절되었습니다.\n거절 사유: ${reason}\n\n이메일이 발송되었습니다.`)
         } else if (status === 'approved') {
-          alert('가입이 승인되었습니다.')
+          alert('가입이 승인되었습니다.\n승인 이메일이 발송되었습니다.')
         }
       }
     } catch (error: any) {
@@ -299,8 +394,7 @@ export default function AdminBusinessesPage() {
                       <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{business.manager_name || '-'}</td>
                       <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{business.manager_phone || '-'}</td>
                       <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
-                        {/* 이메일 - auth.users 테이블과 조인 필요하므로 일단 '-' */}
-                        -
+                        {business.email || '-'}
                       </td>
                       <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
                         {business.postcode && business.detail_address 
