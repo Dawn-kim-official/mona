@@ -15,15 +15,18 @@ export interface Business {
   updated_at: string
   esg_report_url: string | null
   business_number: string | null
-  manager_name: string | null
-  manager_phone: string | null
+  representative_name: string | null  // 실제 테이블 컬럼명
+  phone: string | null  // 실제 테이블 컬럼명
+  email: string | null  // businesses 테이블의 email 컬럼
+  address: string | null
   business_type: string | null
   business_registration_number: string | null
   sns_link: string | null
   postcode: string | null
   detail_address: string | null
-  address: string | null
-  email?: string  // profiles 테이블에서 조인해서 가져오는 이메일
+  // 호환성을 위한 별칭
+  manager_name?: string | null
+  manager_phone?: string | null
   profiles?: { email: string }  // 조인 데이터를 위한 옵션 필드
 }
 

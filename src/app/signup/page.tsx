@@ -163,93 +163,203 @@ export default function SignupPage() {
     }
 
     try {
-      // 먼저 이메일 중복 체크
+      let userId = null
+      let isRejectedAccount = false
+
+      console.log('Checking email:', email.trim().toLowerCase())
+
       // 먼저 해당 이메일로 가입된 계정의 상태 확인
-      const { data: existingUser } = await supabase
+      const { data: existingUser, error: profileError } = await supabase
         .from('profiles')
         .select('id, email, role')
         .eq('email', email.trim().toLowerCase())
         .single()
-      
+
+      console.log('Profile check result:', existingUser, 'Error:', profileError)
+
       if (existingUser) {
         // 거절된 계정인지 확인
-        let isRejected = false
-        
-        if (existingUser.role === 'business') {
-          const { data: business } = await supabase
+        if (existingUser.role === 'business' || userType === 'business') {
+          const { data: business, error: businessError } = await supabase
             .from('businesses')
             .select('status')
             .eq('user_id', existingUser.id)
             .single()
-          
-          if (business?.status === 'rejected') {
-            isRejected = true
+
+          console.log('Business check:', business, 'Error:', businessError)
+
+          // 406 에러나 데이터가 없는 경우 처리
+          if (businessError?.code === 'PGRST116' || businessError?.message?.includes('Row not found')) {
+            // businesses 테이블에 데이터가 없는 경우 - 계정 재사용 가능
+            isRejectedAccount = true
+            userId = existingUser.id
+            console.log('No business data found, can reuse account')
+          } else if (business?.status === 'rejected') {
+            isRejectedAccount = true
+            userId = existingUser.id
             // 거절된 기업 데이터 삭제
             await supabase.from('businesses').delete().eq('user_id', existingUser.id)
+          } else if (business) {
+            // 승인 대기 중이거나 승인된 계정
+            setError('이미 등록된 이메일입니다.')
+            setLoading(false)
+            return
+          } else {
+            // 기타 에러인 경우 계정 재사용
+            isRejectedAccount = true
+            userId = existingUser.id
           }
-        } else if (existingUser.role === 'beneficiary') {
-          const { data: beneficiary } = await supabase
+        } else if (existingUser.role === 'beneficiary' || userType === 'beneficiary') {
+          const { data: beneficiary, error: beneficiaryError } = await supabase
             .from('beneficiaries')
             .select('status')
             .eq('user_id', existingUser.id)
             .single()
-          
-          if (beneficiary?.status === 'rejected') {
-            isRejected = true
+
+          console.log('Beneficiary check:', beneficiary, 'Error:', beneficiaryError)
+
+          // 406 에러나 데이터가 없는 경우 처리
+          if (beneficiaryError?.code === 'PGRST116' || beneficiaryError?.message?.includes('Row not found')) {
+            // beneficiaries 테이블에 데이터가 없는 경우 - 계정 재사용 가능
+            isRejectedAccount = true
+            userId = existingUser.id
+            console.log('No beneficiary data found, can reuse account')
+          } else if (beneficiary?.status === 'rejected') {
+            isRejectedAccount = true
+            userId = existingUser.id
             // 거절된 수혜기관 데이터 삭제
             await supabase.from('beneficiaries').delete().eq('user_id', existingUser.id)
+          } else if (beneficiary) {
+            // 승인 대기 중이거나 승인된 계정
+            setError('이미 등록된 이메일입니다.')
+            setLoading(false)
+            return
+          } else {
+            // 기타 에러인 경우 계정 재사용
+            isRejectedAccount = true
+            userId = existingUser.id
           }
         }
 
-        if (isRejected) {
-          // 거절된 계정의 프로필 삭제
-          await supabase.from('profiles').delete().eq('id', existingUser.id)
-          
-          // Auth 사용자 삭제 시도 (관리자 권한 필요)
-          try {
-            await supabase.rpc('delete_user', { user_id: existingUser.id })
-          } catch (e) {
-            console.log('Auth user deletion failed:', e)
+        if (isRejectedAccount) {
+          // 거절된 계정인 경우 프로필 업데이트 (role 변경 가능)
+          await supabase
+            .from('profiles')
+            .update({
+              role: userType === 'business' ? 'business' : 'beneficiary',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId)
+
+          // 기존 Auth 사용자로 로그인 시도
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: email.trim().toLowerCase(),
+            password
+          })
+
+          if (signInError) {
+            // 비밀번호가 틀린 경우
+            setError('거절된 계정입니다. 이전과 동일한 비밀번호를 사용해주세요.')
+            setLoading(false)
+            return
+          }
+
+          // 로그인 성공 - userId 사용
+        }
+      }
+
+      // 신규 계정 생성 (거절된 계정이 아닌 경우)
+      if (!isRejectedAccount) {
+        console.log('Attempting to create new account for:', email)
+
+        const { data, error: signupError } = await supabase.auth.signUp({
+          email: email.trim().toLowerCase(),
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            data: {
+              email_confirm: false
+            }
+          },
+        })
+
+        console.log('SignUp result:', data, 'Error:', signupError)
+
+        if (signupError) {
+          console.error('SignUp error details:', signupError)
+          if (signupError.message.includes('already registered') ||
+              signupError.message.includes('User already registered')) {
+
+            // Auth에는 있지만 profiles에는 없는 경우 - Auth 사용자로 로그인 시도
+            console.log('User exists in Auth but not in profiles, attempting signin...')
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+              email: email.trim().toLowerCase(),
+              password
+            })
+
+            if (signInError) {
+              console.error('SignIn also failed:', signInError)
+              throw new Error('이미 등록된 이메일입니다. 비밀번호를 확인해주세요.')
+            }
+
+            if (signInData?.user) {
+              console.log('SignIn successful, reusing user:', signInData.user.id)
+              userId = signInData.user.id
+              // 이 경우 프로필을 새로 만들어야 함
+            } else {
+              throw new Error('이미 등록된 이메일입니다.')
+            }
+          } else {
+            throw signupError
           }
         } else {
-          // 거절되지 않은 기존 사용자
-          setError('이미 등록된 이메일입니다.')
-          setLoading(false)
-          return
+          userId = data?.user?.id
         }
       }
-      
-      const { data, error: signupError } = await supabase.auth.signUp({
-        email: email.trim().toLowerCase(),
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-          data: {
-            email_confirm: false
+
+      if (userId) {
+        // 프로필이 없는 경우 생성 (신규 또는 Auth만 있는 경우)
+        if (!isRejectedAccount || !existingUser) {
+          console.log('Creating/updating profile for user:', userId)
+
+          // 먼저 프로필이 있는지 확인
+          const { data: existingProfile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', userId)
+            .single()
+
+          if (!existingProfile) {
+            // 프로필이 없으면 생성
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .insert({
+                id: userId,
+                email: email.trim().toLowerCase(),
+                role: userType === 'business' ? 'business' : 'beneficiary'
+              })
+
+            if (profileError) {
+              console.error('Profile creation error:', profileError)
+            } else {
+              console.log('Profile created successfully')
+            }
+          } else {
+            // 프로필이 있으면 업데이트
+            const { error: updateError } = await supabase
+              .from('profiles')
+              .update({
+                role: userType === 'business' ? 'business' : 'beneficiary',
+                email: email.trim().toLowerCase()
+              })
+              .eq('id', userId)
+
+            if (updateError) {
+              console.error('Profile update error:', updateError)
+            } else {
+              console.log('Profile updated successfully')
+            }
           }
-        },
-      })
-
-      if (signupError) {
-        if (signupError.message.includes('already registered') || 
-            signupError.message.includes('User already registered')) {
-          throw new Error('이미 등록된 이메일입니다.')
-        }
-        throw signupError
-      }
-
-      if (data.user) {
-        // profiles 테이블에 사용자 정보 저장
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: data.user.id,
-            email: data.user.email!,
-            role: userType === 'business' ? 'business' : 'beneficiary'
-          })
-        
-        if (profileError) {
-          console.error('Profile creation error:', profileError)
         }
 
         // 파일 업로드 처리
@@ -259,7 +369,7 @@ export default function SignupPage() {
           // 사업자등록증 업로드
           if (businessLicense) {
             const fileExt = businessLicense.name.split('.').pop()
-            const fileName = `${data.user.id}-${Date.now()}.${fileExt}`
+            const fileName = `${userId}-${Date.now()}.${fileExt}`
             const { error: uploadError } = await supabase.storage
               .from('business-licenses')
               .upload(fileName, businessLicense)
@@ -273,24 +383,29 @@ export default function SignupPage() {
           }
           
           // businesses 테이블에 정보 저장
+          const businessData = {
+            user_id: userId,
+            name: businessName,
+            email: email.trim().toLowerCase() || '',  // 이메일 추가
+            representative_name: representativeName,
+            phone: representativePhone || '',
+            business_registration_number: businessRegistrationNumber || '',  // 새 필드
+            manager_name: representativeName,
+            manager_phone: representativePhone || '',
+            business_license_url: fileUrl || '',
+            website: website || '',
+            sns_link: snsLink || '',  // 새 필드
+            address: address || '',  // 메인 주소 추가
+            postcode: postcode || '',  // 새 필드
+            detail_address: detailAddress || '',  // 새 필드
+            status: 'pending',
+            contract_signed: false,
+            approved_at: null
+          }
+
           const { error: businessError } = await supabase
             .from('businesses')
-            .insert({
-              user_id: data.user.id,
-              name: businessName,
-              business_registration_number: businessRegistrationNumber || '',  // 새 필드
-              manager_name: representativeName,
-              manager_phone: representativePhone || '',
-              business_license_url: fileUrl || '',
-              website: website || '',
-              sns_link: snsLink || '',  // 새 필드
-              address: address || '',  // 메인 주소 추가
-              postcode: postcode || '',  // 새 필드
-              detail_address: detailAddress || '',  // 새 필드
-              status: 'pending',
-              contract_signed: false,
-              approved_at: null
-            })
+            .insert(businessData)
           
           if (businessError) {
             throw businessError
@@ -299,7 +414,7 @@ export default function SignupPage() {
           // 수혜기관 - 공익법인 설립허가증 업로드
           if (taxExemptCert) {
             const fileExt = taxExemptCert.name.split('.').pop()
-            const fileName = `${data.user.id}-${Date.now()}.${fileExt}`
+            const fileName = `${userId}-${Date.now()}.${fileExt}`
             const { error: uploadError } = await supabase.storage
               .from('beneficiary-docs')
               .upload(fileName, taxExemptCert)
@@ -316,12 +431,12 @@ export default function SignupPage() {
           const { error: beneficiaryError } = await supabase
             .from('beneficiaries')
             .insert({
-              user_id: data.user.id,
+              user_id: userId,
               organization_name: organizationName,
               organization_type: organizationType || '',
               representative_name: organizationRepName,  // 담당자명 (필드명 수정)
               phone: organizationRepPhone || '',  // 담당자 연락처 (필드명 수정)
-              email: data.user.email || '',  // 이메일 추가
+              email: email.trim().toLowerCase() || '',  // 이메일 추가
               registration_number: businessRegistrationNumber || '',  // 등록번호
               tax_exempt_cert_url: fileUrl || '',
               address: organizationAddress || '',
@@ -347,11 +462,13 @@ export default function SignupPage() {
             throw beneficiaryError
           }
         }
-        
+
         // 로그아웃 후 승인 대기 안내
         await supabase.auth.signOut()
         alert(`회원가입이 완료되었습니다.\n\n담당자가 ${userType === 'business' ? '사업자' : '기관'} 정보를 확인 후 승인 처리할 예정입니다.\n승인 완료 시 이메일로 안내드리겠습니다.`)
         router.push('/login')
+      } else {
+        throw new Error('회원가입 처리 중 오류가 발생했습니다.')
       }
     } catch (error: any) {
       setError(error.message)

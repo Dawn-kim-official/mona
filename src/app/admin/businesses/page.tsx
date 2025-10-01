@@ -50,25 +50,8 @@ export default function AdminBusinessesPage() {
       console.error('Error fetching businesses:', error)
       setBusinesses([])
     } else {
-      // 각 business에 대해 profiles 테이블에서 이메일 가져오기
-      const businessesWithEmail = await Promise.all(
-        (data || []).map(async (business) => {
-          if (business.user_id) {
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('email')
-              .eq('id', business.user_id)
-              .single()
-            
-            return {
-              ...business,
-              email: profileData?.email || '-'
-            }
-          }
-          return { ...business, email: '-' }
-        })
-      )
-      setBusinesses(businessesWithEmail)
+      console.log('Fetched businesses:', data)
+      setBusinesses(data || [])
     }
   }
 
@@ -112,16 +95,19 @@ export default function AdminBusinessesPage() {
   async function updateBusinessStatus(businessId: string, status: 'approved' | 'rejected', reason?: string) {
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      
+
       // 비즈니스 정보와 이메일 가져오기
       const business = businesses.find(b => b.id === businessId)
       const recipientEmail = business?.email
       const organizationName = business?.name
-      
+
+      console.log('Business data:', business)
+      console.log('Email to send to:', recipientEmail)
+
       const { error } = await supabase
         .from('businesses')
-        .update({ 
-          status, 
+        .update({
+          status,
           approved_at: status === 'approved' ? new Date().toISOString() : null,
           approved_by: user?.id
         })
@@ -176,11 +162,14 @@ export default function AdminBusinessesPage() {
       const beneficiary = beneficiaries.find(b => b.id === beneficiaryId)
       const recipientEmail = beneficiary?.email
       const organizationName = beneficiary?.organization_name
-      
+
+      console.log('Beneficiary data:', beneficiary)
+      console.log('Email to send to:', recipientEmail)
+
       const { error } = await supabase
         .from('beneficiaries')
-        .update({ 
-          status, 
+        .update({
+          status,
           approved_at: status === 'approved' ? new Date().toISOString() : null
         })
         .eq('id', beneficiaryId)
@@ -191,7 +180,7 @@ export default function AdminBusinessesPage() {
       } else {
         // 이메일 발송
         if (recipientEmail && recipientEmail !== '-') {
-          try {
+        try {
             const response = await fetch('/api/send-email', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -391,8 +380,8 @@ export default function AdminBusinessesPage() {
                     <tr key={business.id} style={{ borderBottom: '1px solid #DEE2E6' }}>
                       <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{business.name || '-'}</td>
                       <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{business.business_registration_number || business.business_number || '-'}</td>
-                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{business.manager_name || '-'}</td>
-                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{business.manager_phone || '-'}</td>
+                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{business.representative_name || business.manager_name || '-'}</td>
+                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{business.phone || business.manager_phone || '-'}</td>
                       <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
                         {business.email || '-'}
                       </td>
