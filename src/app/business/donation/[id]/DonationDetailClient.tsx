@@ -73,28 +73,36 @@ export default function DonationDetailClient({ donationId, initialDonation, init
     if (!donationId || !initialDonation) return
 
     try {
-      // Fetch quote if exists
+      // Fetch quote if exists (최신 견적서 가져오기)
       const { data: quoteData } = await supabase
         .from('quotes')
         .select('*')
         .eq('donation_id', donationId)
-        .single()
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
       if (quoteData) {
+        console.log('Quote data:', quoteData)
         setQuote(quoteData)
       }
       
-      // Fetch pickup schedule if status is pickup_scheduled
-      if (initialDonation.status === 'pickup_scheduled') {
-        const { data: scheduleData } = await supabase
+      // Fetch pickup schedule if status is pickup_scheduled or pickup_coordinating
+      if (initialDonation.status === 'pickup_scheduled' || initialDonation.status === 'pickup_coordinating') {
+        const { data: scheduleData, error: scheduleError } = await supabase
           .from('pickup_schedules')
           .select('*')
           .eq('donation_id', donationId)
           .eq('status', 'scheduled')
-          .single()
+          .order('created_at', { ascending: false })
+          .limit(1)
         
-        if (scheduleData) {
-          setPickupSchedule(scheduleData)
+        console.log('Pickup schedule data:', scheduleData)
+        console.log('Pickup schedule error:', scheduleError)
+        
+        if (scheduleData && scheduleData.length > 0 && !scheduleError) {
+          setPickupSchedule(scheduleData[0])
+          console.log('Pickup schedule set:', scheduleData[0])
         }
       }
     } catch (err) {
@@ -169,28 +177,42 @@ export default function DonationDetailClient({ donationId, initialDonation, init
         }
       }
 
-      // Fetch quote if exists
-      const { data: quoteData } = await supabase
+      // Fetch quote if exists (최신 견적서 가져오기)
+      console.log('Fetching quote for donation:', donationId)
+      const { data: quoteData, error: quoteError } = await supabase
         .from('quotes')
         .select('*')
         .eq('donation_id', donationId)
-        .single()
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
-      if (quoteData) {
+      if (quoteError) {
+        console.error('Error fetching quote:', quoteError)
+      } else if (quoteData) {
+        console.log('Quote data fetched:', quoteData)
+        console.log('Quote status:', quoteData.status)
         setQuote(quoteData)
+      } else {
+        console.log('No quote found for donation:', donationId)
       }
       
-      // Fetch pickup schedule if status is pickup_scheduled
-      if (finalDonationData && finalDonationData.status === 'pickup_scheduled') {
-        const { data: scheduleData } = await supabase
+      // Fetch pickup schedule if status is pickup_scheduled or pickup_coordinating
+      if (finalDonationData && (finalDonationData.status === 'pickup_scheduled' || finalDonationData.status === 'pickup_coordinating')) {
+        const { data: scheduleData, error: scheduleError } = await supabase
           .from('pickup_schedules')
           .select('*')
           .eq('donation_id', donationId)
           .eq('status', 'scheduled')
-          .single()
+          .order('created_at', { ascending: false })
+          .limit(1)
         
-        if (scheduleData) {
-          setPickupSchedule(scheduleData)
+        console.log('Pickup schedule data:', scheduleData)
+        console.log('Pickup schedule error:', scheduleError)
+        
+        if (scheduleData && scheduleData.length > 0 && !scheduleError) {
+          setPickupSchedule(scheduleData[0])
+          console.log('Pickup schedule set:', scheduleData[0])
         }
       }
     } catch (err) {
@@ -201,21 +223,59 @@ export default function DonationDetailClient({ donationId, initialDonation, init
   }
 
   async function handleAcceptQuote() {
-    if (!quote) return
+    if (!quote) {
+      console.error('No quote found')
+      return
+    }
 
-    const { error } = await supabase
-      .from('quotes')
-      .update({ status: 'accepted' })
-      .eq('id', quote.id)
+    console.log('=== 견적서 수락 시작 ===')
+    console.log('Quote ID:', quote.id)
+    console.log('Quote status before:', quote.status)
+    console.log('Donation ID:', donationId)
 
-    if (!error) {
-      await supabase
+    try {
+      // 1. quotes 테이블 업데이트
+      console.log('Updating quote status to accepted...')
+      const { data: updatedQuote, error: quoteError } = await supabase
+        .from('quotes')
+        .update({ status: 'accepted' })
+        .eq('id', quote.id)
+        .select()
+        .single()
+
+      if (quoteError) {
+        console.error('Quote update error:', quoteError)
+        alert(`견적 수락 중 오류가 발생했습니다: ${quoteError.message}`)
+        return
+      }
+
+      console.log('Quote updated successfully:', updatedQuote)
+
+      // 2. donations 테이블 업데이트
+      console.log('Updating donation status to quote_accepted...')
+      const { data: updatedDonation, error: donationError } = await supabase
         .from('donations')
         .update({ status: 'quote_accepted' })
         .eq('id', donationId)
+        .select()
+        .single()
 
-      alert('견적을 수락했습니다.')
-      await fetchDonationDetail()
+      if (donationError) {
+        console.error('Donation update error:', donationError)
+        alert(`상태 업데이트 중 오류가 발생했습니다: ${donationError.message}`)
+        return
+      }
+
+      console.log('Donation updated successfully:', updatedDonation)
+
+      alert('견적을 수락했습니다. 곧 픽업 일정이 조율될 예정입니다.')
+      
+      // 페이지 새로고침으로 상태 완전히 반영
+      console.log('Reloading page...')
+      window.location.reload()
+    } catch (error) {
+      console.error('Unexpected error accepting quote:', error)
+      alert('견적 수락 중 오류가 발생했습니다.')
     }
   }
 
@@ -257,13 +317,21 @@ export default function DonationDetailClient({ donationId, initialDonation, init
   }
 
   const currentStep = getStatusStep(donation.status)
+  // Check if any donation matches have been received
+  const hasReceivedMatch = donationMatches?.some(match => match.status === 'received') || false
+  
   const statusBadge = donation.status === 'quote_sent' ? '견적 대기' : 
-                     donation.status === 'pickup_scheduled' ? '견적 수락' :
-                     donation.status === 'completed' ? '픽업 완료' : 
+                     donation.status === 'pickup_scheduled' && hasReceivedMatch ? '수령 완료' :
+                     donation.status === 'pickup_scheduled' ? '픽업 예정' :
+                     donation.status === 'pickup_coordinating' ? '픽업 예정' : // 임시 처리
+                     donation.status === 'completed' ? '기부 완료' : 
+                     donation.status === 'quote_accepted' ? '견적 수락' :
                      donation.status === 'pending_review' ? '승인 대기' : '진행중'
 
   const statusColor = donation.status === 'quote_sent' ? '#FF8C00' :
+                      donation.status === 'pickup_scheduled' && hasReceivedMatch ? '#28A745' :
                       donation.status === 'pickup_scheduled' ? '#007BFF' :
+                      donation.status === 'pickup_coordinating' ? '#007BFF' : // 임시 처리
                       donation.status === 'completed' ? '#28A745' : '#FF8C00'
 
   return (
@@ -339,7 +407,7 @@ export default function DonationDetailClient({ donationId, initialDonation, init
             boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
           }}>
             <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: '#212529' }}>
-              픽업 정보
+              픽업 희망 정보
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
@@ -347,16 +415,12 @@ export default function DonationDetailClient({ donationId, initialDonation, init
                 <span style={{ fontSize: '14px', color: '#212529' }}>{new Date(donation.pickup_deadline).toLocaleDateString('ko-KR')}</span>
               </div>
               <div>
-                <span style={{ fontSize: '13px', color: '#6C757D' }}>장소: </span>
-                <span style={{ fontSize: '14px', color: '#212529' }}>서울시 강남구 테헤란로 123 ○○빌딩 5층</span>
+                <span style={{ fontSize: '13px', color: '#6C757D' }}>희망 시간: </span>
+                <span style={{ fontSize: '14px', color: '#212529' }}>{'미정'}</span>
               </div>
               <div>
-                <span style={{ fontSize: '13px', color: '#6C757D' }}>담당자: </span>
-                <span style={{ fontSize: '14px', color: '#212529' }}>홍길동</span>
-              </div>
-              <div>
-                <span style={{ fontSize: '13px', color: '#6C757D' }}>연락처: </span>
-                <span style={{ fontSize: '14px', color: '#212529' }}>010-1234-1234</span>
+                <span style={{ fontSize: '13px', color: '#6C757D' }}>픽업 장소: </span>
+                <span style={{ fontSize: '14px', color: '#212529' }}>{donation.pickup_location}</span>
               </div>
             </div>
           </div>
@@ -490,7 +554,12 @@ export default function DonationDetailClient({ donationId, initialDonation, init
               견적서
             </h3>
             <p style={{ fontSize: '14px', color: '#6C757D', marginBottom: '16px' }}>
-              견적서가 도착했습니다. ({quote.created_at ? new Date(quote.created_at).toLocaleDateString('ko-KR') : new Date().toLocaleDateString('ko-KR')})
+              {quote.status === 'accepted' ? 
+                `견적서를 수락했습니다. (${quote.created_at ? new Date(quote.created_at).toLocaleDateString('ko-KR') : new Date().toLocaleDateString('ko-KR')})` :
+                quote.status === 'rejected' ?
+                `견적서를 거절했습니다. (${quote.created_at ? new Date(quote.created_at).toLocaleDateString('ko-KR') : new Date().toLocaleDateString('ko-KR')})` :
+                `견적서가 도착했습니다. (${quote.created_at ? new Date(quote.created_at).toLocaleDateString('ko-KR') : new Date().toLocaleDateString('ko-KR')})`
+              }
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button
@@ -602,49 +671,67 @@ export default function DonationDetailClient({ donationId, initialDonation, init
         )}
 
         {/* 픽업 일정 정보 */}
-        {donation.status === 'pickup_scheduled' && pickupSchedule && (
+        {(donation.status === 'pickup_scheduled' || donation.status === 'pickup_coordinating') && pickupSchedule && (
           <div style={{
             backgroundColor: 'white',
             borderRadius: '8px',
             padding: '24px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-            border: '2px solid #17a2b8',
+            border: '2px solid #02391f',
             marginBottom: '24px'
           }}>
-            <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: '#212529' }}>
-              픽업 일정
+            <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px', color: '#02391f' }}>
+              📅 확정된 픽업 일정
             </h3>
-            <div style={{ backgroundColor: '#D1ECF1', padding: '16px', borderRadius: '8px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={{ backgroundColor: '#f0f7f4', padding: '20px', borderRadius: '8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '16px' }}>
                 <div>
-                  <p style={{ fontSize: '13px', color: '#0C5460', marginBottom: '4px' }}>픽업 날짜:</p>
-                  <p style={{ fontSize: '15px', color: '#0C5460', fontWeight: '600' }}>
+                  <span style={{ fontSize: '14px', color: '#02391f', fontWeight: '600' }}>픽업 날짜</span>
+                  <p style={{ fontSize: '16px', color: '#212529', margin: '4px 0 0 0', fontWeight: '500' }}>
                     {new Date(pickupSchedule.pickup_date).toLocaleDateString('ko-KR')}
                   </p>
                 </div>
                 <div>
-                  <p style={{ fontSize: '13px', color: '#0C5460', marginBottom: '4px' }}>픽업 시간:</p>
-                  <p style={{ fontSize: '15px', color: '#0C5460', fontWeight: '600' }}>{pickupSchedule.pickup_time}</p>
+                  <span style={{ fontSize: '14px', color: '#02391f', fontWeight: '600' }}>픽업 시간</span>
+                  <p style={{ fontSize: '16px', color: '#212529', margin: '4px 0 0 0', fontWeight: '500' }}>
+                    {pickupSchedule.pickup_time}
+                  </p>
                 </div>
                 <div>
-                  <p style={{ fontSize: '13px', color: '#0C5460', marginBottom: '4px' }}>픽업 담당자:</p>
-                  <p style={{ fontSize: '15px', color: '#0C5460', fontWeight: '600' }}>{pickupSchedule.pickup_staff}</p>
+                  <span style={{ fontSize: '14px', color: '#02391f', fontWeight: '600' }}>픽업 담당자</span>
+                  <p style={{ fontSize: '16px', color: '#212529', margin: '4px 0 0 0', fontWeight: '500' }}>
+                    {pickupSchedule.pickup_staff}
+                  </p>
                 </div>
                 <div>
-                  <p style={{ fontSize: '13px', color: '#0C5460', marginBottom: '4px' }}>차량 정보:</p>
-                  <p style={{ fontSize: '15px', color: '#0C5460', fontWeight: '600' }}>{pickupSchedule.vehicle_info}</p>
+                  <span style={{ fontSize: '14px', color: '#02391f', fontWeight: '600' }}>차량 정보</span>
+                  <p style={{ fontSize: '16px', color: '#212529', margin: '4px 0 0 0', fontWeight: '500' }}>
+                    {pickupSchedule.vehicle_info}
+                  </p>
                 </div>
               </div>
+              <div style={{ borderTop: '1px solid #d0e7d6', paddingTop: '16px' }}>
+                <span style={{ fontSize: '14px', color: '#02391f', fontWeight: '600' }}>픽업 장소</span>
+                <p style={{ fontSize: '16px', color: '#212529', margin: '4px 0 0 0', fontWeight: '500' }}>
+                  {donation.pickup_location}
+                </p>
+              </div>
               {pickupSchedule.notes && (
-                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #BEE5EB' }}>
-                  <p style={{ fontSize: '13px', color: '#0C5460', marginBottom: '4px' }}>참고사항:</p>
-                  <p style={{ fontSize: '14px', color: '#0C5460' }}>{pickupSchedule.notes}</p>
+                <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #d0e7d6' }}>
+                  <span style={{ fontSize: '14px', color: '#02391f', fontWeight: '600' }}>참고사항</span>
+                  <p style={{ fontSize: '16px', color: '#212529', margin: '4px 0 0 0' }}>{pickupSchedule.notes}</p>
                 </div>
               )}
             </div>
-            <div style={{ textAlign: 'center', marginTop: '16px' }}>
-              <span style={{ fontSize: '14px', color: '#6C757D' }}>
-                📦 수혜기관에서 물품 수령을 완료하면 영수증을 발급합니다.
+            <div style={{ 
+              textAlign: 'center', 
+              marginTop: '20px', 
+              padding: '12px',
+              backgroundColor: '#ffd020',
+              borderRadius: '6px'
+            }}>
+              <span style={{ fontSize: '14px', color: '#212529', fontWeight: '500' }}>
+                📦 수혜기관에서 물품 수령을 완료하면 영수증을 발급합니다
               </span>
             </div>
           </div>

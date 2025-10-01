@@ -49,7 +49,6 @@ const statusMap: { [key: string]: { text: string; color: string } } = {
   'proposed': { text: '응답 대기', color: '#FF8C00' },
   'accepted': { text: '수락', color: '#28A745' },
   'quote_sent': { text: '픽업 대기', color: '#17A2B8' },
-  'pickup_coordinating': { text: '픽업 일정 조율', color: '#6F42C1' },
   'pickup_scheduled': { text: '픽업 예정', color: '#007BFF' },
   'rejected': { text: '거절', color: '#DC3545' },
   'received': { text: '수령 완료', color: '#007BFF' }
@@ -62,7 +61,6 @@ export default function BeneficiaryProposalsPage() {
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState<string | null>(null)
   const [beneficiary, setBeneficiary] = useState<any>(null)
-  const [generatingPdf, setGeneratingPdf] = useState<string | null>(null)
 
   useEffect(() => {
     fetchProposals()
@@ -91,7 +89,10 @@ export default function BeneficiaryProposalsPage() {
       .eq('beneficiary_id', beneficiaryData.id)
       .order('proposed_at', { ascending: false })
 
-    if (filterStatus) {
+    // 특별한 필터링 로직: pickup_scheduled는 donation 상태로 필터링
+    if (filterStatus === 'pickup_scheduled') {
+      query = query.eq('status', 'quote_sent')
+    } else if (filterStatus) {
       query = query.eq('status', filterStatus)
     }
 
@@ -103,7 +104,7 @@ export default function BeneficiaryProposalsPage() {
     } else {
       console.log('Fetched proposals:', data)
       
-      // quotes 정보를 별도로 가져오기
+      // quotes 정보를 별도로 가져오고 필터링 적용
       if (data && data.length > 0) {
         const proposalsWithQuotes = await Promise.all(
           data.map(async (proposal) => {
@@ -119,7 +120,16 @@ export default function BeneficiaryProposalsPage() {
             }
           })
         )
-        setProposals(proposalsWithQuotes)
+        
+        // pickup_scheduled 필터링을 위한 추가 필터링
+        let filteredProposals = proposalsWithQuotes
+        if (filterStatus === 'pickup_scheduled') {
+          filteredProposals = proposalsWithQuotes.filter(p => 
+            p.status === 'quote_sent' && p.donations?.status === 'pickup_scheduled'
+          )
+        }
+        
+        setProposals(filteredProposals)
       } else {
         setProposals(data || [])
       }
@@ -133,76 +143,11 @@ export default function BeneficiaryProposalsPage() {
     { id: 'proposed', label: '응답 대기' },
     { id: 'accepted', label: '수락' },
     { id: 'quote_sent', label: '픽업 대기' },
+    { id: 'pickup_scheduled', label: '픽업 예정' },
     { id: 'rejected', label: '거절' },
     { id: 'received', label: '수령 완료' }
   ]
 
-  async function handleReceiptUpload(proposal: Proposal) {
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = '.pdf,.jpg,.jpeg,.png';
-    
-    fileInput.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      
-      setGeneratingPdf(proposal.id);
-      
-      try {
-        // Upload file to Supabase Storage
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${proposal.id}_${Date.now()}.${fileExt}`;
-        
-        
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('donation-receipts')
-          .upload(fileName, file, {
-            cacheControl: '3600',
-            upsert: false
-          });
-        
-        if (uploadError) {
-          throw uploadError;
-        }
-        
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('donation-receipts')
-          .getPublicUrl(fileName);
-        
-        
-        // Update database
-        await supabase
-          .from('donation_matches')
-          .update({ 
-            receipt_issued: true,
-            receipt_issued_at: new Date().toISOString(),
-            receipt_file_url: publicUrl,
-            status: 'received',
-            received_at: new Date().toISOString()
-          })
-          .eq('id', proposal.id);
-        
-        // 기부 상태도 완료로 변경
-        await supabase
-          .from('donations')
-          .update({ 
-            status: 'completed',
-            completed_at: new Date().toISOString()
-          })
-          .eq('id', proposal.donations.id);
-        
-        alert('기부영수증이 업로드되었습니다. 기부 기업에서 다운로드 가능합니다.');
-        fetchProposals();
-      } catch (error) {
-        alert('영수증 업로드 중 오류가 발생했습니다.');
-      } finally {
-        setGeneratingPdf(null);
-      }
-    };
-    
-    fileInput.click();
-  }
 
   if (loading) {
     return <div style={{ padding: '40px', textAlign: 'center' }}>로딩 중...</div>
@@ -282,12 +227,18 @@ export default function BeneficiaryProposalsPage() {
                 {proposals.map((proposal) => {
                   // donation_matches status가 quote_sent이고 donation status에 따라 상태 표시 변경
                   let statusKey = proposal.status;
-                  if (proposal.status === 'quote_sent') {
-                    if (proposal.donations?.status === 'pickup_coordinating') {
-                      statusKey = 'pickup_coordinating';
-                    } else if (proposal.donations?.status === 'pickup_scheduled') {
-                      statusKey = 'pickup_scheduled';
-                    }
+                  
+                  // 디버깅
+                  console.log('Proposal ID:', proposal.id);
+                  console.log('Proposal status:', proposal.status);
+                  console.log('Donation:', proposal.donations);
+                  console.log('Donation status:', proposal.donations?.status);
+                  
+                  // quote_sent, accepted, 또는 다른 상태에서도 donation status 우선 확인
+                  if (proposal.donations?.status === 'pickup_scheduled' || proposal.donations?.status === 'pickup_coordinating') {
+                    statusKey = 'pickup_scheduled';
+                  } else if (proposal.donations?.status === 'completed') {
+                    statusKey = 'received';
                   }
                   const status = statusMap[statusKey] || { text: statusKey, color: '#666' }
                   return (
@@ -324,28 +275,9 @@ export default function BeneficiaryProposalsPage() {
                         </span>
                       </td>
                       <td style={{ padding: '16px', textAlign: 'center' }}>
-                        {proposal.status === 'received' && !proposal.receipt_issued ? (
-                          <button
-                            onClick={() => handleReceiptUpload(proposal)}
-                            disabled={generatingPdf === proposal.id}
-                            style={{
-                              padding: '6px 16px',
-                              fontSize: '13px',
-                              fontWeight: '500',
-                              color: 'white',
-                              backgroundColor: generatingPdf === proposal.id ? '#6C757D' : '#02391f',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: generatingPdf === proposal.id ? 'not-allowed' : 'pointer',
-                              marginRight: '8px',
-                              minWidth: '110px'
-                            }}
-                          >
-                            {generatingPdf === proposal.id ? '업로드 중...' : '영수증 업로드'}
-                          </button>
-                        ) : proposal.receipt_issued ? (
+                        {proposal.receipt_issued ? (
                           <span style={{ fontSize: '12px', color: '#6C757D', marginRight: '8px' }}>
-                            발급 완료
+                            영수증 발행 완료
                           </span>
                         ) : null}
                         <button

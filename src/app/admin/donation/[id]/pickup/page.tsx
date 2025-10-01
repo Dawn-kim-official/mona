@@ -54,9 +54,14 @@ export default function AdminPickupSchedulePage() {
     e.preventDefault()
     setLoading(true)
 
+    console.log('=== 픽업 일정 설정 시작 ===')
+    console.log('Donation ID:', params.id)
+    console.log('Form data:', formData)
+
     try {
       // Create pickup schedule
-      const { error: scheduleError } = await supabase
+      console.log('Inserting pickup schedule...')
+      const { data: scheduleData, error: scheduleError } = await supabase
         .from('pickup_schedules')
         .insert({
           donation_id: params.id,
@@ -67,22 +72,35 @@ export default function AdminPickupSchedulePage() {
           notes: formData.notes,
           status: 'scheduled'
         })
+        .select()
 
-      if (scheduleError) throw scheduleError
+      if (scheduleError) {
+        console.error('Schedule insert error:', scheduleError)
+        throw scheduleError
+      }
 
-      // Update donation status to pickup_coordinating
-      const { error: donationError } = await supabase
+      console.log('Schedule created successfully:', scheduleData)
+
+      // Update donation status to pickup_scheduled (픽업 예정)
+      console.log('Updating donation status to pickup_scheduled...')
+      const { data: updatedDonation, error: donationError } = await supabase
         .from('donations')
-        .update({ status: 'pickup_coordinating' })
+        .update({ status: 'pickup_scheduled' })
         .eq('id', params.id)
+        .select()
 
-      if (donationError) throw donationError
+      if (donationError) {
+        console.error('Donation update error:', donationError)
+        throw donationError
+      }
+
+      console.log('Donation updated successfully:', updatedDonation)
 
       alert('픽업 일정이 성공적으로 설정되었습니다.')
       router.push('/admin/donations')
-    } catch (error) {
-      // Error setting pickup schedule
-      alert('픽업 일정 설정 중 오류가 발생했습니다.')
+    } catch (error: any) {
+      console.error('Error setting pickup schedule:', error)
+      alert(`픽업 일정 설정 중 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}`)
     } finally {
       setLoading(false)
     }

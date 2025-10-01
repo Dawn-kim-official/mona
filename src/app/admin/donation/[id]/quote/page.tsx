@@ -291,16 +291,15 @@ export default function AdminQuoteUploadPage() {
       if (savedQuote) {
         console.log('Updating existing quote:', savedQuote.id)
         
-        // Try with sent_at first
         let updatePayload: any = {
           unit_price: unitPrice,
           logistics_cost: logisticsCost,
           total_amount: totalAmount,
           special_notes: formData.special_notes,
-          status: 'pending'
+          status: 'pending',
+          estimated_pickup_date: donation?.pickup_deadline || new Date().toISOString()
         }
         
-        // First attempt with sent_at
         const { data: updateData, error } = await supabase
           .from('quotes')
           .update(updatePayload)
@@ -312,24 +311,7 @@ export default function AdminQuoteUploadPage() {
           console.error('Error code:', error.code)
           console.error('Error message:', error.message)
           console.error('Error details:', error.details)
-          
-          // If it fails due to sent_at, try without it
-          if (error.message?.includes('sent_at') || error.code === '42703') {
-            console.log('Retrying without sent_at column')
-            const { data: retryData, error: retryError } = await supabase
-              .from('quotes')
-              .update(updatePayload)
-              .eq('id', savedQuote.id)
-              .select()
-              
-            if (retryError) {
-              console.error('Retry error:', retryError)
-              throw retryError
-            }
-            console.log('Quote updated successfully (without sent_at):', retryData)
-          } else {
-            throw error
-          }
+          throw error
         } else {
           console.log('Quote updated successfully:', updateData)
         }
@@ -343,7 +325,8 @@ export default function AdminQuoteUploadPage() {
           logistics_cost: logisticsCost,
           total_amount: totalAmount,
           special_notes: formData.special_notes,
-          status: 'pending'
+          status: 'pending',
+          estimated_pickup_date: donation?.pickup_deadline || new Date().toISOString()
         }
         console.log('Insert data:', insertData)
         

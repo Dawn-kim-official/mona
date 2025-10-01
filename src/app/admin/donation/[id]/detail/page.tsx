@@ -15,6 +15,7 @@ function DonationDetailContent({ params }: { params: { id: string } }) {
   const supabase = createClient()
   const [donation, setDonation] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [pickupSchedule, setPickupSchedule] = useState<any>(null)
   const donationId = params.id
 
   useEffect(() => {
@@ -27,6 +28,8 @@ function DonationDetailContent({ params }: { params: { id: string } }) {
   async function fetchDonationDetail() {
     try {
       console.log('Fetching donation detail for ID:', donationId)
+      
+      let finalDonationData = null
       
       const { data, error } = await supabase
         .from('donations')
@@ -51,9 +54,6 @@ function DonationDetailContent({ params }: { params: { id: string } }) {
               address,
               postcode,
               detail_address
-            ),
-            quotes (
-              *
             )
           )
         `)
@@ -98,12 +98,33 @@ function DonationDetailContent({ params }: { params: { id: string } }) {
           }
           
           setDonation(simpleDonation)
+          finalDonationData = simpleDonation
         } else {
           console.error('Simple query also failed:', simpleError)
         }
       } else {
         console.log('Donation data fetched successfully:', data)
         setDonation(data)
+        finalDonationData = data
+      }
+      
+      // Fetch pickup schedule if status is pickup_scheduled or pickup_coordinating
+      if (finalDonationData && (finalDonationData.status === 'pickup_scheduled' || finalDonationData.status === 'pickup_coordinating')) {
+        const { data: scheduleData, error: scheduleError } = await supabase
+          .from('pickup_schedules')
+          .select('*')
+          .eq('donation_id', donationId)
+          .eq('status', 'scheduled')
+          .order('created_at', { ascending: false })
+          .limit(1)
+        
+        console.log('Admin pickup schedule data:', scheduleData)
+        console.log('Admin pickup schedule error:', scheduleError)
+        
+        if (scheduleData && scheduleData.length > 0 && !scheduleError) {
+          setPickupSchedule(scheduleData[0])
+          console.log('Admin pickup schedule set:', scheduleData[0])
+        }
       }
     } catch (err) {
       console.error('Unexpected error:', err)
@@ -126,6 +147,7 @@ function DonationDetailContent({ params }: { params: { id: string } }) {
       'matched': { text: '매칭 완료', color: '#17A2B8' },
       'quote_sent': { text: '견적서 발송', color: '#007BFF' },
       'quote_accepted': { text: '견적 승인', color: '#28A745' },
+      'pickup_coordinating': { text: '픽업 일정 조율', color: '#6F42C1' },
       'pickup_scheduled': { text: '픽업 예정', color: '#6F42C1' },
       'completed': { text: '기부 완료', color: '#28A745' },
       'rejected': { text: '거절됨', color: '#DC3545' }
@@ -517,6 +539,73 @@ function DonationDetailContent({ params }: { params: { id: string } }) {
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* 픽업 일정 정보 */}
+        {(donation.status === 'pickup_scheduled' || donation.status === 'pickup_coordinating') && pickupSchedule && (
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            padding: '24px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            border: '2px solid #02391f',
+            marginBottom: '24px'
+          }}>
+            <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px', color: '#02391f' }}>
+              📅 확정된 픽업 일정
+            </h3>
+            <div style={{ backgroundColor: '#f0f7f4', padding: '20px', borderRadius: '8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '16px' }}>
+                <div>
+                  <span style={{ fontSize: '14px', color: '#02391f', fontWeight: '600' }}>픽업 날짜</span>
+                  <p style={{ fontSize: '16px', color: '#212529', margin: '4px 0 0 0', fontWeight: '500' }}>
+                    {new Date(pickupSchedule.pickup_date).toLocaleDateString('ko-KR')}
+                  </p>
+                </div>
+                <div>
+                  <span style={{ fontSize: '14px', color: '#02391f', fontWeight: '600' }}>픽업 시간</span>
+                  <p style={{ fontSize: '16px', color: '#212529', margin: '4px 0 0 0', fontWeight: '500' }}>
+                    {pickupSchedule.pickup_time}
+                  </p>
+                </div>
+                <div>
+                  <span style={{ fontSize: '14px', color: '#02391f', fontWeight: '600' }}>픽업 담당자</span>
+                  <p style={{ fontSize: '16px', color: '#212529', margin: '4px 0 0 0', fontWeight: '500' }}>
+                    {pickupSchedule.pickup_staff}
+                  </p>
+                </div>
+                <div>
+                  <span style={{ fontSize: '14px', color: '#02391f', fontWeight: '600' }}>차량 정보</span>
+                  <p style={{ fontSize: '16px', color: '#212529', margin: '4px 0 0 0', fontWeight: '500' }}>
+                    {pickupSchedule.vehicle_info}
+                  </p>
+                </div>
+              </div>
+              <div style={{ borderTop: '1px solid #d0e7d6', paddingTop: '16px' }}>
+                <span style={{ fontSize: '14px', color: '#02391f', fontWeight: '600' }}>픽업 장소</span>
+                <p style={{ fontSize: '16px', color: '#212529', margin: '4px 0 0 0', fontWeight: '500' }}>
+                  {donation.pickup_location}
+                </p>
+              </div>
+              {pickupSchedule.notes && (
+                <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #d0e7d6' }}>
+                  <span style={{ fontSize: '14px', color: '#02391f', fontWeight: '600' }}>참고사항</span>
+                  <p style={{ fontSize: '16px', color: '#212529', margin: '4px 0 0 0' }}>{pickupSchedule.notes}</p>
+                </div>
+              )}
+            </div>
+            <div style={{ 
+              textAlign: 'center', 
+              marginTop: '20px', 
+              padding: '12px',
+              backgroundColor: '#ffd020',
+              borderRadius: '6px'
+            }}>
+              <span style={{ fontSize: '14px', color: '#212529', fontWeight: '500' }}>
+                📦 픽업 일정이 확정되었습니다. 기업과 수혜기관에 안내되었습니다.
+              </span>
+            </div>
           </div>
         )}
       </div>

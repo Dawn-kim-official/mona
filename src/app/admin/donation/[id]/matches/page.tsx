@@ -251,20 +251,6 @@ export default function DonationMatchesPage() {
           )}
         </div>
 
-        {remaining > 0 && (
-          <div style={{
-            backgroundColor: '#FFF3CD',
-            borderRadius: '8px',
-            padding: '16px',
-            marginTop: '24px',
-            border: '1px solid #FFC107'
-          }}>
-            <p style={{ color: '#856404', fontSize: '14px', margin: 0 }}>
-              ⚠️ 아직 {remaining}{donation?.unit || 'kg'}의 수량이 남아있습니다. 
-              추가로 수혜기관을 선정하거나, 기존 수혜기관에 추가 제안을 할 수 있습니다.
-            </p>
-          </div>
-        )}
       </div>
     </div>
   )

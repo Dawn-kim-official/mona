@@ -7,7 +7,9 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import QuoteDetailModal from '@/components/QuoteDetailModal'
 
-type Donation = Database['public']['Tables']['donations']['Row']
+type Donation = Database['public']['Tables']['donations']['Row'] & {
+  hasReceivedMatch?: boolean
+}
 type Quote = Database['public']['Tables']['quotes']['Row']
 
 const statusMap: { [key: string]: { text: string; color: string } } = {
@@ -16,8 +18,9 @@ const statusMap: { [key: string]: { text: string; color: string } } = {
   'matched': { text: '수혜기관 선정', color: '#17A2B8' },
   'quote_sent': { text: '견적서 도착', color: '#FF8C00' },
   'quote_accepted': { text: '견적 수락', color: '#007BFF' },
-  'pickup_coordinating': { text: '픽업 일정 조율', color: '#6F42C1' },
+  'pickup_coordinating': { text: '픽업 예정', color: '#007BFF' }, // 임시 처리
   'pickup_scheduled': { text: '픽업 예정', color: '#007BFF' },
+  'received': { text: '수령 완료', color: '#28A745' },
   'completed': { text: '기부 완료', color: '#28A745' }
 }
 
@@ -28,8 +31,8 @@ const tabs = [
   { id: '수혜기관 선정', label: '수혜기관 선정' },
   { id: '견적서 도착', label: '견적서 도착' },
   { id: '견적 수락', label: '견적 수락' },
-  { id: '픽업 일정 조율', label: '픽업 일정 조율' },
   { id: '픽업 예정', label: '픽업 예정' },
+  { id: '수령 완료', label: '수령 완료' },
   { id: '기부 완료', label: '기부 완료' }
 ]
 
@@ -71,7 +74,24 @@ export default function BusinessDashboardPage() {
     if (error) {
       // Error fetching donations
     } else {
-      setDonations(data || [])
+      // Check for received matches to determine proper status display
+      const donationsWithStatus = await Promise.all(
+        (data || []).map(async (donation) => {
+          // Check if any matches have been received
+          const { data: matches } = await supabase
+            .from('donation_matches')
+            .select('status')
+            .eq('donation_id', donation.id)
+          
+          const hasReceivedMatch = matches?.some(match => match.status === 'received') || false
+          
+          return {
+            ...donation,
+            hasReceivedMatch
+          }
+        })
+      )
+      setDonations(donationsWithStatus)
     }
     setLoading(false)
   }
@@ -150,8 +170,8 @@ export default function BusinessDashboardPage() {
           case '수혜기관 선정': return donation.status === 'matched';
           case '견적서 도착': return donation.status === 'quote_sent';
           case '견적 수락': return donation.status === 'quote_accepted';
-          case '픽업 일정 조율': return (donation.status as any) === 'pickup_coordinating';
-          case '픽업 예정': return donation.status === 'pickup_scheduled';
+          case '픽업 예정': return donation.status === 'pickup_scheduled' && !donation.hasReceivedMatch;
+          case '수령 완료': return donation.status === 'pickup_scheduled' && donation.hasReceivedMatch;
           case '기부 완료': return donation.status === 'completed';
           default: return true;
         }
@@ -297,7 +317,12 @@ export default function BusinessDashboardPage() {
               </thead>
             <tbody>
               {filteredDonations.map((donation) => {
-                const status = statusMap[donation.status] || { text: donation.status, color: '#666' }
+                // Determine the correct status to display
+                let statusKey: string = donation.status
+                if (donation.status === 'pickup_scheduled' && donation.hasReceivedMatch) {
+                  statusKey = 'received'
+                }
+                const status = statusMap[statusKey] || { text: donation.status, color: '#666' }
                 return (
                     <tr key={donation.id} style={{ 
                       borderBottom: '1px solid #DEE2E6',
@@ -352,22 +377,14 @@ export default function BusinessDashboardPage() {
                           backgroundColor: status.color + '20',
                           padding: '4px 12px',
                           borderRadius: '4px',
-                          display: 'inline-block'
+                          display: 'inline-block',
+                          whiteSpace: 'nowrap'
                         }}>
                           {status.text}
                         </span>
                       </td>
                       <td style={{ padding: '16px', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
-                          {/* 상태별 정보 표시 */}
-                          {(donation.status as any) === 'pickup_coordinating' && (
-                            <span style={{ fontSize: '12px', color: '#6F42C1', fontWeight: '500' }}>
-                              픽업 일정 조율 중
-                            </span>
-                          )}
-                          
-                          {/* 버튼들을 가로로 배치 */}
-                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center', minWidth: '120px' }}>
                             {donation.status === 'quote_sent' && (
                               <button 
                                 onClick={(e) => {
@@ -384,7 +401,8 @@ export default function BusinessDashboardPage() {
                                   fontSize: '13px',
                                   fontWeight: '500',
                                   transition: 'all 0.2s',
-                                  minWidth: '90px'
+                                  minWidth: '100px',
+                                  width: '100px'
                                 }}
                                 onMouseEnter={(e) => {
                                   e.currentTarget.style.backgroundColor = '#02391f';
@@ -408,7 +426,8 @@ export default function BusinessDashboardPage() {
                                   borderRadius: '4px',
                                   cursor: 'pointer',
                                   transition: 'all 0.2s',
-                                  minWidth: '90px'
+                                  minWidth: '100px',
+                                  width: '100px'
                                 }}
                                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#164137'}
                                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#02391f'}
@@ -447,7 +466,6 @@ export default function BusinessDashboardPage() {
                             >
                               상세 보기
                             </button>
-                          </div>
                         </div>
                       </td>
                     </tr>

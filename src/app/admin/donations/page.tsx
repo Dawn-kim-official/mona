@@ -21,6 +21,7 @@ interface Donation {
     name: string
   }
   has_accepted_match?: boolean
+  has_received_match?: boolean
 }
 
 const statusMap: { [key: string]: { text: string; color: string; bgColor: string } } = {
@@ -29,8 +30,8 @@ const statusMap: { [key: string]: { text: string; color: string; bgColor: string
   'matched': { text: '수혜기관 선정', color: '#17A2B8', bgColor: '#D1ECF1' },
   'quote_sent': { text: '견적 대기', color: '#FF8C00', bgColor: '#FFF3CD' },
   'quote_accepted': { text: '견적 수락', color: '#007BFF', bgColor: '#CCE5FF' },
-  'pickup_coordinating': { text: '픽업 일정 조율', color: '#6F42C1', bgColor: '#E2D9F3' },
   'pickup_scheduled': { text: '픽업 예정', color: '#007BFF', bgColor: '#CCE5FF' },
+  'received': { text: '수령 완료', color: '#28A745', bgColor: '#D4EDDA' },
   'completed': { text: '기부 완료', color: '#28A745', bgColor: '#D4EDDA' }
 }
 
@@ -54,7 +55,15 @@ export default function AdminDonationsPage() {
   // 탭 변경 시 클라이언트 사이드 필터링
   useEffect(() => {
     if (activeTab) {
-      const filtered = allDonations.filter(donation => donation.status === activeTab)
+      const filtered = allDonations.filter(donation => {
+        if (activeTab === 'received') {
+          return donation.status === 'pickup_scheduled' && donation.has_received_match
+        } else if (activeTab === 'pickup_scheduled') {
+          return donation.status === 'pickup_scheduled' && !donation.has_received_match
+        } else {
+          return donation.status === activeTab
+        }
+      })
       setFilteredDonations(filtered)
     } else {
       setFilteredDonations(allDonations)
@@ -92,9 +101,13 @@ export default function AdminDonationsPage() {
           
           const remainingQuantity = donation.quantity - totalAcceptedQuantity
           
+          // 수령 완료된 매칭이 있는지 확인
+          const hasReceivedMatch = allMatches?.some(match => match.status === 'received') || false
+          
           return {
             ...donation,
             has_accepted_match: hasAcceptedMatch,
+            has_received_match: hasReceivedMatch,
             remaining_quantity: remainingQuantity,
             total_accepted_quantity: totalAcceptedQuantity,
             match_count: allMatches?.length || 0
@@ -105,7 +118,16 @@ export default function AdminDonationsPage() {
       setAllDonations(donationsWithMatchStatus)
       // 상태 변경 후에도 필터링 유지
       if (activeTab) {
-        setFilteredDonations(donationsWithMatchStatus.filter(donation => donation.status === activeTab))
+        const filtered = donationsWithMatchStatus.filter(donation => {
+          if (activeTab === 'received') {
+            return donation.status === 'pickup_scheduled' && donation.has_received_match
+          } else if (activeTab === 'pickup_scheduled') {
+            return donation.status === 'pickup_scheduled' && !donation.has_received_match
+          } else {
+            return donation.status === activeTab
+          }
+        })
+        setFilteredDonations(filtered)
       } else {
         setFilteredDonations(donationsWithMatchStatus)
       }
@@ -189,6 +211,7 @@ export default function AdminDonationsPage() {
     { id: 'quote_accepted', label: '견적 수락' },
     { id: 'pickup_coordinating', label: '픽업 일정 조율' },
     { id: 'pickup_scheduled', label: '픽업 예정' },
+    { id: 'received', label: '수령 완료' },
     { id: 'completed', label: '기부 완료' }
   ]
 
@@ -239,9 +262,38 @@ export default function AdminDonationsPage() {
           </div>
         </div>
 
-        <h1 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '16px', color: '#212529' }}>
-          기부 관리
-        </h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <h1 style={{ fontSize: '24px', fontWeight: '600', color: '#212529', margin: 0 }}>
+            기부 관리
+          </h1>
+          <button
+            onClick={() => {
+              setLoading(true)
+              fetchAllDonations()
+            }}
+            style={{
+              padding: '8px 16px',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#02391f',
+              backgroundColor: 'white',
+              border: '1px solid #02391f',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#02391f'
+              e.currentTarget.style.color = 'white'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'white'
+              e.currentTarget.style.color = '#02391f'
+            }}
+          >
+            🔄 새로고침
+          </button>
+        </div>
         
         <p style={{ fontSize: '13px', color: '#6C757D', marginBottom: '24px' }}>
           💡 항목을 클릭하면 상세 정보를 볼 수 있습니다
@@ -268,7 +320,12 @@ export default function AdminDonationsPage() {
             </thead>
             <tbody>
               {filteredDonations.map((donation) => {
-                const status = statusMap[donation.status] || { text: donation.status, color: '#666' }
+                // Determine the correct status to display
+                let statusKey = donation.status
+                if (donation.status === 'pickup_scheduled' && donation.has_received_match) {
+                  statusKey = 'received'
+                }
+                const status = statusMap[statusKey] || { text: donation.status, color: '#666' }
                 return (
                   <tr 
                     key={donation.id} 
@@ -380,7 +437,8 @@ export default function AdminDonationsPage() {
                               backgroundColor: '#007BFF',
                               border: 'none',
                               borderRadius: '4px',
-                              cursor: 'pointer'
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap'
                             }}>
                               수혜기관 선택
                             </button>
@@ -422,23 +480,6 @@ export default function AdminDonationsPage() {
                             )}
                           </>
                         )}
-                      {donation.status === 'pickup_scheduled' && (
-                        <button
-                          onClick={() => handleComplete(donation.id)}
-                          style={{
-                            padding: '6px 16px',
-                            fontSize: '13px',
-                            fontWeight: '500',
-                            color: 'white',
-                            backgroundColor: '#28A745',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          완료 처리
-                        </button>
-                      )}
                       {donation.status === 'quote_sent' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
                           <span style={{ fontSize: '12px', color: '#666' }}>견적서 발송 완료</span>
@@ -462,51 +503,10 @@ export default function AdminDonationsPage() {
                           </button>
                         </Link>
                       )}
-                      {donation.status === 'pickup_coordinating' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
-                          <span style={{ fontSize: '12px', color: '#666' }}>픽업 일정 조율 중</span>
-                          <button
-                            onClick={async () => {
-                              if (confirm('픽업 일정이 확정되었습니까?')) {
-                                await supabase
-                                  .from('donations')
-                                  .update({ status: 'pickup_scheduled' })
-                                  .eq('id', donation.id);
-                                await fetchAllDonations();
-                              }
-                            }}
-                            style={{
-                              padding: '6px 16px',
-                              fontSize: '13px',
-                              fontWeight: '500',
-                              color: '#fff',
-                              backgroundColor: '#007BFF',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              minWidth: '90px'
-                            }}
-                          >
-                            일정 확정
-                          </button>
-                        </div>
-                      )}
-                      {donation.status === 'pickup_scheduled' && (
-                        <button
-                          onClick={() => handleComplete(donation.id)}
-                          style={{
-                            padding: '6px 16px',
-                            fontSize: '13px',
-                            fontWeight: '500',
-                            color: 'white',
-                            backgroundColor: '#28A745',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          완료 처리
-                        </button>
+                      {donation.status === 'pickup_scheduled' && !donation.has_received_match && (
+                        <span style={{ fontSize: '12px', color: '#666', fontStyle: 'italic' }}>
+                          수령 대기중
+                        </span>
                       )}
                       {donation.status === 'completed' && (
                         <Link href={`/admin/donation/${donation.id}/detail`}>
