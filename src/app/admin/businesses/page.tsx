@@ -337,10 +337,10 @@ export default function AdminBusinessesPage() {
                 transition: 'all 0.2s'
               }}
             >
-              {filter === 'all' && '전체'}
-              {filter === 'pending' && '승인 대기'}
-              {filter === 'approved' && '승인 완료'}
-              {filter === 'rejected' && '거절'}
+              {filter === 'all' && <span style={{ whiteSpace: 'nowrap' }}>전체</span>}
+              {filter === 'pending' && <span style={{ whiteSpace: 'nowrap' }}>승인 대기</span>}
+              {filter === 'approved' && <span style={{ whiteSpace: 'nowrap' }}>승인 완료</span>}
+              {filter === 'rejected' && <span style={{ whiteSpace: 'nowrap' }}>거절</span>}
             </button>
           ))}
         </div>
@@ -418,14 +418,15 @@ export default function AdminBusinessesPage() {
                         {business.created_at ? new Date(business.created_at).toLocaleDateString('ko-KR') : '-'}
                       </td>
                       <td style={{ padding: '12px', textAlign: 'center' }}>
-                        <span style={{ 
+                        <span style={{
                           color: business.status === 'approved' ? '#28A745' : business.status === 'rejected' ? '#DC3545' : '#FF8C00',
                           fontWeight: '500',
                           fontSize: '12px',
                           backgroundColor: business.status === 'approved' ? '#28A74520' : business.status === 'rejected' ? '#DC354520' : '#FF8C0020',
                           padding: '4px 12px',
                           borderRadius: '4px',
-                          display: 'inline-block'
+                          display: 'inline-block',
+                          whiteSpace: 'nowrap'
                         }}>
                           {business.status === 'approved' && '승인됨'}
                           {business.status === 'rejected' && '거절됨'}
@@ -445,7 +446,8 @@ export default function AdminBusinessesPage() {
                                 backgroundColor: '#28A745',
                                 border: 'none',
                                 borderRadius: '4px',
-                                cursor: 'pointer'
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap'
                               }}
                             >
                               승인
@@ -460,7 +462,8 @@ export default function AdminBusinessesPage() {
                                 backgroundColor: '#DC3545',
                                 border: 'none',
                                 borderRadius: '4px',
-                                cursor: 'pointer'
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap'
                               }}
                             >
                               거절
@@ -550,14 +553,15 @@ export default function AdminBusinessesPage() {
                         {beneficiary.created_at ? new Date(beneficiary.created_at).toLocaleDateString('ko-KR') : '-'}
                       </td>
                       <td style={{ padding: '12px', textAlign: 'center' }}>
-                        <span style={{ 
+                        <span style={{
                           color: beneficiary.status === 'approved' ? '#28A745' : beneficiary.status === 'rejected' ? '#DC3545' : '#FF8C00',
                           fontWeight: '500',
                           fontSize: '12px',
                           backgroundColor: beneficiary.status === 'approved' ? '#28A74520' : beneficiary.status === 'rejected' ? '#DC354520' : '#FF8C0020',
                           padding: '4px 12px',
                           borderRadius: '4px',
-                          display: 'inline-block'
+                          display: 'inline-block',
+                          whiteSpace: 'nowrap'
                         }}>
                           {beneficiary.status === 'approved' && '승인됨'}
                           {beneficiary.status === 'rejected' && '거절됨'}
@@ -577,7 +581,8 @@ export default function AdminBusinessesPage() {
                                 backgroundColor: '#28A745',
                                 border: 'none',
                                 borderRadius: '4px',
-                                cursor: 'pointer'
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap'
                               }}
                             >
                               승인
@@ -592,7 +597,8 @@ export default function AdminBusinessesPage() {
                                 backgroundColor: '#DC3545',
                                 border: 'none',
                                 borderRadius: '4px',
-                                cursor: 'pointer'
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap'
                               }}
                             >
                               거절
