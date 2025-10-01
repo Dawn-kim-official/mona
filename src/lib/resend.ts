@@ -11,7 +11,7 @@ export interface EmailTemplate {
 export async function sendEmail({ to, subject, html }: EmailTemplate) {
   try {
     const data = await resend.emails.send({
-      from: 'MONA B2B <noreply@monaimpact.com>',
+      from: 'MONA B2B <noreply@mona.ai.kr>',
       to,
       subject,
       html,

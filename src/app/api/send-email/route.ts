@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
               </ul>
               
               <p style="text-align: center;">
-                <a href="https://mona.vercel.app/login" class="button">로그인하기</a>
+                <a href="https://mona-rose-two.vercel.app/login" class="button">로그인하기</a>
               </p>
               
               <p>MONA와 함께 더 나은 세상을 만들어가요! 🌱</p>
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'MONA Platform <onboarding@resend.dev>',
+        from: 'MONA Platform <noreply@mona.ai.kr>',
         to: [to],
         subject: subject,
         html: html
