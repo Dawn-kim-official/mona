@@ -48,16 +48,6 @@ export const metadata: Metadata = {
     description: '기업의 사회적 책임을 실현하는 B2B 기부 플랫폼',
     images: ['/mona_logo.png'],
   },
-  icons: {
-    icon: [
-      { url: '/favicon.ico' },
-      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
-      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
-    ],
-    apple: [
-      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
-    ],
-  },
   robots: {
     index: true,
     follow: true,
