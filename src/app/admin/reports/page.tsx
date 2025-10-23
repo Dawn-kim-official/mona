@@ -37,16 +37,20 @@ export default function AdminReportsPage() {
       // Fetch latest report date for each business
       const reportDates: Record<string, string> = {}
       for (const business of data) {
-        const { data: reportData } = await supabase
-          .from('reports')
-          .select('created_at')
-          .eq('business_id', business.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single()
-        
-        if (reportData) {
-          reportDates[business.id] = new Date(reportData.created_at).toLocaleDateString('ko-KR')
+        try {
+          const { data: reportData, error } = await supabase
+            .from('reports')
+            .select('created_at')
+            .eq('business_id', business.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle() // single() 대신 maybeSingle() 사용
+          
+          if (reportData && !error) {
+            reportDates[business.id] = new Date(reportData.created_at).toLocaleDateString('ko-KR')
+          }
+        } catch (err) {
+          // 에러 무시하고 계속 진행
         }
       }
       setLatestReports(reportDates)
@@ -55,34 +59,22 @@ export default function AdminReportsPage() {
   }
 
   async function fetchReports(businessId: string) {
-    const { data, error } = await supabase
-      .from('reports')
-      .select('*')
-      .eq('business_id', businessId)
-      .order('created_at', { ascending: false })
+    try {
+      const { data, error } = await supabase
+        .from('reports')
+        .select('*')
+        .eq('business_id', businessId)
+        .order('created_at', { ascending: false })
 
-    if (!error && data) {
-      setReports(data)
-    } else {
-      // If reports table doesn't exist, try to get from businesses table
-      const { data: businessData } = await supabase
-        .from('businesses')
-        .select('esg_report_url')
-        .eq('id', businessId)
-        .single()
-
-      if (businessData?.esg_report_url) {
-        setReports([{
-          id: businessId,
-          business_id: businessId,
-          report_url: businessData.esg_report_url,
-          media_links: [],
-          report_date: new Date().toISOString(),
-          created_at: new Date().toISOString()
-        }])
+      if (data && data.length > 0) {
+        setReports(data)
       } else {
+        // reports 테이블에 데이터가 없으면 빈 배열 설정
         setReports([])
       }
+    } catch (err) {
+      // 에러 발생시 빈 배열 설정
+      setReports([])
     }
   }
 
@@ -122,7 +114,9 @@ export default function AdminReportsPage() {
       
       const { error: uploadError } = await supabase.storage
         .from('esg-reports')
-        .upload(fileName, selectedFile)
+        .upload(fileName, selectedFile, {
+          upsert: true
+        })
       
       if (uploadError) throw uploadError
       
@@ -130,6 +124,7 @@ export default function AdminReportsPage() {
       const { data: { publicUrl } } = supabase.storage
         .from('esg-reports')
         .getPublicUrl(fileName)
+      
       
       // Save report with media links
       const validMediaLinks = mediaLinks.filter(link => link.trim() !== '')
@@ -191,18 +186,55 @@ export default function AdminReportsPage() {
   }
 
   return (
-    <div style={{ backgroundColor: '#F8F9FA', minHeight: '100vh' }}>
-      <div style={{ padding: '40px', maxWidth: '1400px', margin: '0 auto' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '32px', color: '#212529' }}>
+    <>
+      <style dangerouslySetInnerHTML={{__html: `
+        @media (max-width: 768px) {
+          .desktop-table {
+            display: none !important;
+          }
+          .mobile-cards {
+            display: block !important;
+          }
+          .main-container {
+            padding: 16px !important;
+          }
+          .modal-content {
+            width: 95% !important;
+            max-width: 95% !important;
+            padding: 16px !important;
+          }
+          .button-group {
+            flex-direction: column !important;
+            width: 100% !important;
+          }
+          .button-group button {
+            width: 100% !important;
+          }
+        }
+        
+        @media (min-width: 769px) {
+          .desktop-table {
+            display: block !important;
+          }
+          .mobile-cards {
+            display: none !important;
+          }
+        }
+      `}} />
+      
+      <div style={{ backgroundColor: '#F8F9FA', minHeight: '100vh' }}>
+        <div style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }} className="main-container">
+        <h1 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '24px', color: '#212529' }}>
           ESG 리포트 관리
         </h1>
 
+        {/* Desktop Table */}
         <div style={{
           backgroundColor: 'white',
           borderRadius: '8px',
           boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
           overflow: 'hidden'
-        }}>
+        }} className="desktop-table">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ backgroundColor: '#F8F9FA', borderBottom: '1px solid #DEE2E6' }}>
@@ -291,6 +323,89 @@ export default function AdminReportsPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile Cards */}
+        <div className="mobile-cards" style={{ display: 'none' }}>
+          {businesses.map((business) => (
+            <div key={business.id} style={{
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              padding: '16px',
+              marginBottom: '12px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+            }}>
+              <h3 style={{ 
+                fontSize: '16px', 
+                fontWeight: '600', 
+                marginBottom: '12px',
+                color: '#212529'
+              }}>
+                {business.name}
+              </h3>
+              
+              <div style={{ marginBottom: '12px', fontSize: '14px' }}>
+                <span style={{ color: '#6C757D' }}>리포트 상태: </span>
+                <span style={{ 
+                  color: latestReports[business.id] ? '#212529' : '#6C757D',
+                  fontWeight: '500'
+                }}>
+                  {latestReports[business.id] || '미업로드'}
+                </span>
+              </div>
+              
+              <div style={{ 
+                display: 'flex', 
+                gap: '8px', 
+                flexWrap: 'wrap',
+                marginTop: '12px'
+              }}>
+                <button
+                  onClick={async () => {
+                    setSelectedBusiness(business)
+                    await fetchReports(business.id)
+                    setShowHistoryModal(true)
+                  }}
+                  style={{
+                    flex: '1',
+                    minWidth: '120px',
+                    padding: '8px 16px',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    color: '#007BFF',
+                    backgroundColor: 'white',
+                    border: '1px solid #007BFF',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  히스토리 보기
+                </button>
+                <button
+                  onClick={async () => {
+                    setSelectedBusiness(business)
+                    await fetchReports(business.id)
+                    setShowReportModal(true)
+                  }}
+                  disabled={uploadingId === business.id}
+                  style={{
+                    flex: '1',
+                    minWidth: '120px',
+                    padding: '8px 16px',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    color: 'white',
+                    backgroundColor: uploadingId === business.id ? '#6C757D' : '#28A745',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: uploadingId === business.id ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {uploadingId === business.id ? '업로드 중...' : '추가/삭제'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* 리포트 히스토리 모달 */}
@@ -315,7 +430,7 @@ export default function AdminReportsPage() {
             maxWidth: '90%',
             maxHeight: '80vh',
             overflow: 'auto'
-          }}>
+          }} className="modal-content">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h3 style={{ margin: 0, color: '#212529' }}>
                 {selectedBusiness.name} - 리포트 히스토리
@@ -614,7 +729,7 @@ export default function AdminReportsPage() {
             maxWidth: '90%',
             maxHeight: '70vh',
             overflow: 'auto'
-          }}>
+          }} className="modal-content">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h3 style={{ margin: 0, color: '#212529' }}>
                 {selectedBusiness.name} - 리포트 히스토리
@@ -715,5 +830,6 @@ export default function AdminReportsPage() {
         </div>
       )}
     </div>
+    </>
   )
 }

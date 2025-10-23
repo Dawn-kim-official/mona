@@ -342,8 +342,8 @@ export default function NewDonationPage() {
                     required
                     value={formData.quantity}
                     onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                    style={{ ...inputStyle, flex: 1 }}
-                    placeholder="수량을 입력하세요"
+                    style={{ ...inputStyle, minWidth: '80px', flex: 1 }}
+                    placeholder="수량"
                     onFocus={(e) => {
                       e.currentTarget.style.borderColor = '#02391f'
                       e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
@@ -357,15 +357,16 @@ export default function NewDonationPage() {
                     value={formData.unit}
                     onChange={(e) => setFormData({ ...formData, unit: e.target.value, customUnit: '' })}
                     style={{
-                      width: formData.unit === 'custom' ? '120px' : '100px',
-                      padding: '14px 16px',
+                      width: formData.unit === 'custom' ? '90px' : '70px',
+                      padding: '14px 8px',
                       fontSize: '16px',
                       border: '1px solid #CED4DA',
                       borderRadius: '6px',
                       backgroundColor: '#FFFFFF',
                       color: '#212529',
                       cursor: 'pointer',
-                      outline: 'none'
+                      outline: 'none',
+                      flexShrink: 0
                     }}
                     onFocus={(e) => {
                       e.currentTarget.style.borderColor = '#02391f'
