@@ -30,6 +30,7 @@ export default function BusinessDashboardPage() {
   })
   const [recentDonations, setRecentDonations] = useState<any[]>([])
   const [esgReportUrl, setEsgReportUrl] = useState<string | null>(null)
+  const [esgReportDate, setEsgReportDate] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const [notificationConfirmed, setNotificationConfirmed] = useState(false)
   const [showEsgModal, setShowEsgModal] = useState(false)
@@ -72,9 +73,26 @@ export default function BusinessDashboardPage() {
 
     if (!business) return
 
-    // Set ESG report URL if exists
-    if (business.esg_report_url) {
+    // Check for latest ESG report from reports table first
+    const { data: latestReport } = await supabase
+      .from('reports')
+      .select('report_url, created_at')
+      .eq('business_id', business.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    
+    // Set ESG report URL and date (prioritize reports table over businesses table)
+    if (latestReport?.report_url) {
+      setEsgReportUrl(latestReport.report_url)
+      setEsgReportDate(new Date(latestReport.created_at).toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).replace(/\./g, '.').replace(/\s/g, ''))
+    } else if (business.esg_report_url) {
       setEsgReportUrl(business.esg_report_url)
+      setEsgReportDate(null) // 기존 business 테이블 데이터는 날짜 정보 없음
     }
 
     // 한 번의 쿼리로 모든 donations 가져오기 (중복 제거)
@@ -429,7 +447,7 @@ export default function BusinessDashboardPage() {
                   ESG 리포트
                 </h2>
                 <p style={{ fontSize: '14px', color: '#6C757D' }}>
-                  2025년 ESG 리포트가 준비되었습니다. (업데이트: 2025.07.31)
+                  {new Date().getFullYear()}년 ESG 리포트가 준비되었습니다. {esgReportDate && `(업데이트: ${esgReportDate})`}
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '12px' }} className="esg-buttons">
