@@ -19,6 +19,7 @@ export default function BeneficiaryLayout({
   const [newProposalsCount, setNewProposalsCount] = useState(0)
   const [beneficiaryId, setBeneficiaryId] = useState<string | null>(null)
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
 
   useEffect(() => {
     checkAuth()
@@ -139,69 +140,102 @@ export default function BeneficiaryLayout({
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#F8F9FA' }}>
-      {/* Top Navigation Bar - 관리자/기업과 동일한 스타일 */}
+      {/* Top Navigation Bar - 반응형 */}
       <nav style={{ 
         backgroundColor: '#02391f',
-        padding: '0 40px',
+        padding: '0 20px',
         height: '70px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '40px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ color: 'white', fontSize: '14px' }}>수혜기관</span>
-            <h1 style={{ 
-              color: '#ffd020', 
-              fontSize: '28px', 
-              fontWeight: 'bold',
-              margin: 0
-            }}>MONA</h1>
-          </div>
-          <div style={{ display: 'flex', gap: '30px' }}>
-            {navItems.map(item => (
-              <Link 
-                key={item.href}
-                href={item.href} 
-                style={{ 
-                  color: pathname === item.href ? '#ffd020' : 'white', 
-                  textDecoration: 'none', 
-                  fontSize: '16px',
-                  fontWeight: pathname === item.href ? '600' : '400',
-                  padding: '8px 16px',
-                  backgroundColor: pathname === item.href ? 'rgba(255, 208, 32, 0.1)' : 'transparent',
-                  borderRadius: '6px',
-                  position: 'relative',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                {item.label}
-                {item.href === '/beneficiary/proposals' && newProposalsCount > 0 && (
-                  <span style={{
-                    position: 'absolute',
-                    top: '-8px',
-                    right: '-20px',
-                    backgroundColor: '#FF4444',
-                    color: 'white',
-                    borderRadius: '10px',
-                    padding: '2px 6px',
-                    fontSize: '11px',
-                    fontWeight: 'bold',
-                    minWidth: '18px',
-                    textAlign: 'center'
-                  }}>
-                    {newProposalsCount}
-                  </span>
-                )}
-              </Link>
-            ))}
-          </div>
+        {/* 브랜드 로고 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ color: 'white', fontSize: '14px' }}>수혜기관</span>
+          <h1 style={{ 
+            color: '#ffd020', 
+            fontSize: '28px', 
+            fontWeight: 'bold',
+            margin: 0
+          }}>MONA</h1>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <span style={{ color: 'white', fontSize: '14px' }}>
+
+        {/* 데스크톱 네비게이션 */}
+        <div style={{ 
+          display: 'none', 
+          alignItems: 'center',
+          gap: '30px'
+        }} className="desktop-nav">
+          {navItems.map(item => (
+            <Link 
+              key={item.href}
+              href={item.href} 
+              style={{ 
+                color: pathname === item.href ? '#ffd020' : 'white', 
+                textDecoration: 'none', 
+                fontSize: '16px',
+                fontWeight: pathname === item.href ? '600' : '400',
+                padding: '8px 16px',
+                backgroundColor: pathname === item.href ? 'rgba(255, 208, 32, 0.1)' : 'transparent',
+                borderRadius: '6px',
+                position: 'relative',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              {item.label}
+              {item.href === '/beneficiary/proposals' && newProposalsCount > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: '-8px',
+                  right: '-20px',
+                  backgroundColor: '#FF4444',
+                  color: 'white',
+                  borderRadius: '10px',
+                  padding: '2px 6px',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  minWidth: '18px',
+                  textAlign: 'center'
+                }}>
+                  {newProposalsCount}
+                </span>
+              )}
+            </Link>
+          ))}
+        </div>
+
+        {/* 오른쪽 영역 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* 기관명 (모바일에서 숨김) */}
+          <span style={{ 
+            color: 'white', 
+            fontSize: '14px',
+            display: 'none'
+          }} className="desktop-only">
             {organizationName}
           </span>
-          <div style={{ position: 'relative' }}>
+          
+          {/* 모바일 메뉴 버튼 */}
+          <button 
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            style={{
+              width: '40px',
+              height: '40px',
+              backgroundColor: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            className="mobile-menu-btn"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M3 12H21M3 6H21M3 18H21" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </button>
+          {/* 사용자 프로필 버튼 (데스크톱에서만) */}
+          <div style={{ position: 'relative', display: 'none' }} className="desktop-only">
             <button 
               onClick={() => setShowUserMenu(!showUserMenu)}
               style={{
@@ -289,6 +323,151 @@ export default function BeneficiaryLayout({
         </div>
       </nav>
 
+      {/* 모바일 메뉴 */}
+      {showMobileMenu && (
+        <>
+          {/* 오버레이 */}
+          <div 
+            onClick={() => setShowMobileMenu(false)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 998
+            }}
+          />
+          
+          {/* 모바일 메뉴 패널 */}
+          <div style={{
+            position: 'fixed',
+            top: '70px',
+            left: 0,
+            right: 0,
+            backgroundColor: '#02391f',
+            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+            zIndex: 999,
+            padding: '20px',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+          }}>
+            {/* 기관명 */}
+            <div style={{ 
+              color: 'white', 
+              fontSize: '16px', 
+              fontWeight: '600',
+              marginBottom: '20px',
+              paddingBottom: '15px',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.2)'
+            }}>
+              {organizationName}
+            </div>
+            
+            {/* 네비게이션 아이템들 */}
+            {navItems.map(item => (
+              <Link 
+                key={item.href}
+                href={item.href}
+                onClick={() => setShowMobileMenu(false)}
+                style={{ 
+                  display: 'block',
+                  color: pathname === item.href ? '#ffd020' : 'white', 
+                  textDecoration: 'none', 
+                  fontSize: '16px',
+                  fontWeight: pathname === item.href ? '600' : '400',
+                  padding: '12px 0',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                  position: 'relative'
+                }}
+              >
+                {item.label}
+                {item.href === '/beneficiary/proposals' && newProposalsCount > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    right: '0',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    backgroundColor: '#FF4444',
+                    color: 'white',
+                    borderRadius: '10px',
+                    padding: '2px 8px',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    minWidth: '20px',
+                    textAlign: 'center'
+                  }}>
+                    {newProposalsCount}
+                  </span>
+                )}
+              </Link>
+            ))}
+            
+            {/* 프로필 메뉴 */}
+            <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255, 255, 255, 0.2)' }}>
+              <Link 
+                href="/beneficiary/profile"
+                onClick={() => setShowMobileMenu(false)}
+                style={{
+                  display: 'block',
+                  color: 'white',
+                  textDecoration: 'none',
+                  fontSize: '16px',
+                  padding: '12px 0',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+                }}
+              >
+                회원정보 관리
+              </Link>
+              <button
+                onClick={() => {
+                  handleLogout()
+                  setShowMobileMenu(false)
+                }}
+                style={{
+                  width: '100%',
+                  textAlign: 'left',
+                  color: '#FF6B6B',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  fontSize: '16px',
+                  padding: '12px 0',
+                  cursor: 'pointer'
+                }}
+              >
+                로그아웃
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* CSS Styles */}
+      <style jsx>{`
+        @media (min-width: 768px) {
+          .desktop-nav {
+            display: flex !important;
+          }
+          .desktop-only {
+            display: block !important;
+          }
+          .mobile-menu-btn {
+            display: none !important;
+          }
+        }
+        
+        @media (max-width: 767px) {
+          .desktop-nav {
+            display: none !important;
+          }
+          .desktop-only {
+            display: none !important;
+          }
+          .mobile-menu-btn {
+            display: flex !important;
+          }
+        }
+      `}</style>
 
       {/* Main Content */}
       <main style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 60px)' }}>

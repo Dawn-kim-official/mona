@@ -89,7 +89,7 @@ export default function DonationMatchesPage() {
   }
 
   if (loading) {
-    return <div style={{ padding: '40px', textAlign: 'center' }}>로딩 중...</div>
+    return <div style={{ padding: '20px', textAlign: 'center' }}>로딩 중...</div>
   }
 
   const totalAccepted = matches
@@ -100,9 +100,19 @@ export default function DonationMatchesPage() {
 
   return (
     <div style={{ backgroundColor: '#F8F9FA', minHeight: '100vh' }}>
-      <div style={{ padding: '40px', maxWidth: '1400px', margin: '0 auto' }}>
-        <div style={{ marginBottom: '32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h1 style={{ fontSize: '24px', fontWeight: '600', color: '#212529' }}>
+      <div style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }}>
+        <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+          <h1 style={{ 
+            fontSize: '18px', 
+            fontWeight: '600', 
+            color: '#212529', 
+            wordBreak: 'break-word',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            maxWidth: '70%',
+            flex: 1
+          }}>
             매칭 현황: {donation?.name || donation?.description}
           </h1>
           <button
@@ -133,7 +143,7 @@ export default function DonationMatchesPage() {
           <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', color: '#212529' }}>
             수량 분배 현황
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '16px' }}>
             <div>
               <label style={{ fontSize: '14px', color: '#6C757D', display: 'block', marginBottom: '4px' }}>
                 전체 수량
@@ -174,9 +184,11 @@ export default function DonationMatchesPage() {
           backgroundColor: 'white',
           borderRadius: '8px',
           boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-          overflow: 'hidden'
+          overflowX: 'auto',
+          scrollbarWidth: 'thin',
+          WebkitOverflowScrolling: 'touch'
         }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
             <thead>
               <tr style={{ backgroundColor: '#F8F9FA', borderBottom: '1px solid #DEE2E6' }}>
                 <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>

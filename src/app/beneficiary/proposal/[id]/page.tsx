@@ -257,8 +257,8 @@ export default function ProposalDetailPage() {
 
   return (
     <div style={{ backgroundColor: '#F8F9FA', minHeight: '100vh' }}>
-      <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '32px', color: '#212529' }}>
+      <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
+        <h1 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '24px', color: '#212529' }}>
           제안 상세 정보
         </h1>
 
@@ -266,28 +266,29 @@ export default function ProposalDetailPage() {
         <div style={{
           backgroundColor: 'white',
           borderRadius: '8px',
-          padding: '24px',
+          padding: '16px',
           marginBottom: '24px',
           boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
         }}>
-          <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '24px', color: '#212529' }}>
+          <h2 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '20px', color: '#212529' }}>
             기부 물품 정보
           </h2>
 
           {donation.photos && donation.photos.length > 0 && (
             <div style={{ marginBottom: '24px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+              <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', scrollbarWidth: 'thin', WebkitOverflowScrolling: 'touch', paddingBottom: '8px' }}>
                 {donation.photos.map((photo, idx) => (
                   <img 
                     key={idx}
                     src={photo} 
                     alt={`${(donation as any).name || donation.description} - 사진 ${idx + 1}`}
                     style={{ 
-                      width: '100%',
-                      height: '200px',
+                      width: '200px',
+                      height: '150px',
                       objectFit: 'cover',
                       borderRadius: '8px',
-                      border: '1px solid #E9ECEF'
+                      border: '1px solid #E9ECEF',
+                      flexShrink: 0
                     }}
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
@@ -298,7 +299,7 @@ export default function ProposalDetailPage() {
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
             <div>
               <label style={{ fontSize: '14px', color: '#6C757D', display: 'block', marginBottom: '4px' }}>
                 품명
@@ -348,11 +349,11 @@ export default function ProposalDetailPage() {
           <div style={{
             backgroundColor: 'white',
             borderRadius: '8px',
-            padding: '24px',
+            padding: '16px',
             marginBottom: '24px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
           }}>
-            <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', color: '#212529' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: '#212529' }}>
               제안 응답
             </h2>
             
@@ -443,13 +444,13 @@ export default function ProposalDetailPage() {
                 onBlur={(e) => e.currentTarget.style.borderColor = '#CED4DA'}
               />
             </div>
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
               <button
                 onClick={() => handleResponse(false)}
                 disabled={submitting}
                 style={{
-                  padding: '12px 32px',
-                  fontSize: '16px',
+                  padding: '10px 24px',
+                  fontSize: '14px',
                   fontWeight: '600',
                   color: 'white',
                   backgroundColor: '#DC3545',
@@ -468,8 +469,8 @@ export default function ProposalDetailPage() {
                 onClick={() => handleResponse(true)}
                 disabled={submitting}
                 style={{
-                  padding: '12px 32px',
-                  fontSize: '16px',
+                  padding: '10px 24px',
+                  fontSize: '14px',
                   fontWeight: '600',
                   color: 'white',
                   backgroundColor: '#28A745',
@@ -493,7 +494,7 @@ export default function ProposalDetailPage() {
           <div style={{
             backgroundColor: 'white',
             borderRadius: '8px',
-            padding: '24px',
+            padding: '16px',
             marginBottom: '24px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
           }}>
@@ -526,7 +527,7 @@ export default function ProposalDetailPage() {
           <div style={{
             backgroundColor: 'white',
             borderRadius: '8px',
-            padding: '24px',
+            padding: '16px',
             marginBottom: '24px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
           }}>
@@ -585,7 +586,7 @@ export default function ProposalDetailPage() {
           <div style={{
             backgroundColor: 'white',
             borderRadius: '8px',
-            padding: '24px',
+            padding: '16px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
             border: '2px solid #02391f',
             marginBottom: '24px'
@@ -594,7 +595,7 @@ export default function ProposalDetailPage() {
               📅 확정된 픽업 일정
             </h3>
             <div style={{ backgroundColor: '#f0f7f4', padding: '20px', borderRadius: '8px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '16px' }}>
                 <div>
                   <span style={{ fontSize: '14px', color: '#02391f', fontWeight: '600' }}>픽업 날짜</span>
                   <p style={{ fontSize: '16px', color: '#212529', margin: '4px 0 0 0', fontWeight: '500' }}>
@@ -693,8 +694,8 @@ export default function ProposalDetailPage() {
                   }
                 }}
                 style={{
-                  padding: '12px 32px',
-                  fontSize: '16px',
+                  padding: '10px 24px',
+                  fontSize: '14px',
                   fontWeight: '600',
                   color: 'white',
                   backgroundColor: '#28A745',
@@ -717,7 +718,7 @@ export default function ProposalDetailPage() {
           <div style={{
             backgroundColor: 'white',
             borderRadius: '8px',
-            padding: '24px',
+            padding: '16px',
             marginBottom: '24px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
           }}>
@@ -916,8 +917,8 @@ export default function ProposalDetailPage() {
                 }}
                 disabled={generatingPdf}
                 style={{
-                  padding: '12px 32px',
-                  fontSize: '16px',
+                  padding: '10px 24px',
+                  fontSize: '14px',
                   fontWeight: '600',
                   color: 'white',
                   backgroundColor: generatingPdf ? '#6C757D' : '#02391f',
@@ -941,8 +942,8 @@ export default function ProposalDetailPage() {
           <button
             onClick={() => router.back()}
             style={{
-              padding: '12px 32px',
-              fontSize: '16px',
+              padding: '10px 24px',
+              fontSize: '14px',
               fontWeight: '600',
               color: '#6C757D',
               backgroundColor: 'white',

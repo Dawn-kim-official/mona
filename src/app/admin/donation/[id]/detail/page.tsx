@@ -5,18 +5,24 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import Link from 'next/link'
 
-export default async function DonationDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = await params
-  return <DonationDetailContent params={resolvedParams} />
+export default function DonationDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  return <DonationDetailContent paramsPromise={params} />
 }
 
-function DonationDetailContent({ params }: { params: { id: string } }) {
+function DonationDetailContent({ paramsPromise }: { paramsPromise: Promise<{ id: string }> }) {
   const router = useRouter()
   const supabase = createClient()
   const [donation, setDonation] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [pickupSchedule, setPickupSchedule] = useState<any>(null)
-  const donationId = params.id
+  const [donationId, setDonationId] = useState<string | null>(null)
+
+  // params를 클라이언트에서 resolve
+  useEffect(() => {
+    paramsPromise.then(params => {
+      setDonationId(params.id)
+    })
+  }, [paramsPromise])
 
   useEffect(() => {
     if (donationId) {
@@ -159,9 +165,9 @@ function DonationDetailContent({ params }: { params: { id: string } }) {
 
   return (
     <div style={{ backgroundColor: '#F8F9FA', minHeight: '100vh' }}>
-      <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
-        <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h1 style={{ fontSize: '24px', fontWeight: '600', color: '#212529' }}>
+      <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <h1 style={{ fontSize: '20px', fontWeight: '600', color: '#212529' }}>
             기부 상세 정보
           </h1>
           <Link href="/admin/donations">
@@ -191,7 +197,7 @@ function DonationDetailContent({ params }: { params: { id: string } }) {
           <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px', color: '#212529' }}>
             기부 정보
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '13px', color: '#6C757D', marginBottom: '4px' }}>
                 상태
@@ -350,7 +356,7 @@ function DonationDetailContent({ params }: { params: { id: string } }) {
             <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px', color: '#212529' }}>
               기부 기업 정보
             </h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '13px', color: '#6C757D', marginBottom: '4px' }}>
                   기업명

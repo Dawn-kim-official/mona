@@ -123,8 +123,32 @@ export default function BusinessReceiptsPage() {
   }
 
   return (
-    <div style={{ backgroundColor: '#F8F9FA', minHeight: '100vh' }}>
-      <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
+    <>
+      <style dangerouslySetInnerHTML={{__html: `
+        @media (max-width: 768px) {
+          .desktop-table {
+            display: none !important;
+          }
+          .mobile-cards {
+            display: block !important;
+          }
+          .main-container {
+            padding: 16px !important;
+          }
+        }
+        
+        @media (min-width: 769px) {
+          .desktop-table {
+            display: block !important;
+          }
+          .mobile-cards {
+            display: none !important;
+          }
+        }
+      `}} />
+      
+      <div style={{ backgroundColor: '#F8F9FA', minHeight: '100vh' }}>
+        <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }} className="main-container">
         <div style={{ marginBottom: '32px' }}>
           <h1 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '8px', color: '#212529' }}>
             기부 영수증 조회
@@ -150,13 +174,18 @@ export default function BusinessReceiptsPage() {
             </p>
           </div>
         ) : (
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-            overflow: 'hidden'
-          }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <>
+            {/* Desktop Table */}
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              overflow: 'hidden',
+              overflowX: 'auto',
+              scrollbarWidth: 'thin',
+              WebkitOverflowScrolling: 'touch'
+            }} className="desktop-table">
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
               <thead>
                 <tr style={{ backgroundColor: '#F8F9FA', borderBottom: '1px solid #DEE2E6' }}>
                   <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>기부일자</th>
@@ -254,8 +283,141 @@ export default function BusinessReceiptsPage() {
                   ))
                 })}
               </tbody>
-            </table>
-          </div>
+              </table>
+            </div>
+
+            {/* Mobile Card Layout */}
+            <div className="mobile-cards" style={{ display: 'none' }}>
+              {donations.map((donation) => {
+                // 영수증이 발급된 매칭만 표시
+                const receiptMatches = donation.donation_matches?.filter((match: any) => 
+                  match.status === 'received' && match.receipt_issued
+                ) || []
+                
+                return receiptMatches.map((match: any) => (
+                  <div key={`${donation.id}-${match.id}`} style={{
+                    backgroundColor: 'white',
+                    borderRadius: '8px',
+                    padding: '16px',
+                    marginBottom: '12px',
+                    border: '1px solid #E9ECEF',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                  }}>
+                    {/* 상단: 기본 정보 */}
+                    <div style={{ marginBottom: '12px' }}>
+                      <div style={{ fontSize: '16px', fontWeight: '600', color: '#212529', marginBottom: '4px' }}>
+                        {donation.name || '-'}
+                      </div>
+                      {donation.description && (
+                        <div style={{ fontSize: '14px', color: '#6C757D', marginBottom: '8px' }}>
+                          {donation.description}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{
+                          color: '#28A745',
+                          fontWeight: '500',
+                          fontSize: '12px',
+                          backgroundColor: '#28A74520',
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          display: 'inline-block'
+                        }}>
+                          영수증 발급 완료
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 중간: 상세 정보 */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '14px', marginBottom: '12px' }}>
+                      <div>
+                        <span style={{ color: '#6C757D', fontSize: '12px' }}>수량</span>
+                        <div style={{ fontWeight: '500', color: '#212529' }}>
+                          {donation.quantity}{donation.unit || 'kg'}
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ color: '#6C757D', fontSize: '12px' }}>기부일자</span>
+                        <div style={{ fontWeight: '500', color: '#212529' }}>
+                          {formatDate(donation.created_at)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: '12px' }}>
+                      <span style={{ color: '#6C757D', fontSize: '12px' }}>수혜기관</span>
+                      <div style={{ fontWeight: '500', color: '#212529', fontSize: '14px' }}>
+                        {match.beneficiaries?.organization_name || '-'}
+                      </div>
+                      {match.beneficiaries?.representative_name && (
+                        <div style={{ fontSize: '12px', color: '#6C757D', marginTop: '2px' }}>
+                          대표자: {match.beneficiaries.representative_name}
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '14px', marginBottom: '12px' }}>
+                      <div>
+                        <span style={{ color: '#6C757D', fontSize: '12px' }}>수령일자</span>
+                        <div style={{ fontWeight: '500', color: '#212529' }}>
+                          {formatDate(match.received_at)}
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ color: '#6C757D', fontSize: '12px' }}>영수증 발급일</span>
+                        <div style={{ fontWeight: '500', color: '#212529' }}>
+                          {formatDate(match.receipt_issued_at)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 하단: 액션 버튼들 */}
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={() => {
+                          // 영수증 상세 보기
+                          alert('영수증 상세 보기 기능은 준비 중입니다.')
+                        }}
+                        style={{
+                          padding: '8px 16px',
+                          fontSize: '13px',
+                          fontWeight: '500',
+                          color: '#02391f',
+                          backgroundColor: 'white',
+                          border: '1px solid #02391f',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          flex: 1
+                        }}
+                      >
+                        조회
+                      </button>
+                      <button
+                        onClick={() => downloadReceipt(
+                          match.id,
+                          business?.name || '',
+                          match.beneficiaries?.organization_name || ''
+                        )}
+                        style={{
+                          padding: '8px 16px',
+                          fontSize: '13px',
+                          fontWeight: '500',
+                          color: 'white',
+                          backgroundColor: '#02391f',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          flex: 1
+                        }}
+                      >
+                        다운로드
+                      </button>
+                    </div>
+                  </div>
+                ))
+              })}
+            </div>
+          </>
         )}
 
         <div style={{
@@ -274,7 +436,8 @@ export default function BusinessReceiptsPage() {
             <li>영수증 관련 문의는 각 수혜기관으로 연락 바랍니다.</li>
           </ul>
         </div>
+        </div>
       </div>
-    </div>
+    </>
   )
 }

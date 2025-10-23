@@ -93,14 +93,14 @@ export default function QuoteDetailModal({
         >
           {/* Header */}
           <div style={{
-            padding: '24px',
+            padding: '16px 20px',
             borderBottom: '1px solid #E9ECEF',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between'
           }}>
             <h2 style={{ 
-              fontSize: '20px', 
+              fontSize: '18px', 
               fontWeight: '600',
               color: '#212529',
               margin: 0
@@ -128,7 +128,7 @@ export default function QuoteDetailModal({
           </div>
 
           {/* Content */}
-          <div style={{ padding: '24px' }}>
+          <div style={{ padding: '16px 20px' }}>
             <p style={{ 
               color: '#6C757D', 
               marginBottom: '24px',
@@ -153,7 +153,7 @@ export default function QuoteDetailModal({
                 기부 정보
               </h3>
               
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', fontSize: '14px' }}>
                 <div>
                   <span style={{ color: '#6C757D' }}>회원사: </span>
                   <span style={{ color: '#212529' }}>주식회사 ABC</span>
@@ -277,8 +277,8 @@ export default function QuoteDetailModal({
               <button
                 onClick={onClose}
                 style={{
-                  padding: '10px 24px',
-                  fontSize: '14px',
+                  padding: '8px 16px',
+                  fontSize: '13px',
                   fontWeight: '500',
                   color: '#6C757D',
                   backgroundColor: 'white',

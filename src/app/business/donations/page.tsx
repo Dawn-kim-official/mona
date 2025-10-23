@@ -178,9 +178,37 @@ export default function BusinessDashboardPage() {
       });
 
   return (
-    <div style={{ backgroundColor: '#F8F9FA', minHeight: '100vh' }}>
-      {/* Main Content Container */}
-      <div style={{ padding: '40px', maxWidth: '1400px', margin: '0 auto' }}>
+    <>
+      <style dangerouslySetInnerHTML={{__html: `
+        @media (max-width: 768px) {
+          .desktop-table {
+            display: none !important;
+          }
+          .mobile-cards {
+            display: block !important;
+          }
+          .main-container {
+            padding: 20px !important;
+          }
+          .tab-container {
+            overflow-x: auto !important;
+            scrollbar-width: thin !important;
+          }
+        }
+        
+        @media (min-width: 769px) {
+          .desktop-table {
+            display: block !important;
+          }
+          .mobile-cards {
+            display: none !important;
+          }
+        }
+      `}} />
+      
+      <div style={{ backgroundColor: '#F8F9FA', minHeight: '100vh' }}>
+        {/* Main Content Container */}
+        <div style={{ padding: '40px', maxWidth: '1400px', margin: '0 auto' }} className="main-container">
         {/* Tab Navigation */}
         <div style={{ 
           backgroundColor: '#FFFFFF',
@@ -192,7 +220,15 @@ export default function BusinessDashboardPage() {
           marginBottom: '24px',
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
         }}>
-          <div style={{ display: 'flex', alignItems: 'stretch', height: '48px' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'stretch', 
+            height: '48px',
+            overflowX: 'auto',
+            scrollbarWidth: 'thin',
+            WebkitOverflowScrolling: 'touch',
+            flex: 1
+          }} className="tab-container">
             {tabs.map(tab => (
               <button
                 key={tab.id}
@@ -209,7 +245,8 @@ export default function BusinessDashboardPage() {
                   transition: 'all 0.2s',
                   whiteSpace: 'nowrap',
                   display: 'flex',
-                  alignItems: 'center'
+                  alignItems: 'center',
+                  flexShrink: 0
                 }}
                 onMouseEnter={(e) => {
                   if (activeTab !== tab.id) {
@@ -294,29 +331,34 @@ export default function BusinessDashboardPage() {
             )}
           </div>
         ) : (
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-            overflow: 'hidden'
-          }}>
-            <table style={{ 
-              width: '100%',
-              borderCollapse: 'collapse'
-            }}>
-              <thead>
-                <tr style={{ backgroundColor: '#F8F9FA', borderBottom: '1px solid #DEE2E6' }}>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px', width: '80px' }}>이미지</th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>품명</th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px', width: '100px' }}>등록일</th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px', width: '80px' }}>수량</th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px', width: '120px' }}>픽업희망일</th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px', width: '120px' }}>상태</th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px', width: '150px' }}>작업</th>
-                </tr>
-              </thead>
-            <tbody>
-              {filteredDonations.map((donation) => {
+          <>
+            {/* Desktop Table */}
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              overflowX: 'auto',
+              scrollbarWidth: 'thin',
+              WebkitOverflowScrolling: 'touch'
+            }} className="desktop-table">
+              <table style={{ 
+                width: '100%',
+                borderCollapse: 'collapse',
+                minWidth: '900px'
+              }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#F8F9FA', borderBottom: '1px solid #DEE2E6' }}>
+                    <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px', width: '80px' }}>이미지</th>
+                    <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>품명</th>
+                    <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px', width: '100px' }}>등록일</th>
+                    <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px', width: '80px' }}>수량</th>
+                    <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px', width: '120px' }}>픽업희망일</th>
+                    <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px', width: '120px' }}>상태</th>
+                    <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px', width: '150px' }}>작업</th>
+                  </tr>
+                </thead>
+              <tbody>
+                {filteredDonations.map((donation) => {
                 // Determine the correct status to display
                 let statusKey: string = donation.status
                 if (donation.status === 'pickup_scheduled' && donation.hasReceivedMatch) {
@@ -470,11 +512,170 @@ export default function BusinessDashboardPage() {
                       </td>
                     </tr>
                 )
+                })}
+                </tbody>
+              </table>
+            </div>
+            
+            {/* Mobile Card Layout */}
+            <div className="mobile-cards" style={{ display: 'none' }}>
+              {filteredDonations.map((donation) => {
+                // Determine the correct status to display
+                let statusKey: string = donation.status
+                if (donation.status === 'pickup_scheduled' && donation.hasReceivedMatch) {
+                  statusKey = 'received'
+                }
+                const status = statusMap[statusKey] || { text: donation.status, color: '#666' }
+                
+                return (
+                  <div key={donation.id} style={{
+                    backgroundColor: 'white',
+                    borderRadius: '8px',
+                    padding: '16px',
+                    marginBottom: '12px',
+                    border: '1px solid #E9ECEF',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => router.push(`/business/donation/${donation.id}`)}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
+                      <div style={{ 
+                        width: '60px', 
+                        height: '60px', 
+                        backgroundColor: '#F8F9FA',
+                        borderRadius: '6px',
+                        overflow: 'hidden',
+                        border: '1px solid #DEE2E6',
+                        flexShrink: 0
+                      }}>
+                        {donation.photos && donation.photos[0] ? (
+                          <img 
+                            src={donation.photos[0]} 
+                            alt="기부 물품" 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <div style={{
+                            width: '100%',
+                            height: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#ADB5BD'
+                          }}>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#212529', marginBottom: '4px', wordBreak: 'break-word' }}>
+                          {donation.description}
+                        </div>
+                        <div style={{ fontSize: '14px', color: '#6C757D', marginBottom: '8px' }}>
+                          등록일: {new Date(donation.created_at).toLocaleDateString('ko-KR')}
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ 
+                            color: status.color,
+                            fontWeight: '500',
+                            fontSize: '12px',
+                            backgroundColor: status.color + '20',
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            display: 'inline-block'
+                          }}>
+                            {status.text}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '14px', marginBottom: '12px' }}>
+                      <div>
+                        <span style={{ color: '#6C757D', fontSize: '12px' }}>수량</span>
+                        <div style={{ fontWeight: '500', color: '#212529' }}>
+                          {donation.quantity}{(donation as any).unit || 'kg'}
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ color: '#6C757D', fontSize: '12px' }}>픽업희망일</span>
+                        <div style={{ fontWeight: '500', color: '#212529' }}>
+                          {new Date(donation.pickup_deadline).toLocaleDateString('ko-KR')}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {donation.status === 'quote_sent' && (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewQuote(donation.id);
+                          }}
+                          style={{ 
+                            color: '#02391f', 
+                            background: 'transparent', 
+                            border: '1px solid #02391f',
+                            padding: '8px 16px',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            flex: 1,
+                            minWidth: '120px'
+                          }}
+                        >견적서 확인</button>
+                      )}
+                      {donation.status === 'completed' && (
+                        <Link href={`/business/donation/${donation.id}`} style={{ flex: 1 }}>
+                          <button style={{
+                            padding: '8px 16px',
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            color: 'white',
+                            backgroundColor: '#02391f',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            width: '100%'
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          >
+                            영수증 확인
+                          </button>
+                        </Link>
+                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/business/donation/${donation.id}`);
+                        }}
+                        style={{
+                          padding: '8px 16px',
+                          fontSize: '13px',
+                          fontWeight: '500',
+                          color: '#007BFF',
+                          backgroundColor: 'transparent',
+                          border: '1px solid #007BFF',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          flex: 1,
+                          minWidth: '120px'
+                        }}
+                      >
+                        상세 보기
+                      </button>
+                    </div>
+                  </div>
+                );
               })}
-              </tbody>
-            </table>
-          </div>
+            </div>
+          </>
         )}
+        </div>
       </div>
       
       {/* Quote Detail Modal */}
@@ -497,7 +698,6 @@ export default function BusinessDashboardPage() {
         onAccept={handleAcceptQuote as any}
         onReject={handleRejectQuote as any}
       />
-      
-    </div>
+    </>
   )
 }

@@ -6,7 +6,7 @@ interface ReceiptTemplateProps {
 }
 
 export default function ReceiptTemplate({ donation, beneficiary }: ReceiptTemplateProps) {
-  const quote = donation.quotes[0]
+  const quote = donation.quotes?.[0] || { unit_price: 0, total_amount: 0 }
   const today = new Date().toLocaleDateString('ko-KR')
   const receiptNumber = donation.id.slice(0, 8).toUpperCase()
 

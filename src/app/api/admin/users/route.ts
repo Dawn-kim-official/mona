@@ -1,8 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-admin'
+import { createServerComponentClient } from '@/lib/supabase-server'
 
 export async function POST(request: NextRequest) {
   try {
+    // 인증된 사용자인지 확인
+    const supabase = await createServerComponentClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // 관리자 권한 확인
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (!profile || profile.role !== 'admin') {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    }
+
     const { userIds } = await request.json()
     
     if (!Array.isArray(userIds)) {

@@ -17,6 +17,7 @@ export default function BusinessLayout({
   const [loading, setLoading] = useState(true)
   const [businessId, setBusinessId] = useState<string | null>(null)
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
 
   useEffect(() => {
     checkUser()
@@ -68,32 +69,65 @@ export default function BusinessLayout({
   }
 
   return (
-    <div style={{ 
-      height: '100vh', 
-      backgroundColor: '#fafafa',
-      display: 'flex',
-      flexDirection: 'column',
-      overflow: 'hidden'
-    }}>
+    <>
+      <style dangerouslySetInnerHTML={{__html: `
+        @media (max-width: 768px) {
+          .desktop-menu {
+            display: none !important;
+          }
+          .mobile-menu-button {
+            display: flex !important;
+          }
+          .mobile-menu-dropdown {
+            display: block !important;
+          }
+        }
+        
+        @media (min-width: 769px) {
+          .desktop-menu {
+            display: flex !important;
+          }
+          .mobile-menu-button {
+            display: none !important;
+          }
+          .mobile-menu-dropdown {
+            display: none !important;
+          }
+        }
+      `}} />
+      
+      <div style={{ 
+        height: '100vh', 
+        backgroundColor: '#fafafa',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}>
       {/* Navigation */}
       <nav style={{ 
         backgroundColor: '#02391f', 
-        padding: '0 40px',
+        padding: '0 20px',
         height: '70px',
         minHeight: '70px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        flexShrink: 0
+        flexShrink: 0,
+        position: 'relative'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '40px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <h1 style={{ 
             color: '#ffd020', 
             fontSize: '28px', 
             fontWeight: 'bold',
             margin: 0 
           }}>MONA</h1>
-          <div style={{ display: 'flex', gap: '30px' }}>
+          
+          {/* Desktop Menu */}
+          <div style={{ 
+            display: 'flex', 
+            gap: '30px'
+          }} className="desktop-menu">
             <Link href="/business/dashboard" style={{ 
               color: pathname === '/business/dashboard' ? '#ffd020' : 'white', 
               textDecoration: 'none',
@@ -126,25 +160,48 @@ export default function BusinessLayout({
             }}>영수증 조회</Link>
           </div>
         </div>
-        <div style={{ position: 'relative' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Mobile Menu Button */}
           <button 
-            onClick={() => setShowUserMenu(!showUserMenu)}
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
             style={{ 
               width: '40px',
               height: '40px',
-              borderRadius: '50%',
-              backgroundColor: 'white',
+              backgroundColor: 'transparent',
               border: 'none',
               cursor: 'pointer',
-              display: 'flex',
+              display: 'none',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              color: 'white'
             }}
+            className="mobile-menu-button"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12ZM12 14C9.33 14 4 15.34 4 18V20H20V18C20 15.34 14.67 14 12 14Z" fill="#02391f"/>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
             </svg>
           </button>
+          
+          {/* User Menu Button */}
+          <div style={{ position: 'relative' }}>
+            <button 
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              style={{ 
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                backgroundColor: 'white',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12ZM12 14C9.33 14 4 15.34 4 18V20H20V18C20 15.34 14.67 14 12 14Z" fill="#02391f"/>
+              </svg>
+            </button>
           
           {showUserMenu && (
             <>
@@ -210,7 +267,86 @@ export default function BusinessLayout({
               </div>
             </>
           )}
+          </div>
         </div>
+        
+        {/* Mobile Menu Dropdown */}
+        {showMobileMenu && (
+          <>
+            {/* 모바일 메뉴 오버레이 */}
+            <div 
+              onClick={() => setShowMobileMenu(false)}
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                zIndex: 999
+              }}
+            />
+            
+            {/* 모바일 메뉴 드롭다운 */}
+            <div style={{
+              position: 'absolute',
+              top: '70px',
+              left: 0,
+              right: 0,
+              backgroundColor: 'white',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+              zIndex: 1000,
+              display: 'none'
+            }} className="mobile-menu-dropdown">
+              <Link 
+                href="/business/dashboard"
+                onClick={() => setShowMobileMenu(false)}
+                style={{
+                  display: 'block',
+                  padding: '16px 20px',
+                  fontSize: '16px',
+                  color: pathname === '/business/dashboard' ? '#ffd020' : '#212529',
+                  backgroundColor: pathname === '/business/dashboard' ? '#02391f' : 'white',
+                  textDecoration: 'none',
+                  borderBottom: '1px solid #E9ECEF',
+                  transition: 'background-color 0.2s'
+                }}
+              >
+                대시보드
+              </Link>
+              <Link 
+                href="/business/donations"
+                onClick={() => setShowMobileMenu(false)}
+                style={{
+                  display: 'block',
+                  padding: '16px 20px',
+                  fontSize: '16px',
+                  color: pathname === '/business/donations' ? '#ffd020' : '#212529',
+                  backgroundColor: pathname === '/business/donations' ? '#02391f' : 'white',
+                  textDecoration: 'none',
+                  borderBottom: '1px solid #E9ECEF',
+                  transition: 'background-color 0.2s'
+                }}
+              >
+                내 기부 목록
+              </Link>
+              <Link 
+                href="/business/receipts"
+                onClick={() => setShowMobileMenu(false)}
+                style={{
+                  display: 'block',
+                  padding: '16px 20px',
+                  fontSize: '16px',
+                  color: pathname === '/business/receipts' ? '#ffd020' : '#212529',
+                  backgroundColor: pathname === '/business/receipts' ? '#02391f' : 'white',
+                  textDecoration: 'none',
+                  transition: 'background-color 0.2s'
+                }}
+              >
+                영수증 조회
+              </Link>
+            </div>
+          </>
+        )}
       </nav>
       <main style={{ 
         flex: '1 1 auto',
@@ -221,6 +357,7 @@ export default function BusinessLayout({
         {children}
         <Footer />
       </main>
-    </div>
+      </div>
+    </>
   )
 }

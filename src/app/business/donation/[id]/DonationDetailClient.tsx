@@ -335,7 +335,7 @@ export default function DonationDetailClient({ donationId, initialDonation, init
                       donation.status === 'completed' ? '#28A745' : '#FF8C00'
 
   return (
-    <div style={{ backgroundColor: '#F8F9FA', minHeight: '100vh', padding: '40px' }}>
+    <div style={{ backgroundColor: '#F8F9FA', minHeight: '100vh', padding: '20px' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         {/* Header */}
         <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -365,12 +365,12 @@ export default function DonationDetailClient({ donationId, initialDonation, init
           </span>
         </div>
 
-        <h1 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '32px', color: '#212529' }}>
+        <h1 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '24px', color: '#212529' }}>
           기부 상세 정보
         </h1>
 
         {/* 기부 정보 & 픽업 정보 */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '24px' }}>
           <div style={{
             backgroundColor: 'white',
             borderRadius: '8px',
@@ -684,7 +684,7 @@ export default function DonationDetailClient({ donationId, initialDonation, init
               📅 확정된 픽업 일정
             </h3>
             <div style={{ backgroundColor: '#f0f7f4', padding: '20px', borderRadius: '8px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '16px' }}>
                 <div>
                   <span style={{ fontSize: '14px', color: '#02391f', fontWeight: '600' }}>픽업 날짜</span>
                   <p style={{ fontSize: '16px', color: '#212529', margin: '4px 0 0 0', fontWeight: '500' }}>
@@ -767,7 +767,7 @@ export default function DonationDetailClient({ donationId, initialDonation, init
                   borderRadius: '8px',
                   marginBottom: index < donationMatches.length - 1 ? '16px' : '0'
                 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '16px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '16px' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '13px', color: '#6C757D', marginBottom: '4px' }}>
                         기관명

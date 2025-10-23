@@ -13,8 +13,8 @@ export default function BeneficiaryProfilePage() {
     email: '',
     organization_name: '',
     organization_type: '',
-    manager_name: '',
-    manager_phone: '',
+    representative_name: '',
+    phone: '',
     address: '',
     postcode: '',
     website: '',
@@ -44,8 +44,8 @@ export default function BeneficiaryProfilePage() {
         email: user.email || '',
         organization_name: beneficiary.organization_name || '',
         organization_type: beneficiary.organization_type || '',
-        manager_name: beneficiary.manager_name || '',
-        manager_phone: beneficiary.manager_phone || '',
+        representative_name: beneficiary.representative_name || '',
+        phone: beneficiary.phone || '',
         address: beneficiary.address || '',
         postcode: beneficiary.postcode || '',
         website: beneficiary.website || '',
@@ -59,25 +59,62 @@ export default function BeneficiaryProfilePage() {
   async function handleUpdate() {
     setUpdating(true)
     
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        alert('로그인이 필요합니다.')
+        setUpdating(false)
+        return
+      }
 
-    const { error } = await supabase
-      .from('beneficiaries')
-      .update({
-        manager_name: formData.manager_name,
-        manager_phone: formData.manager_phone,
+      console.log('Updating profile for user:', user.id)
+      console.log('Update data:', {
+        representative_name: formData.representative_name,
+        phone: formData.phone,
         address: formData.address,
         postcode: formData.postcode,
         website: formData.website,
         sns_link: formData.sns_link
       })
-      .eq('user_id', user.id)
 
-    if (error) {
-      alert('프로필 업데이트 중 오류가 발생했습니다.')
-    } else {
-      alert('프로필이 성공적으로 업데이트되었습니다.')
+      const { data, error } = await supabase
+        .from('beneficiaries')
+        .update({
+          representative_name: formData.representative_name,
+          phone: formData.phone,
+          address: formData.address,
+          postcode: formData.postcode,
+          website: formData.website,
+          sns_link: formData.sns_link
+        })
+        .eq('user_id', user.id)
+        .select()
+
+      console.log('Update result:', { data, error })
+
+      if (error) {
+        console.error('Supabase update error:', error)
+        alert(`프로필 업데이트 중 오류가 발생했습니다: ${error.message}`)
+      } else {
+        console.log('Profile updated successfully:', data)
+        alert('프로필이 성공적으로 업데이트되었습니다.')
+        // 업데이트된 데이터로 폼 상태 갱신
+        if (data && data.length > 0) {
+          const updatedBeneficiary = data[0]
+          setFormData(prev => ({
+            ...prev,
+            representative_name: updatedBeneficiary.representative_name || '',
+            phone: updatedBeneficiary.phone || '',
+            address: updatedBeneficiary.address || '',
+            postcode: updatedBeneficiary.postcode || '',
+            website: updatedBeneficiary.website || '',
+            sns_link: updatedBeneficiary.sns_link || ''
+          }))
+        }
+      }
+    } catch (error) {
+      console.error('Profile update error:', error)
+      alert('프로필 업데이트 중 예상치 못한 오류가 발생했습니다.')
     }
     
     setUpdating(false)
@@ -203,8 +240,8 @@ export default function BeneficiaryProfilePage() {
                 </label>
                 <input
                   type="text"
-                  value={formData.manager_name}
-                  onChange={(e) => setFormData({...formData, manager_name: e.target.value})}
+                  value={formData.representative_name}
+                  onChange={(e) => setFormData({...formData, representative_name: e.target.value})}
                   style={{
                     width: '100%',
                     padding: '10px 12px',
@@ -227,10 +264,10 @@ export default function BeneficiaryProfilePage() {
                 </label>
                 <input
                   type="text"
-                  value={formData.manager_phone}
+                  value={formData.phone}
                   onChange={(e) => {
                     const value = e.target.value.replace(/[^0-9]/g, '')
-                    setFormData({...formData, manager_phone: value})
+                    setFormData({...formData, phone: value})
                   }}
                   placeholder="01000000000"
                   maxLength={11}

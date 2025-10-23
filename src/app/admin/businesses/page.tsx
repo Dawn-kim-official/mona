@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase'
+import { createClient, createAdminClient } from '@/lib/supabase'
 import { Business } from '@/types/database'
 
 export default function AdminBusinessesPage() {
@@ -21,16 +21,41 @@ export default function AdminBusinessesPage() {
 
   // 페이지 로드 시 모든 데이터를 한 번에 가져오기
   useEffect(() => {
-    fetchAllData()
+    let mounted = true
+    
+    const loadData = async () => {
+      if (mounted) {
+        await fetchAllData()
+      }
+    }
+    
+    loadData()
+    
+    return () => {
+      mounted = false
+    }
   }, [])
 
   async function fetchAllData() {
     setLoading(true)
-    // 두 개의 API 호출을 병렬로 실행
-    await Promise.all([
-      fetchBusinesses(),
-      fetchBeneficiaries()
-    ])
+    
+    // 인증 상태 확인
+    try {
+      const { data: { session }, error: authError } = await supabase.auth.getSession()
+      if (authError) {
+        console.error('Auth error:', authError)
+      }
+      if (!session) {
+        console.warn('No active session found')
+      } else {
+        console.log('Session exists, user:', session.user?.email)
+      }
+    } catch (err) {
+      console.error('Error checking session:', err)
+    }
+    
+    // API를 통해 데이터 가져오기
+    await fetchAllMembers()
     setLoading(false)
   }
 
@@ -40,56 +65,35 @@ export default function AdminBusinessesPage() {
     setRefreshing(false)
   }
 
-  async function fetchBusinesses() {
-    const { data, error } = await supabase
-      .from('businesses')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Error fetching businesses:', error)
+  async function fetchAllMembers() {
+    try {
+      console.log('Fetching members via API...')
+      const response = await fetch('/api/admin/members')
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      
+      console.log('Fetched members data:', data)
+      setBusinesses(data.businesses || [])
+      setBeneficiaries(data.beneficiaries || [])
+      
+    } catch (error) {
+      console.error('Error fetching members:', error)
       setBusinesses([])
-    } else {
-      console.log('Fetched businesses:', data)
-      setBusinesses(data || [])
+      setBeneficiaries([])
     }
   }
 
-  async function fetchBeneficiaries() {
-    try {
-      const { data, error } = await supabase
-        .from('beneficiaries')
-        .select('*')
-        .order('created_at', { ascending: false })
+  // 기존 함수들은 업데이트용으로 유지
+  async function fetchBusinesses() {
+    await fetchAllMembers()
+  }
 
-      if (error) {
-        console.error('Error fetching beneficiaries:', error)
-        setBeneficiaries([])
-      } else {
-        // 각 beneficiary에 대해 profiles 테이블에서 이메일 가져오기
-        const beneficiariesWithEmail = await Promise.all(
-          (data || []).map(async (beneficiary) => {
-            if (beneficiary.user_id) {
-              const { data: profileData } = await supabase
-                .from('profiles')
-                .select('email')
-                .eq('id', beneficiary.user_id)
-                .single()
-              
-              return {
-                ...beneficiary,
-                email: profileData?.email || beneficiary.email || '-'
-              }
-            }
-            return { ...beneficiary, email: beneficiary.email || '-' }
-          })
-        )
-        setBeneficiaries(beneficiariesWithEmail)
-      }
-    } catch (err) {
-      console.error('Unexpected error:', err)
-      setBeneficiaries([])
-    }
+  async function fetchBeneficiaries() {
+    await fetchAllMembers()
   }
 
   async function updateBusinessStatus(businessId: string, status: 'approved' | 'rejected', reason?: string) {
@@ -254,11 +258,39 @@ export default function AdminBusinessesPage() {
   }
 
   return (
-    <div style={{ backgroundColor: '#F8F9FA', minHeight: '100vh' }}>
-      <div style={{ padding: '40px', maxWidth: '1400px', margin: '0 auto' }}>
+    <>
+      <style dangerouslySetInnerHTML={{__html: `
+        @media (max-width: 768px) {
+          .desktop-table {
+            display: none !important;
+          }
+          .mobile-cards {
+            display: block !important;
+          }
+          .main-container {
+            padding: 16px !important;
+          }
+          .tab-container {
+            overflow-x: auto !important;
+            scrollbar-width: thin !important;
+          }
+        }
+        
+        @media (min-width: 769px) {
+          .desktop-table {
+            display: block !important;
+          }
+          .mobile-cards {
+            display: none !important;
+          }
+        }
+      `}} />
+      
+      <div style={{ backgroundColor: '#F8F9FA', minHeight: '100vh' }}>
+        <div style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }} className="main-container">
         {/* 헤더 */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-          <h1 style={{ fontSize: '24px', fontWeight: '600', color: '#212529' }}>
+          <h1 style={{ fontSize: '20px', fontWeight: '600', color: '#212529' }}>
             회원 관리
           </h1>
           <button
@@ -320,7 +352,15 @@ export default function AdminBusinessesPage() {
         </div>
 
         {/* 상태 필터 */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+        <div style={{ 
+          display: 'flex', 
+          gap: '8px', 
+          marginBottom: '24px',
+          overflowX: 'auto',
+          scrollbarWidth: 'thin',
+          paddingBottom: '4px',
+          WebkitOverflowScrolling: 'touch'
+        }}>
           {['all', 'pending', 'approved', 'rejected'].map((filter) => (
             <button
               key={filter}
@@ -334,7 +374,8 @@ export default function AdminBusinessesPage() {
                 border: `1px solid ${statusFilter === filter ? '#ffd020' : '#CED4DA'}`,
                 borderRadius: '20px',
                 cursor: 'pointer',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                flexShrink: 0
               }}
             >
               {filter === 'all' && <span style={{ whiteSpace: 'nowrap' }}>전체</span>}
@@ -347,275 +388,606 @@ export default function AdminBusinessesPage() {
 
         {/* 기업 회원 테이블 */}
         {activeTab === 'business' && (
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-            overflow: 'hidden'
-          }}>
+          <>
             {filteredBusinesses.length === 0 ? (
-              <div style={{ padding: '60px', textAlign: 'center', color: '#6C757D', fontSize: '14px' }}>
-                승인 대기 중인 기업이 없습니다.
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '8px',
+                padding: '80px',
+                textAlign: 'center',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+              }}>
+                <p style={{ color: '#6C757D', fontSize: '16px' }}>
+                  해당하는 기업 회원이 없습니다.
+                </p>
               </div>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#F8F9FA', borderBottom: '1px solid #DEE2E6' }}>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>기관/기업명</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>등록번호</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>담당자명</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>담당자 연락처</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>이메일</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>주소</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>웹사이트</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>SNS</th>
-                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '12px' }}>등록증</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>가입일</th>
-                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '12px' }}>상태</th>
-                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '12px' }}>작업</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <>
+                {/* Desktop Table */}
+                <div style={{
+                  backgroundColor: 'white',
+                  borderRadius: '8px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                  overflowX: 'auto',
+                  scrollbarWidth: 'thin',
+                  WebkitOverflowScrolling: 'touch'
+                }} className="desktop-table">
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1200px' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#F8F9FA', borderBottom: '1px solid #DEE2E6' }}>
+                        <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>기관/기업명</th>
+                        <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>등록번호</th>
+                        <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>담당자명</th>
+                        <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>담당자 연락처</th>
+                        <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>이메일</th>
+                        <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>주소</th>
+                        <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>웹사이트</th>
+                        <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>SNS</th>
+                        <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '12px' }}>등록증</th>
+                        <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>가입일</th>
+                        <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '12px' }}>상태</th>
+                        <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '12px' }}>작업</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredBusinesses.map((business) => (
+                        <tr key={business.id} style={{ borderBottom: '1px solid #DEE2E6' }}>
+                          <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{business.name || '-'}</td>
+                          <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{business.business_registration_number || business.business_number || '-'}</td>
+                          <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{business.representative_name || business.manager_name || '-'}</td>
+                          <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{business.phone || business.manager_phone || '-'}</td>
+                          <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
+                            {business.email || '-'}
+                          </td>
+                          <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
+                            {business.postcode && business.detail_address 
+                              ? `[${business.postcode}] ${business.detail_address}`
+                              : '-'}
+                          </td>
+                          <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
+                            {business.website ? (
+                              <a href={business.website} target="_blank" rel="noopener noreferrer" 
+                                 style={{ color: '#007BFF', textDecoration: 'none', fontSize: '12px' }}>
+                                보기
+                              </a>
+                            ) : '-'}
+                          </td>
+                          <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
+                            {business.sns_link ? (
+                              <a href={business.sns_link} target="_blank" rel="noopener noreferrer" 
+                                 style={{ color: '#007BFF', textDecoration: 'none', fontSize: '12px' }}>
+                                보기
+                              </a>
+                            ) : '-'}
+                          </td>
+                          <td style={{ padding: '12px', textAlign: 'center' }}>
+                            {business.business_license_url ? (
+                              <a href={business.business_license_url} target="_blank" rel="noopener noreferrer" 
+                                 style={{ color: '#007BFF', textDecoration: 'none', fontSize: '12px' }}>
+                                보기
+                              </a>
+                            ) : '-'}
+                          </td>
+                          <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
+                            {business.created_at ? new Date(business.created_at).toLocaleDateString('ko-KR') : '-'}
+                          </td>
+                          <td style={{ padding: '12px', textAlign: 'center' }}>
+                            <span style={{
+                              color: business.status === 'approved' ? '#28A745' : business.status === 'rejected' ? '#DC3545' : '#FF8C00',
+                              fontWeight: '500',
+                              fontSize: '12px',
+                              backgroundColor: business.status === 'approved' ? '#28A74520' : business.status === 'rejected' ? '#DC354520' : '#FF8C0020',
+                              padding: '4px 12px',
+                              borderRadius: '4px',
+                              display: 'inline-block',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {business.status === 'approved' && '승인됨'}
+                              {business.status === 'rejected' && '거절됨'}
+                              {business.status === 'pending' && '대기중'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px', textAlign: 'center' }}>
+                            {business.status === 'pending' && (
+                              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                <button
+                                  onClick={() => updateBusinessStatus(business.id, 'approved')}
+                                  style={{
+                                    padding: '6px 16px',
+                                    fontSize: '13px',
+                                    fontWeight: '500',
+                                    color: 'white',
+                                    backgroundColor: '#28A745',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap'
+                                  }}
+                                >
+                                  승인
+                                </button>
+                                <button
+                                  onClick={() => handleRejectClick(business.id, 'business')}
+                                  style={{
+                                    padding: '6px 16px',
+                                    fontSize: '13px',
+                                    fontWeight: '500',
+                                    color: 'white',
+                                    backgroundColor: '#DC3545',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap'
+                                  }}
+                                >
+                                  거절
+                                </button>
+                              </div>
+                            )}
+                            {business.status !== 'pending' && (
+                              <span style={{ fontSize: '12px', color: '#6C757D' }}>-</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                
+                {/* Mobile Card Layout */}
+                <div className="mobile-cards" style={{ display: 'none' }}>
                   {filteredBusinesses.map((business) => (
-                    <tr key={business.id} style={{ borderBottom: '1px solid #DEE2E6' }}>
-                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{business.name || '-'}</td>
-                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{business.business_registration_number || business.business_number || '-'}</td>
-                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{business.representative_name || business.manager_name || '-'}</td>
-                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{business.phone || business.manager_phone || '-'}</td>
-                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
-                        {business.email || '-'}
-                      </td>
-                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
-                        {business.postcode && business.detail_address 
-                          ? `[${business.postcode}] ${business.detail_address}`
-                          : '-'}
-                      </td>
-                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
-                        {business.website ? (
-                          <a href={business.website} target="_blank" rel="noopener noreferrer" 
-                             style={{ color: '#007BFF', textDecoration: 'none', fontSize: '12px' }}>
-                            보기
-                          </a>
-                        ) : '-'}
-                      </td>
-                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
-                        {business.sns_link ? (
-                          <a href={business.sns_link} target="_blank" rel="noopener noreferrer" 
-                             style={{ color: '#007BFF', textDecoration: 'none', fontSize: '12px' }}>
-                            보기
-                          </a>
-                        ) : '-'}
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'center' }}>
-                        {business.business_license_url ? (
-                          <a href={business.business_license_url} target="_blank" rel="noopener noreferrer" 
-                             style={{ color: '#007BFF', textDecoration: 'none', fontSize: '12px' }}>
-                            보기
-                          </a>
-                        ) : '-'}
-                      </td>
-                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
-                        {business.created_at ? new Date(business.created_at).toLocaleDateString('ko-KR') : '-'}
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'center' }}>
-                        <span style={{
-                          color: business.status === 'approved' ? '#28A745' : business.status === 'rejected' ? '#DC3545' : '#FF8C00',
-                          fontWeight: '500',
-                          fontSize: '12px',
-                          backgroundColor: business.status === 'approved' ? '#28A74520' : business.status === 'rejected' ? '#DC354520' : '#FF8C0020',
-                          padding: '4px 12px',
-                          borderRadius: '4px',
-                          display: 'inline-block',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          {business.status === 'approved' && '승인됨'}
-                          {business.status === 'rejected' && '거절됨'}
-                          {business.status === 'pending' && '대기중'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'center' }}>
-                        {business.status === 'pending' && (
-                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                            <button
-                              onClick={() => updateBusinessStatus(business.id, 'approved')}
-                              style={{
-                                padding: '6px 16px',
-                                fontSize: '13px',
-                                fontWeight: '500',
-                                color: 'white',
-                                backgroundColor: '#28A745',
-                                border: 'none',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                whiteSpace: 'nowrap'
-                              }}
-                            >
-                              승인
-                            </button>
-                            <button
-                              onClick={() => handleRejectClick(business.id, 'business')}
-                              style={{
-                                padding: '6px 16px',
-                                fontSize: '13px',
-                                fontWeight: '500',
-                                color: 'white',
-                                backgroundColor: '#DC3545',
-                                border: 'none',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                whiteSpace: 'nowrap'
-                              }}
-                            >
-                              거절
-                            </button>
+                    <div key={business.id} style={{
+                      backgroundColor: 'white',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      marginBottom: '12px',
+                      border: '1px solid #E9ECEF',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                    }}>
+                      <div style={{ marginBottom: '12px' }}>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#212529', marginBottom: '4px' }}>
+                          {business.name || '-'}
+                        </div>
+                        <div style={{ fontSize: '14px', color: '#6C757D', marginBottom: '8px' }}>
+                          {business.representative_name || business.manager_name || '-'}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                          <span style={{
+                            color: business.status === 'approved' ? '#28A745' : business.status === 'rejected' ? '#DC3545' : '#FF8C00',
+                            fontWeight: '500',
+                            fontSize: '12px',
+                            backgroundColor: business.status === 'approved' ? '#28A74520' : business.status === 'rejected' ? '#DC354520' : '#FF8C0020',
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            display: 'inline-block'
+                          }}>
+                            {business.status === 'approved' && '승인됨'}
+                            {business.status === 'rejected' && '거절됨'}
+                            {business.status === 'pending' && '대기중'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '14px', marginBottom: '12px' }}>
+                        <div>
+                          <span style={{ color: '#6C757D', fontSize: '12px' }}>등록번호</span>
+                          <div style={{ fontWeight: '500', color: '#212529' }}>
+                            {business.business_registration_number || business.business_number || '-'}
                           </div>
-                        )}
-                        {business.status !== 'pending' && (
-                          <span style={{ fontSize: '12px', color: '#6C757D' }}>-</span>
-                        )}
-                      </td>
-                    </tr>
+                        </div>
+                        <div>
+                          <span style={{ color: '#6C757D', fontSize: '12px' }}>연락처</span>
+                          <div style={{ fontWeight: '500', color: '#212529' }}>
+                            {business.phone || business.manager_phone || '-'}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div style={{ marginBottom: '12px' }}>
+                        <span style={{ color: '#6C757D', fontSize: '12px' }}>이메일</span>
+                        <div style={{ fontWeight: '500', color: '#212529', fontSize: '14px' }}>
+                          {business.email || '-'}
+                        </div>
+                      </div>
+                      
+                      {(business.postcode && business.detail_address) && (
+                        <div style={{ marginBottom: '12px' }}>
+                          <span style={{ color: '#6C757D', fontSize: '12px' }}>주소</span>
+                          <div style={{ fontWeight: '500', color: '#212529', fontSize: '14px' }}>
+                            [{business.postcode}] {business.detail_address}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', fontSize: '14px', marginBottom: '12px' }}>
+                        <div>
+                          <span style={{ color: '#6C757D', fontSize: '12px' }}>웹사이트</span>
+                          <div style={{ fontWeight: '500', color: '#212529' }}>
+                            {business.website ? (
+                              <a href={business.website} target="_blank" rel="noopener noreferrer" 
+                                 style={{ color: '#007BFF', textDecoration: 'none', fontSize: '12px' }}>
+                                보기
+                              </a>
+                            ) : '-'}
+                          </div>
+                        </div>
+                        <div>
+                          <span style={{ color: '#6C757D', fontSize: '12px' }}>SNS</span>
+                          <div style={{ fontWeight: '500', color: '#212529' }}>
+                            {business.sns_link ? (
+                              <a href={business.sns_link} target="_blank" rel="noopener noreferrer" 
+                                 style={{ color: '#007BFF', textDecoration: 'none', fontSize: '12px' }}>
+                                보기
+                              </a>
+                            ) : '-'}
+                          </div>
+                        </div>
+                        <div>
+                          <span style={{ color: '#6C757D', fontSize: '12px' }}>등록증</span>
+                          <div style={{ fontWeight: '500', color: '#212529' }}>
+                            {business.business_license_url ? (
+                              <a href={business.business_license_url} target="_blank" rel="noopener noreferrer" 
+                                 style={{ color: '#007BFF', textDecoration: 'none', fontSize: '12px' }}>
+                                보기
+                              </a>
+                            ) : '-'}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div style={{ marginBottom: '12px' }}>
+                        <span style={{ color: '#6C757D', fontSize: '12px' }}>가입일</span>
+                        <div style={{ fontWeight: '500', color: '#212529', fontSize: '14px' }}>
+                          {business.created_at ? new Date(business.created_at).toLocaleDateString('ko-KR') : '-'}
+                        </div>
+                      </div>
+                      
+                      {business.status === 'pending' && (
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            onClick={() => updateBusinessStatus(business.id, 'approved')}
+                            style={{
+                              padding: '8px 16px',
+                              fontSize: '13px',
+                              fontWeight: '500',
+                              color: 'white',
+                              backgroundColor: '#28A745',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              flex: 1
+                            }}
+                          >
+                            승인
+                          </button>
+                          <button
+                            onClick={() => handleRejectClick(business.id, 'business')}
+                            style={{
+                              padding: '8px 16px',
+                              fontSize: '13px',
+                              fontWeight: '500',
+                              color: 'white',
+                              backgroundColor: '#DC3545',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              flex: 1
+                            }}
+                          >
+                            거절
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </>
             )}
-          </div>
+          </>
         )}
 
         {/* 수혜기관 회원 테이블 */}
         {activeTab === 'beneficiary' && (
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-            overflow: 'hidden'
-          }}>
+          <>
             {filteredBeneficiaries.length === 0 ? (
-              <div style={{ padding: '60px', textAlign: 'center', color: '#6C757D', fontSize: '14px' }}>
-                승인 대기 중인 수혜기관이 없습니다.
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '8px',
+                padding: '80px',
+                textAlign: 'center',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+              }}>
+                <p style={{ color: '#6C757D', fontSize: '16px' }}>
+                  해당하는 수혜기관 회원이 없습니다.
+                </p>
               </div>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#F8F9FA', borderBottom: '1px solid #DEE2E6' }}>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>기관/기업명</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>등록번호</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>담당자명</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>담당자 연락처</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>이메일</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>주소</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>웹사이트</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>SNS</th>
-                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '12px' }}>등록증</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>가입일</th>
-                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '12px' }}>상태</th>
-                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '12px' }}>작업</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <>
+                {/* Desktop Table */}
+                <div style={{
+                  backgroundColor: 'white',
+                  borderRadius: '8px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                  overflowX: 'auto',
+                  scrollbarWidth: 'thin',
+                  WebkitOverflowScrolling: 'touch'
+                }} className="desktop-table">
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1200px' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#F8F9FA', borderBottom: '1px solid #DEE2E6' }}>
+                        <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>기관/기업명</th>
+                        <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>등록번호</th>
+                        <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>담당자명</th>
+                        <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>담당자 연락처</th>
+                        <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>이메일</th>
+                        <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>주소</th>
+                        <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>웹사이트</th>
+                        <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>SNS</th>
+                        <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '12px' }}>등록증</th>
+                        <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '12px' }}>가입일</th>
+                        <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '12px' }}>상태</th>
+                        <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '12px' }}>작업</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredBeneficiaries.map((beneficiary) => (
+                        <tr key={beneficiary.id} style={{ borderBottom: '1px solid #DEE2E6' }}>
+                          <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{beneficiary.organization_name || '-'}</td>
+                          <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{beneficiary.registration_number || '-'}</td>
+                          <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{beneficiary.representative_name || beneficiary.manager_name || '-'}</td>
+                          <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{beneficiary.phone || beneficiary.manager_phone || '-'}</td>
+                          <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{beneficiary.email || '-'}</td>
+                          <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
+                            {beneficiary.postcode && beneficiary.detail_address 
+                              ? `[${beneficiary.postcode}] ${beneficiary.detail_address}`
+                              : beneficiary.address || '-'}
+                          </td>
+                          <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
+                            {beneficiary.website ? (
+                              <a href={beneficiary.website} target="_blank" rel="noopener noreferrer" 
+                                 style={{ color: '#007BFF', textDecoration: 'none', fontSize: '12px' }}>
+                                보기
+                              </a>
+                            ) : '-'}
+                          </td>
+                          <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
+                            {beneficiary.sns_link ? (
+                              <a href={beneficiary.sns_link} target="_blank" rel="noopener noreferrer" 
+                                 style={{ color: '#007BFF', textDecoration: 'none', fontSize: '12px' }}>
+                                보기
+                              </a>
+                            ) : '-'}
+                          </td>
+                          <td style={{ padding: '12px', textAlign: 'center' }}>
+                            {beneficiary.tax_exempt_cert_url ? (
+                              <a href={beneficiary.tax_exempt_cert_url} target="_blank" rel="noopener noreferrer" 
+                                 style={{ color: '#007BFF', textDecoration: 'none', fontSize: '12px' }}>
+                                보기
+                              </a>
+                            ) : '-'}
+                          </td>
+                          <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
+                            {beneficiary.created_at ? new Date(beneficiary.created_at).toLocaleDateString('ko-KR') : '-'}
+                          </td>
+                          <td style={{ padding: '12px', textAlign: 'center' }}>
+                            <span style={{
+                              color: beneficiary.status === 'approved' ? '#28A745' : beneficiary.status === 'rejected' ? '#DC3545' : '#FF8C00',
+                              fontWeight: '500',
+                              fontSize: '12px',
+                              backgroundColor: beneficiary.status === 'approved' ? '#28A74520' : beneficiary.status === 'rejected' ? '#DC354520' : '#FF8C0020',
+                              padding: '4px 12px',
+                              borderRadius: '4px',
+                              display: 'inline-block',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {beneficiary.status === 'approved' && '승인됨'}
+                              {beneficiary.status === 'rejected' && '거절됨'}
+                              {beneficiary.status === 'pending' && '대기중'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px', textAlign: 'center' }}>
+                            {beneficiary.status === 'pending' && (
+                              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                <button
+                                  onClick={() => updateBeneficiaryStatus(beneficiary.id, 'approved')}
+                                  style={{
+                                    padding: '6px 16px',
+                                    fontSize: '13px',
+                                    fontWeight: '500',
+                                    color: 'white',
+                                    backgroundColor: '#28A745',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap'
+                                  }}
+                                >
+                                  승인
+                                </button>
+                                <button
+                                  onClick={() => handleRejectClick(beneficiary.id, 'beneficiary')}
+                                  style={{
+                                    padding: '6px 16px',
+                                    fontSize: '13px',
+                                    fontWeight: '500',
+                                    color: 'white',
+                                    backgroundColor: '#DC3545',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap'
+                                  }}
+                                >
+                                  거절
+                                </button>
+                              </div>
+                            )}
+                            {beneficiary.status !== 'pending' && (
+                              <span style={{ fontSize: '12px', color: '#6C757D' }}>-</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                
+                {/* Mobile Card Layout */}
+                <div className="mobile-cards" style={{ display: 'none' }}>
                   {filteredBeneficiaries.map((beneficiary) => (
-                    <tr key={beneficiary.id} style={{ borderBottom: '1px solid #DEE2E6' }}>
-                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{beneficiary.organization_name || '-'}</td>
-                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{beneficiary.registration_number || '-'}</td>
-                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{beneficiary.representative_name || beneficiary.manager_name || '-'}</td>
-                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{beneficiary.phone || beneficiary.manager_phone || '-'}</td>
-                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>{beneficiary.email || '-'}</td>
-                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
-                        {beneficiary.postcode && beneficiary.detail_address 
-                          ? `[${beneficiary.postcode}] ${beneficiary.detail_address}`
-                          : beneficiary.address || '-'}
-                      </td>
-                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
-                        {beneficiary.website ? (
-                          <a href={beneficiary.website} target="_blank" rel="noopener noreferrer" 
-                             style={{ color: '#007BFF', textDecoration: 'none', fontSize: '12px' }}>
-                            보기
-                          </a>
-                        ) : '-'}
-                      </td>
-                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
-                        {beneficiary.sns_link ? (
-                          <a href={beneficiary.sns_link} target="_blank" rel="noopener noreferrer" 
-                             style={{ color: '#007BFF', textDecoration: 'none', fontSize: '12px' }}>
-                            보기
-                          </a>
-                        ) : '-'}
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'center' }}>
-                        {beneficiary.tax_exempt_cert_url ? (
-                          <a href={beneficiary.tax_exempt_cert_url} target="_blank" rel="noopener noreferrer" 
-                             style={{ color: '#007BFF', textDecoration: 'none', fontSize: '12px' }}>
-                            보기
-                          </a>
-                        ) : '-'}
-                      </td>
-                      <td style={{ padding: '12px', fontSize: '13px', color: '#212529' }}>
-                        {beneficiary.created_at ? new Date(beneficiary.created_at).toLocaleDateString('ko-KR') : '-'}
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'center' }}>
-                        <span style={{
-                          color: beneficiary.status === 'approved' ? '#28A745' : beneficiary.status === 'rejected' ? '#DC3545' : '#FF8C00',
-                          fontWeight: '500',
-                          fontSize: '12px',
-                          backgroundColor: beneficiary.status === 'approved' ? '#28A74520' : beneficiary.status === 'rejected' ? '#DC354520' : '#FF8C0020',
-                          padding: '4px 12px',
-                          borderRadius: '4px',
-                          display: 'inline-block',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          {beneficiary.status === 'approved' && '승인됨'}
-                          {beneficiary.status === 'rejected' && '거절됨'}
-                          {beneficiary.status === 'pending' && '대기중'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'center' }}>
-                        {beneficiary.status === 'pending' && (
-                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                            <button
-                              onClick={() => updateBeneficiaryStatus(beneficiary.id, 'approved')}
-                              style={{
-                                padding: '6px 16px',
-                                fontSize: '13px',
-                                fontWeight: '500',
-                                color: 'white',
-                                backgroundColor: '#28A745',
-                                border: 'none',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                whiteSpace: 'nowrap'
-                              }}
-                            >
-                              승인
-                            </button>
-                            <button
-                              onClick={() => handleRejectClick(beneficiary.id, 'beneficiary')}
-                              style={{
-                                padding: '6px 16px',
-                                fontSize: '13px',
-                                fontWeight: '500',
-                                color: 'white',
-                                backgroundColor: '#DC3545',
-                                border: 'none',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                whiteSpace: 'nowrap'
-                              }}
-                            >
-                              거절
-                            </button>
+                    <div key={beneficiary.id} style={{
+                      backgroundColor: 'white',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      marginBottom: '12px',
+                      border: '1px solid #E9ECEF',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                    }}>
+                      <div style={{ marginBottom: '12px' }}>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#212529', marginBottom: '4px' }}>
+                          {beneficiary.organization_name || '-'}
+                        </div>
+                        <div style={{ fontSize: '14px', color: '#6C757D', marginBottom: '8px' }}>
+                          {beneficiary.representative_name || beneficiary.manager_name || '-'}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                          <span style={{
+                            color: beneficiary.status === 'approved' ? '#28A745' : beneficiary.status === 'rejected' ? '#DC3545' : '#FF8C00',
+                            fontWeight: '500',
+                            fontSize: '12px',
+                            backgroundColor: beneficiary.status === 'approved' ? '#28A74520' : beneficiary.status === 'rejected' ? '#DC354520' : '#FF8C0020',
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            display: 'inline-block'
+                          }}>
+                            {beneficiary.status === 'approved' && '승인됨'}
+                            {beneficiary.status === 'rejected' && '거절됨'}
+                            {beneficiary.status === 'pending' && '대기중'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '14px', marginBottom: '12px' }}>
+                        <div>
+                          <span style={{ color: '#6C757D', fontSize: '12px' }}>등록번호</span>
+                          <div style={{ fontWeight: '500', color: '#212529' }}>
+                            {beneficiary.registration_number || '-'}
                           </div>
-                        )}
-                        {beneficiary.status !== 'pending' && (
-                          <span style={{ fontSize: '12px', color: '#6C757D' }}>-</span>
-                        )}
-                      </td>
-                    </tr>
+                        </div>
+                        <div>
+                          <span style={{ color: '#6C757D', fontSize: '12px' }}>연락처</span>
+                          <div style={{ fontWeight: '500', color: '#212529' }}>
+                            {beneficiary.phone || beneficiary.manager_phone || '-'}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div style={{ marginBottom: '12px' }}>
+                        <span style={{ color: '#6C757D', fontSize: '12px' }}>이메일</span>
+                        <div style={{ fontWeight: '500', color: '#212529', fontSize: '14px' }}>
+                          {beneficiary.email || '-'}
+                        </div>
+                      </div>
+                      
+                      {((beneficiary.postcode && beneficiary.detail_address) || beneficiary.address) && (
+                        <div style={{ marginBottom: '12px' }}>
+                          <span style={{ color: '#6C757D', fontSize: '12px' }}>주소</span>
+                          <div style={{ fontWeight: '500', color: '#212529', fontSize: '14px' }}>
+                            {beneficiary.postcode && beneficiary.detail_address 
+                              ? `[${beneficiary.postcode}] ${beneficiary.detail_address}`
+                              : beneficiary.address}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', fontSize: '14px', marginBottom: '12px' }}>
+                        <div>
+                          <span style={{ color: '#6C757D', fontSize: '12px' }}>웹사이트</span>
+                          <div style={{ fontWeight: '500', color: '#212529' }}>
+                            {beneficiary.website ? (
+                              <a href={beneficiary.website} target="_blank" rel="noopener noreferrer" 
+                                 style={{ color: '#007BFF', textDecoration: 'none', fontSize: '12px' }}>
+                                보기
+                              </a>
+                            ) : '-'}
+                          </div>
+                        </div>
+                        <div>
+                          <span style={{ color: '#6C757D', fontSize: '12px' }}>SNS</span>
+                          <div style={{ fontWeight: '500', color: '#212529' }}>
+                            {beneficiary.sns_link ? (
+                              <a href={beneficiary.sns_link} target="_blank" rel="noopener noreferrer" 
+                                 style={{ color: '#007BFF', textDecoration: 'none', fontSize: '12px' }}>
+                                보기
+                              </a>
+                            ) : '-'}
+                          </div>
+                        </div>
+                        <div>
+                          <span style={{ color: '#6C757D', fontSize: '12px' }}>등록증</span>
+                          <div style={{ fontWeight: '500', color: '#212529' }}>
+                            {beneficiary.tax_exempt_cert_url ? (
+                              <a href={beneficiary.tax_exempt_cert_url} target="_blank" rel="noopener noreferrer" 
+                                 style={{ color: '#007BFF', textDecoration: 'none', fontSize: '12px' }}>
+                                보기
+                              </a>
+                            ) : '-'}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div style={{ marginBottom: '12px' }}>
+                        <span style={{ color: '#6C757D', fontSize: '12px' }}>가입일</span>
+                        <div style={{ fontWeight: '500', color: '#212529', fontSize: '14px' }}>
+                          {beneficiary.created_at ? new Date(beneficiary.created_at).toLocaleDateString('ko-KR') : '-'}
+                        </div>
+                      </div>
+                      
+                      {beneficiary.status === 'pending' && (
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            onClick={() => updateBeneficiaryStatus(beneficiary.id, 'approved')}
+                            style={{
+                              padding: '8px 16px',
+                              fontSize: '13px',
+                              fontWeight: '500',
+                              color: 'white',
+                              backgroundColor: '#28A745',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              flex: 1
+                            }}
+                          >
+                            승인
+                          </button>
+                          <button
+                            onClick={() => handleRejectClick(beneficiary.id, 'beneficiary')}
+                            style={{
+                              padding: '8px 16px',
+                              fontSize: '13px',
+                              fontWeight: '500',
+                              color: 'white',
+                              backgroundColor: '#DC3545',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              flex: 1
+                            }}
+                          >
+                            거절
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </>
             )}
-          </div>
+          </>
         )}
+        </div>
       </div>
 
       {/* 거절 사유 모달 */}
@@ -710,6 +1082,6 @@ export default function AdminBusinessesPage() {
           </div>
         </>
       )}
-    </div>
+    </>
   )
 }

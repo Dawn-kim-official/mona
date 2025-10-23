@@ -26,6 +26,7 @@ interface ReceivedDonation {
     unit: string
     pickup_deadline: string
     pickup_location: string
+    photos?: string[]
     businesses: {
       name: string
       address: string
@@ -84,6 +85,7 @@ export default function BeneficiaryReceiptsPage() {
             status,
             pickup_deadline,
             pickup_location,
+            photos,
             businesses (
               name,
               address,
@@ -112,26 +114,58 @@ export default function BeneficiaryReceiptsPage() {
     setGeneratingPdf(donation.id)
     
     try {
+      console.log('Starting receipt generation for donation:', donation.id)
+      
+      // 필수 데이터 검증
+      if (!donation.donations || !beneficiary) {
+        throw new Error('필수 데이터가 누락되었습니다.')
+      }
+      
       // 임시 div에 ReceiptTemplate 렌더링
       const tempDiv = document.createElement('div')
       tempDiv.style.position = 'absolute'
       tempDiv.style.left = '-9999px'
       tempDiv.style.top = '0'
+      tempDiv.style.width = '210mm'
+      tempDiv.style.height = 'auto'
       document.body.appendChild(tempDiv)
       
       // React 컴포넌트를 렌더링하기 위한 루트 생성
       const { createRoot } = await import('react-dom/client')
       const root = createRoot(tempDiv)
       
-      await new Promise<void>((resolve) => {
-        root.render(
-          <ReceiptTemplate donation={donation} beneficiary={beneficiary} />
-        )
-        setTimeout(resolve, 100) // 렌더링 대기
+      console.log('Rendering ReceiptTemplate...')
+      
+      await new Promise<void>((resolve, reject) => {
+        try {
+          root.render(
+            <ReceiptTemplate donation={donation} beneficiary={beneficiary} />
+          )
+          setTimeout(resolve, 800) // 렌더링 대기 시간 더 증가
+        } catch (error) {
+          reject(error)
+        }
       })
       
-      const element = tempDiv.querySelector('#receipt-template') as HTMLElement
-      if (!element) throw new Error('Receipt template not found')
+      console.log('Waiting for receipt template element...')
+      
+      // 엘리먼트가 실제로 렌더링될 때까지 기다림
+      let element = tempDiv.querySelector('#receipt-template') as HTMLElement
+      let retries = 0
+      while (!element && retries < 15) { // 재시도 횟수 증가
+        await new Promise(resolve => setTimeout(resolve, 300))
+        element = tempDiv.querySelector('#receipt-template') as HTMLElement
+        retries++
+        console.log(`Retry ${retries}: Looking for receipt template element...`)
+      }
+      
+      if (!element) {
+        console.error('Receipt template element not found after', retries, 'retries')
+        console.log('Available elements in tempDiv:', tempDiv.innerHTML.substring(0, 200))
+        throw new Error('Receipt template not found')
+      }
+      
+      console.log('Receipt template element found, generating canvas...')
       
       // HTML을 캔버스로 변환
       const canvas = await html2canvas(element, {
@@ -180,8 +214,8 @@ export default function BeneficiaryReceiptsPage() {
       alert('기부영수증이 발행되었습니다.')
       fetchData()
     } catch (error) {
-      // Error generating receipt
-      alert('영수증 발행 중 오류가 발생했습니다.')
+      console.error('Error generating receipt:', error)
+      alert(`영수증 발행 중 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`)
     } finally {
       setGeneratingPdf(null)
     }
@@ -192,145 +226,297 @@ export default function BeneficiaryReceiptsPage() {
   }
 
   return (
-    <div style={{ backgroundColor: '#F8F9FA', minHeight: '100vh' }}>
-      <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '32px', color: '#212529' }}>
-          기부 수령 내역
-        </h1>
+    <>
+      <style dangerouslySetInnerHTML={{__html: `
+        @media (max-width: 768px) {
+          .desktop-table {
+            display: none !important;
+          }
+          .mobile-cards {
+            display: block !important;
+          }
+          .main-container {
+            padding: 16px !important;
+          }
+        }
+        
+        @media (min-width: 769px) {
+          .desktop-table {
+            display: block !important;
+          }
+          .mobile-cards {
+            display: none !important;
+          }
+        }
+      `}} />
+      
+      <div style={{ backgroundColor: '#F8F9FA', minHeight: '100vh' }}>
+        <div style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }} className="main-container">
+          <h1 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '24px', color: '#212529' }}>
+            기부 수령 내역
+          </h1>
 
-        {receivedDonations.length === 0 ? (
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            padding: '60px',
-            textAlign: 'center',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-          }}>
-            <p style={{ color: '#6C757D', fontSize: '16px' }}>
-              아직 수령한 기부가 없습니다.
-            </p>
-          </div>
-        ) : (
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-            overflow: 'hidden'
-          }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#F8F9FA', borderBottom: '1px solid #DEE2E6' }}>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>기부기업</th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>품목</th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>수량</th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>픽업예정일</th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>픽업장소</th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>상태</th>
-                  <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>작업</th>
-                </tr>
-              </thead>
-              <tbody>
+          {receivedDonations.length === 0 ? (
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              padding: '80px',
+              textAlign: 'center',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+            }}>
+              <p style={{ color: '#6C757D', fontSize: '16px' }}>
+                아직 수령한 기부가 없습니다.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Desktop Table */}
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '8px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                overflowX: 'auto',
+                scrollbarWidth: 'thin',
+                WebkitOverflowScrolling: 'touch'
+              }} className="desktop-table">
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#F8F9FA', borderBottom: '1px solid #DEE2E6' }}>
+                      <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>품명</th>
+                      <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>기업명</th>
+                      <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>수량</th>
+                      <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>픽업예정일</th>
+                      <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>상태</th>
+                      <th style={{ padding: '16px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>작업</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {receivedDonations.map((donation) => {
+                      const isReceived = donation.status === 'received'
+                      const hasReceipt = donation.receipt_issued
+                      
+                      return (
+                        <tr key={donation.id} style={{ borderBottom: '1px solid #F8F9FA' }}>
+                          <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>
+                            {donation.donations?.name || donation.donations?.description || '-'}
+                          </td>
+                          <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#495057' }}>
+                            {donation.donations?.businesses?.name || '-'}
+                          </td>
+                          <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#495057' }}>
+                            {donation.donations?.quantity || 0}{donation.donations?.unit || 'kg'}
+                          </td>
+                          <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#495057' }}>
+                            {donation.donations?.pickup_deadline ? new Date(donation.donations.pickup_deadline).toLocaleDateString('ko-KR') : '-'}
+                          </td>
+                          <td style={{ padding: '16px', textAlign: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
+                              <span style={{
+                                color: '#007BFF',
+                                fontWeight: '500',
+                                fontSize: '12px',
+                                backgroundColor: '#007BFF20',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                display: 'inline-block'
+                              }}>
+                                수령 완료
+                              </span>
+                              {hasReceipt && (
+                                <span style={{ 
+                                  fontSize: '12px', 
+                                  color: '#28A745', 
+                                  fontWeight: '500',
+                                  backgroundColor: '#28A74520',
+                                  padding: '4px 8px',
+                                  borderRadius: '4px',
+                                  display: 'inline-block'
+                                }}>
+                                  영수증 발급 완료
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td style={{ padding: '16px', textAlign: 'center' }}>
+                            {!hasReceipt ? (
+                              <button
+                                onClick={() => generateReceipt(donation)}
+                                disabled={generatingPdf === donation.id}
+                                style={{
+                                  padding: '6px 16px',
+                                  fontSize: '13px',
+                                  fontWeight: '500',
+                                  color: 'white',
+                                  backgroundColor: generatingPdf === donation.id ? '#6C757D' : '#02391f',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: generatingPdf === donation.id ? 'not-allowed' : 'pointer',
+                                  transition: 'all 0.2s',
+                                  minWidth: '90px'
+                                }}
+                              >
+                                {generatingPdf === donation.id ? '생성 중...' : '영수증 발급'}
+                              </button>
+                            ) : (
+                              <span style={{ fontSize: '12px', color: '#6C757D' }}>
+                                발급 완료
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Mobile Card Layout */}
+              <div className="mobile-cards" style={{ display: 'none' }}>
                 {receivedDonations.map((donation) => {
                   const isReceived = donation.status === 'received'
                   const hasReceipt = donation.receipt_issued
                   
                   return (
-                    <tr key={donation.id} style={{ borderBottom: '1px solid #DEE2E6' }}>
-                      <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#212529' }}>
-                        {donation.donations?.businesses?.name || '-'}
-                      </td>
-                      <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#212529' }}>
-                        {donation.donations?.name || donation.donations?.description || '-'}
-                      </td>
-                      <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#212529' }}>
-                        {donation.donations?.quantity || 0}{donation.donations?.unit || 'kg'}
-                      </td>
-                      <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#212529' }}>
-                        {donation.donations?.pickup_deadline ? new Date(donation.donations.pickup_deadline).toLocaleDateString('ko-KR') : '-'}
-                      </td>
-                      <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#212529' }}>
-                        {donation.donations?.pickup_location || '-'}
-                      </td>
-                      <td style={{ padding: '16px', textAlign: 'center' }}>
-                        <span style={{
-                          fontSize: '12px',
-                          padding: '4px 12px',
-                          borderRadius: '4px',
-                          backgroundColor: isReceived ? '#D4EDDA' : '#FFF3CD',
-                          color: isReceived ? '#155724' : '#856404'
+                    <div key={donation.id} style={{
+                      backgroundColor: 'white',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      marginBottom: '12px',
+                      border: '1px solid #E9ECEF',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
+                        <div style={{ 
+                          width: '60px', 
+                          height: '60px', 
+                          backgroundColor: '#F8F9FA',
+                          borderRadius: '6px',
+                          overflow: 'hidden',
+                          border: '1px solid #DEE2E6',
+                          flexShrink: 0
                         }}>
-                          {isReceived ? '수령 완료' : '수령 대기'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '16px', textAlign: 'center' }}>
-                        {!isReceived ? (
-                          <button
-                            onClick={async () => {
-                              if (confirm('물품을 수령하셨습니까?')) {
-                                await supabase
-                                  .from('donation_matches')
-                                  .update({ 
-                                    status: 'received',
-                                    received_at: new Date().toISOString()
-                                  })
-                                  .eq('id', donation.id)
-                                
-                                await supabase
-                                  .from('donations')
-                                  .update({ 
-                                    status: 'completed',
-                                    completed_at: new Date().toISOString()
-                                  })
-                                  .eq('id', donation.donations.id)
-                                
-                                alert('수령이 완료되었습니다.')
-                                fetchData()
-                              }
-                            }}
-                            style={{
-                              padding: '6px 16px',
-                              fontSize: '13px',
+                          {donation.donations?.photos && donation.donations.photos[0] ? (
+                            <img 
+                              src={donation.donations.photos[0]} 
+                              alt="기부 물품" 
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                          ) : (
+                            <div style={{
+                              width: '100%',
+                              height: '100%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#ADB5BD'
+                            }}>
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '16px', fontWeight: '600', color: '#212529', marginBottom: '4px', wordBreak: 'break-word' }}>
+                            {donation.donations?.name || donation.donations?.description || '-'}
+                          </div>
+                          <div style={{ fontSize: '14px', color: '#6C757D', marginBottom: '8px' }}>
+                            기업: {donation.donations?.businesses?.name || '-'}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ 
+                              color: '#007BFF',
                               fontWeight: '500',
-                              color: 'white',
-                              backgroundColor: '#28A745',
-                              border: 'none',
+                              fontSize: '12px',
+                              backgroundColor: '#007BFF20',
+                              padding: '4px 8px',
                               borderRadius: '4px',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            수령 완료
-                          </button>
-                        ) : !hasReceipt ? (
+                              display: 'inline-block'
+                            }}>
+                              수령 완료
+                            </span>
+                            {hasReceipt && (
+                              <span style={{ 
+                                fontSize: '12px', 
+                                color: '#28A745', 
+                                fontWeight: '500',
+                                backgroundColor: '#28A74520',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                display: 'inline-block'
+                              }}>
+                                영수증 발급 완료
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '14px', marginBottom: '12px' }}>
+                        <div>
+                          <span style={{ color: '#6C757D', fontSize: '12px' }}>수량</span>
+                          <div style={{ fontWeight: '500', color: '#212529' }}>
+                            {donation.donations?.quantity || 0}{donation.donations?.unit || 'kg'}
+                          </div>
+                        </div>
+                        <div>
+                          <span style={{ color: '#6C757D', fontSize: '12px' }}>픽업예정일</span>
+                          <div style={{ fontWeight: '500', color: '#212529' }}>
+                            {donation.donations?.pickup_deadline ? new Date(donation.donations.pickup_deadline).toLocaleDateString('ko-KR') : '-'}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {donation.donations?.pickup_location && (
+                        <div style={{ marginBottom: '12px' }}>
+                          <span style={{ color: '#6C757D', fontSize: '12px' }}>픽업장소</span>
+                          <div style={{ fontWeight: '500', color: '#212529', fontSize: '14px' }}>
+                            {donation.donations.pickup_location}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        {!hasReceipt ? (
                           <button
                             onClick={() => generateReceipt(donation)}
                             disabled={generatingPdf === donation.id}
                             style={{
-                              padding: '6px 16px',
+                              padding: '8px 16px',
                               fontSize: '13px',
                               fontWeight: '500',
                               color: 'white',
                               backgroundColor: generatingPdf === donation.id ? '#6C757D' : '#02391f',
                               border: 'none',
                               borderRadius: '4px',
-                              cursor: generatingPdf === donation.id ? 'not-allowed' : 'pointer'
+                              cursor: generatingPdf === donation.id ? 'not-allowed' : 'pointer',
+                              flex: 1
                             }}
                           >
                             {generatingPdf === donation.id ? '생성 중...' : '영수증 발급'}
                           </button>
                         ) : (
-                          <span style={{ fontSize: '12px', color: '#6C757D' }}>
+                          <div style={{ 
+                            padding: '8px 16px',
+                            fontSize: '13px',
+                            color: '#6C757D',
+                            backgroundColor: '#F8F9FA',
+                            borderRadius: '4px',
+                            textAlign: 'center',
+                            flex: 1
+                          }}>
                             발급 완료
-                          </span>
+                          </div>
                         )}
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   )
                 })}
-              </tbody>
-            </table>
-          </div>
-        )}
+              </div>
+            </>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   )
 }

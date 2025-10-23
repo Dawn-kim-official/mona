@@ -353,32 +353,35 @@ export default function ProposeDonationPage() {
                     transition: 'all 0.2s'
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <h3 style={{ 
-                        fontSize: '16px', 
+                        fontSize: '14px', 
                         fontWeight: '600', 
                         color: '#212529',
                         marginBottom: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
+                        display: 'block',
+                        lineHeight: '1.3',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
                       }}>
                         {beneficiary.organization_name}
                         {aiRecommendations.includes(beneficiary.id) && (
                           <span style={{
-                            fontSize: '12px',
+                            fontSize: '11px',
                             backgroundColor: '#E8F5E9',
                             color: '#2E7D32',
-                            padding: '2px 8px',
-                            borderRadius: '12px',
-                            fontWeight: '500'
+                            padding: '2px 6px',
+                            borderRadius: '8px',
+                            fontWeight: '500',
+                            marginLeft: '6px'
                           }}>
                             AI 추천
                           </span>
                         )}
                       </h3>
-                      <p style={{ fontSize: '14px', color: '#6C757D', margin: '4px 0' }}>
+                      <p style={{ fontSize: '14px', color: '#6C757D', margin: '4px 0', wordBreak: 'break-word' }}>
                         {beneficiary.organization_type || '기타'} • {beneficiary.address}
                       </p>
                     </div>
@@ -394,7 +397,9 @@ export default function ProposeDonationPage() {
                         : 'white',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center'
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      marginTop: '2px'
                     }}>
                       {selectedBeneficiaries.includes(beneficiary.id) && (
                         <span style={{ color: 'white', fontSize: '14px' }}>✓</span>

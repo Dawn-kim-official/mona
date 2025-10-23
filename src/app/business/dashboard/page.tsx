@@ -33,9 +33,29 @@ export default function BusinessDashboardPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [notificationConfirmed, setNotificationConfirmed] = useState(false)
   const [showEsgModal, setShowEsgModal] = useState(false)
+  const [chartSize, setChartSize] = useState(160)
 
   useEffect(() => {
     fetchDashboardData()
+  }, [])
+
+  useEffect(() => {
+    function updateChartSize() {
+      const width = window.innerWidth
+      if (width <= 360) {
+        setChartSize(60)
+      } else if (width <= 480) {
+        setChartSize(80)
+      } else if (width <= 768) {
+        setChartSize(100)
+      } else {
+        setChartSize(160)
+      }
+    }
+
+    updateChartSize()
+    window.addEventListener('resize', updateChartSize)
+    return () => window.removeEventListener('resize', updateChartSize)
   }, [])
 
   async function fetchDashboardData() {
@@ -100,8 +120,193 @@ export default function BusinessDashboardPage() {
   }
 
   return (
-    <div style={{ backgroundColor: '#F8F9FA', minHeight: '100vh', opacity: notificationConfirmed ? 1 : 1 }}>
-      <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
+    <>
+      <style dangerouslySetInnerHTML={{__html: `
+        @media (max-width: 768px) {
+          .desktop-table {
+            display: none !important;
+          }
+          .mobile-cards {
+            display: block !important;
+          }
+          .stats-grid {
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+          }
+          .main-container {
+            padding: 16px !important;
+          }
+          .stats-card {
+            padding: 20px !important;
+            min-height: auto !important;
+            gap: 16px !important;
+          }
+          .section-title {
+            font-size: 18px !important;
+            margin-bottom: 20px !important;
+          }
+          .card-section {
+            padding: 20px !important;
+            margin-bottom: 16px !important;
+          }
+          .stats-number {
+            font-size: 24px !important;
+          }
+          .stats-label {
+            font-size: 12px !important;
+          }
+          .mobile-donation-card {
+            padding: 12px !important;
+            margin-bottom: 8px !important;
+          }
+          .mobile-donation-image {
+            width: 40px !important;
+            height: 40px !important;
+          }
+          .mobile-donation-title {
+            font-size: 14px !important;
+            margin-bottom: 4px !important;
+          }
+          .mobile-donation-date {
+            font-size: 12px !important;
+            margin-bottom: 6px !important;
+          }
+          .mobile-donation-info {
+            gap: 8px !important;
+            font-size: 12px !important;
+          }
+          .mobile-status-badge {
+            padding: 2px 6px !important;
+            font-size: 10px !important;
+          }
+        }
+        
+        @media (max-width: 480px) {
+          .main-container {
+            padding: 12px !important;
+          }
+          .stats-grid {
+            gap: 12px !important;
+          }
+          .stats-card {
+            padding: 16px !important;
+            gap: 12px !important;
+          }
+          .stats-number {
+            font-size: 20px !important;
+          }
+          .stats-label {
+            font-size: 11px !important;
+          }
+          .section-title {
+            font-size: 16px !important;
+            margin-bottom: 16px !important;
+          }
+          .card-section {
+            padding: 16px !important;
+            margin-bottom: 12px !important;
+          }
+          .mobile-donation-card {
+            padding: 10px !important;
+            margin-bottom: 6px !important;
+          }
+          .mobile-donation-image {
+            width: 35px !important;
+            height: 35px !important;
+          }
+          .mobile-donation-title {
+            font-size: 13px !important;
+            margin-bottom: 3px !important;
+          }
+          .mobile-donation-date {
+            font-size: 11px !important;
+            margin-bottom: 5px !important;
+          }
+          .mobile-donation-info {
+            gap: 6px !important;
+            font-size: 11px !important;
+          }
+          .mobile-status-badge {
+            padding: 2px 4px !important;
+            font-size: 9px !important;
+          }
+          .esg-buttons {
+            flex-direction: column !important;
+            gap: 8px !important;
+          }
+          .esg-button {
+            width: 100% !important;
+            text-align: center !important;
+          }
+        }
+        
+        @media (max-width: 360px) {
+          .main-container {
+            padding: 8px !important;
+          }
+          .stats-grid {
+            gap: 8px !important;
+          }
+          .stats-card {
+            padding: 12px !important;
+            gap: 8px !important;
+          }
+          .stats-number {
+            font-size: 18px !important;
+          }
+          .stats-label {
+            font-size: 10px !important;
+          }
+          .section-title {
+            font-size: 14px !important;
+            margin-bottom: 12px !important;
+          }
+          .card-section {
+            padding: 12px !important;
+            margin-bottom: 8px !important;
+          }
+          .mobile-donation-card {
+            padding: 8px !important;
+            margin-bottom: 4px !important;
+          }
+          .mobile-donation-image {
+            width: 30px !important;
+            height: 30px !important;
+          }
+          .mobile-donation-title {
+            font-size: 12px !important;
+            margin-bottom: 2px !important;
+          }
+          .mobile-donation-date {
+            font-size: 10px !important;
+            margin-bottom: 4px !important;
+          }
+          .mobile-donation-info {
+            gap: 4px !important;
+            font-size: 10px !important;
+          }
+          .mobile-status-badge {
+            padding: 1px 3px !important;
+            font-size: 8px !important;
+          }
+        }
+        
+        @media (min-width: 769px) {
+          .desktop-table {
+            display: block !important;
+          }
+          .mobile-cards {
+            display: none !important;
+          }
+          .stats-grid {
+            grid-template-columns: 1fr 1fr 1fr !important;
+            gap: 32px !important;
+          }
+        }
+      `}} />
+      
+      <div style={{ backgroundColor: '#F8F9FA', minHeight: '100vh', opacity: notificationConfirmed ? 1 : 1 }}>
+      <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }} className="main-container">
         {/* 기부 현황 요약 섹션 */}
         <div style={{ 
           backgroundColor: 'white',
@@ -109,12 +314,12 @@ export default function BusinessDashboardPage() {
           padding: '32px',
           marginBottom: '24px',
           boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-        }}>
-          <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '32px', color: '#212529' }}>
+        }} className="card-section">
+          <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '32px', color: '#212529' }} className="section-title">
             기부 현황 요약
           </h2>
           
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '32px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '32px' }} className="stats-grid">
             {/* 전체 기부 */}
             <div style={{ 
               textAlign: 'center',
@@ -125,21 +330,23 @@ export default function BusinessDashboardPage() {
               flexDirection: 'column',
               alignItems: 'center',
               gap: '20px'
-            }}>
-              <CircularProgress
-                value={stats.totalDonations}
-                maxValue={stats.totalDonations || 1}
-                size={160}
-                strokeWidth={10}
-                primaryColor="#02391f"
-                secondaryColor="#E9ECEF"
-                centerText={false}
-              />
+            }} className="stats-card">
+              <div className="chart-container">
+                <CircularProgress
+                  value={stats.totalDonations}
+                  maxValue={stats.totalDonations || 1}
+                  size={chartSize}
+                  strokeWidth={chartSize > 100 ? 10 : 8}
+                  primaryColor="#02391f"
+                  secondaryColor="#E9ECEF"
+                  centerText={false}
+                />
+              </div>
               <div>
-                <div style={{ fontSize: '36px', fontWeight: '700', color: '#212529', marginBottom: '8px' }}>
+                <div style={{ fontSize: '36px', fontWeight: '700', color: '#212529', marginBottom: '8px' }} className="stats-number">
                   {stats.totalDonations}
                 </div>
-                <div style={{ fontSize: '14px', color: '#6C757D' }}>전체 기부 건수</div>
+                <div style={{ fontSize: '14px', color: '#6C757D' }} className="stats-label">전체 기부 건수</div>
               </div>
             </div>
             
@@ -153,22 +360,24 @@ export default function BusinessDashboardPage() {
               flexDirection: 'column',
               alignItems: 'center',
               gap: '20px'
-            }}>
-              <CircularProgress
-                value={stats.completedDonations}
-                maxValue={stats.totalDonations || 1}
-                size={160}
-                strokeWidth={10}
-                primaryColor="#28A745"
-                secondaryColor="#E9ECEF"
-                label={`${stats.totalDonations > 0 ? Math.round((stats.completedDonations / stats.totalDonations) * 100) : 0}%`}
-                sublabel="완료율"
-              />
+            }} className="stats-card">
+              <div className="chart-container">
+                <CircularProgress
+                  value={stats.completedDonations}
+                  maxValue={stats.totalDonations || 1}
+                  size={chartSize}
+                  strokeWidth={chartSize > 100 ? 10 : 8}
+                  primaryColor="#28A745"
+                  secondaryColor="#E9ECEF"
+                  label={`${stats.totalDonations > 0 ? Math.round((stats.completedDonations / stats.totalDonations) * 100) : 0}%`}
+                  sublabel="완료율"
+                />
+              </div>
               <div>
-                <div style={{ fontSize: '36px', fontWeight: '700', color: '#212529', marginBottom: '8px' }}>
+                <div style={{ fontSize: '36px', fontWeight: '700', color: '#212529', marginBottom: '8px' }} className="stats-number">
                   {stats.completedDonations}
                 </div>
-                <div style={{ fontSize: '14px', color: '#6C757D' }}>완료된 기부</div>
+                <div style={{ fontSize: '14px', color: '#6C757D' }} className="stats-label">완료된 기부</div>
               </div>
             </div>
             
@@ -182,22 +391,24 @@ export default function BusinessDashboardPage() {
               flexDirection: 'column',
               alignItems: 'center',
               gap: '20px'
-            }}>
-              <CircularProgress
-                value={stats.pendingDonations}
-                maxValue={stats.totalDonations || 1}
-                size={160}
-                strokeWidth={10}
-                primaryColor="#ffd020"
-                secondaryColor="#E9ECEF"
-                label={`${stats.totalDonations > 0 ? Math.round((stats.pendingDonations / stats.totalDonations) * 100) : 0}%`}
-                sublabel="진행률"
-              />
+            }} className="stats-card">
+              <div className="chart-container">
+                <CircularProgress
+                  value={stats.pendingDonations}
+                  maxValue={stats.totalDonations || 1}
+                  size={chartSize}
+                  strokeWidth={chartSize > 100 ? 10 : 8}
+                  primaryColor="#ffd020"
+                  secondaryColor="#E9ECEF"
+                  label={`${stats.totalDonations > 0 ? Math.round((stats.pendingDonations / stats.totalDonations) * 100) : 0}%`}
+                  sublabel="진행률"
+                />
+              </div>
               <div>
-                <div style={{ fontSize: '36px', fontWeight: '700', color: '#ffd020', marginBottom: '8px' }}>
+                <div style={{ fontSize: '36px', fontWeight: '700', color: '#ffd020', marginBottom: '8px' }} className="stats-number">
                   {stats.pendingDonations}
                 </div>
-                <div style={{ fontSize: '14px', color: '#6C757D' }}>진행 중인 기부</div>
+                <div style={{ fontSize: '14px', color: '#6C757D' }} className="stats-label">진행 중인 기부</div>
               </div>
             </div>
           </div>
@@ -211,17 +422,17 @@ export default function BusinessDashboardPage() {
             padding: '32px',
             marginBottom: '24px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div>
-                <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '8px', color: '#212529' }}>
+          }} className="card-section">
+            <div>
+              <div style={{ marginBottom: '16px' }}>
+                <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '8px', color: '#212529' }} className="section-title">
                   ESG 리포트
                 </h2>
                 <p style={{ fontSize: '14px', color: '#6C757D' }}>
                   2025년 ESG 리포트가 준비되었습니다. (업데이트: 2025.07.31)
                 </p>
               </div>
-              <div style={{ display: 'flex', gap: '12px' }}>
+              <div style={{ display: 'flex', gap: '12px' }} className="esg-buttons">
                 <button 
                   onClick={() => setShowEsgModal(true)}
                   style={{
@@ -235,6 +446,7 @@ export default function BusinessDashboardPage() {
                     cursor: 'pointer',
                     transition: 'all 0.2s'
                   }}
+                  className="esg-button"
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = '#02391f';
                     e.currentTarget.style.color = 'white';
@@ -250,6 +462,7 @@ export default function BusinessDashboardPage() {
                   href={esgReportUrl} 
                   download
                   style={{ textDecoration: 'none' }}
+                  className="esg-button"
                 >
                   <button style={{
                     backgroundColor: '#ffd020',
@@ -260,7 +473,8 @@ export default function BusinessDashboardPage() {
                     fontSize: '14px',
                     fontWeight: '500',
                     cursor: 'pointer',
-                    transition: 'opacity 0.2s'
+                    transition: 'opacity 0.2s',
+                    width: '100%'
                   }}
                   onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
                   onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
@@ -279,9 +493,9 @@ export default function BusinessDashboardPage() {
           borderRadius: '8px',
           padding: '32px',
           boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-        }}>
+        }} className="card-section">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-            <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#212529', margin: 0 }}>
+            <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#212529', margin: 0 }} className="section-title">
               최근 기부 이력
             </h2>
             <span style={{ fontSize: '13px', color: '#6C757D' }}>
@@ -309,94 +523,191 @@ export default function BusinessDashboardPage() {
               </Link>
             </div>
           ) : (
-            <div style={{ overflow: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#F8F9FA', borderBottom: '1px solid #DEE2E6' }}>
-                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>이미지</th>
-                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>품명</th>
-                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>등록일</th>
-                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>수량</th>
-                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>픽업희망일</th>
-                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>상태</th>
-                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>작업</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentDonations.map((donation) => (
-                    <tr key={donation.id} style={{ borderBottom: '1px solid #DEE2E6' }}>
-                      <td style={{ padding: '12px', textAlign: 'center' }}>
+            <>
+              {/* Desktop Table */}
+              <div style={{ 
+                overflowX: 'auto', 
+                scrollbarWidth: 'thin',
+                WebkitOverflowScrolling: 'touch' 
+              }} className="desktop-table">
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#F8F9FA', borderBottom: '1px solid #DEE2E6' }}>
+                      <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>이미지</th>
+                      <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>품명</th>
+                      <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>등록일</th>
+                      <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>수량</th>
+                      <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>픽업희망일</th>
+                      <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>상태</th>
+                      <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>작업</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentDonations.map((donation) => (
+                      <tr key={donation.id} style={{ borderBottom: '1px solid #DEE2E6' }}>
+                        <td style={{ padding: '12px', textAlign: 'center' }}>
+                          {donation.photos && donation.photos.length > 0 ? (
+                            <img 
+                              src={donation.photos[0]} 
+                              alt={donation.name || donation.description}
+                              style={{ 
+                                width: '50px', 
+                                height: '50px', 
+                                objectFit: 'cover',
+                                borderRadius: '4px'
+                              }}
+                            />
+                          ) : (
+                            <div style={{ 
+                              width: '50px', 
+                              height: '50px', 
+                              backgroundColor: '#F8F9FA',
+                              borderRadius: '4px',
+                              margin: '0 auto',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#ADB5BD'
+                            }}>
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                              </svg>
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'center', fontSize: '14px' }}>
+                          {donation.name || donation.description}
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'center', fontSize: '14px', color: '#6C757D' }}>
+                          {new Date(donation.created_at).toLocaleDateString('ko-KR')}
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'center', fontSize: '14px' }}>
+                          {donation.quantity}{donation.unit || 'kg'}
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'center', fontSize: '14px', color: '#6C757D' }}>
+                          {new Date(donation.pickup_deadline).toLocaleDateString('ko-KR')}
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'center' }}>
+                          {(() => {
+                            const status = statusMap[donation.status] || { 
+                              text: donation.status, 
+                              color: '#666', 
+                              bgColor: '#66666620' 
+                            };
+                            return (
+                              <span style={{ 
+                                color: status.color,
+                                fontWeight: '500',
+                                fontSize: '12px',
+                                backgroundColor: status.bgColor,
+                                padding: '4px 12px',
+                                borderRadius: '4px',
+                                display: 'inline-block'
+                              }}>
+                                {status.text}
+                              </span>
+                            );
+                          })()}
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'center' }}>
+                          <span style={{ color: '#6C757D', fontSize: '13px' }}>-</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Mobile Card Layout */}
+              <div className="mobile-cards" style={{ display: 'none' }}>
+                {recentDonations.map((donation) => {
+                  const status = statusMap[donation.status] || { 
+                    text: donation.status, 
+                    color: '#666', 
+                    bgColor: '#66666620' 
+                  };
+                  
+                  return (
+                    <div key={donation.id} style={{
+                      backgroundColor: '#FAFAFA',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      marginBottom: '12px',
+                      border: '1px solid #E9ECEF'
+                    }} className="mobile-donation-card">
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
                         {donation.photos && donation.photos.length > 0 ? (
                           <img 
                             src={donation.photos[0]} 
                             alt={donation.name || donation.description}
                             style={{ 
-                              width: '50px', 
-                              height: '50px', 
+                              width: '60px', 
+                              height: '60px', 
                               objectFit: 'cover',
-                              borderRadius: '4px'
+                              borderRadius: '6px',
+                              flexShrink: 0
                             }}
+                            className="mobile-donation-image"
                           />
                         ) : (
                           <div style={{ 
-                            width: '50px', 
-                            height: '50px', 
+                            width: '60px', 
+                            height: '60px', 
                             backgroundColor: '#F8F9FA',
-                            borderRadius: '4px',
-                            margin: '0 auto',
+                            borderRadius: '6px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            color: '#ADB5BD'
-                          }}>
+                            color: '#ADB5BD',
+                            flexShrink: 0
+                          }} className="mobile-donation-image">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                               <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
                             </svg>
                           </div>
                         )}
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'center', fontSize: '14px' }}>
-                        {donation.name || donation.description}
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'center', fontSize: '14px', color: '#6C757D' }}>
-                        {new Date(donation.created_at).toLocaleDateString('ko-KR')}
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'center', fontSize: '14px' }}>
-                        {donation.quantity}{donation.unit || 'kg'}
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'center', fontSize: '14px', color: '#6C757D' }}>
-                        {new Date(donation.pickup_deadline).toLocaleDateString('ko-KR')}
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'center' }}>
-                        {(() => {
-                          const status = statusMap[donation.status] || { 
-                            text: donation.status, 
-                            color: '#666', 
-                            bgColor: '#66666620' 
-                          };
-                          return (
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '16px', fontWeight: '600', color: '#212529', marginBottom: '4px', wordBreak: 'break-word' }} className="mobile-donation-title">
+                            {donation.name || donation.description}
+                          </div>
+                          <div style={{ fontSize: '14px', color: '#6C757D', marginBottom: '8px' }} className="mobile-donation-date">
+                            등록일: {new Date(donation.created_at).toLocaleDateString('ko-KR')}
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ 
                               color: status.color,
                               fontWeight: '500',
                               fontSize: '12px',
                               backgroundColor: status.bgColor,
-                              padding: '4px 12px',
+                              padding: '4px 8px',
                               borderRadius: '4px',
                               display: 'inline-block'
-                            }}>
+                            }} className="mobile-status-badge">
                               {status.text}
                             </span>
-                          );
-                        })()}
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'center' }}>
-                        <span style={{ color: '#6C757D', fontSize: '13px' }}>-</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '14px' }}>
+                        <div>
+                          <span style={{ color: '#6C757D', fontSize: '12px' }}>수량</span>
+                          <div style={{ fontWeight: '500', color: '#212529' }}>
+                            {donation.quantity}{donation.unit || 'kg'}
+                          </div>
+                        </div>
+                        <div>
+                          <span style={{ color: '#6C757D', fontSize: '12px' }}>픽업희망일</span>
+                          <div style={{ fontWeight: '500', color: '#212529' }}>
+                            {new Date(donation.pickup_deadline).toLocaleDateString('ko-KR')}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -569,6 +880,7 @@ export default function BusinessDashboardPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   )
 }

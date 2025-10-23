@@ -95,18 +95,74 @@ export default function BeneficiaryDashboardPage() {
   }
 
   return (
-    <div style={{ padding: '40px', maxWidth: '1400px', margin: '0 auto' }}>
-      <h1 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '32px', color: '#212529' }}>
+    <>
+      <style dangerouslySetInnerHTML={{__html: `
+        @media (max-width: 768px) {
+          .desktop-table {
+            display: none !important;
+          }
+          .mobile-cards {
+            display: block !important;
+          }
+          .main-container {
+            padding: 16px !important;
+          }
+          .stats-grid {
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+            gap: 12px !important;
+          }
+          .stats-card {
+            padding: 20px !important;
+            gap: 16px !important;
+          }
+          .stats-card .circular-progress {
+            width: 80px !important;
+            height: 80px !important;
+          }
+          .stats-number {
+            font-size: 24px !important;
+          }
+        }
+        
+        @media (max-width: 480px) {
+          .main-container {
+            padding: 12px !important;
+          }
+          .stats-grid {
+            grid-template-columns: 1fr !important;
+            gap: 8px !important;
+          }
+          .stats-card {
+            padding: 16px !important;
+            gap: 12px !important;
+          }
+          .stats-number {
+            font-size: 20px !important;
+          }
+        }
+        
+        @media (min-width: 769px) {
+          .desktop-table {
+            display: block !important;
+          }
+          .mobile-cards {
+            display: none !important;
+          }
+        }
+      `}} />
+      
+      <div style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }} className="main-container">
+      <h1 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '24px', color: '#212529' }}>
         대시보드
       </h1>
 
       {/* Statistics Cards with Circular Progress */}
       <div style={{ 
         display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
-        gap: '24px',
-        marginBottom: '40px'
-      }}>
+        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+        gap: '16px',
+        marginBottom: '32px'
+      }} className="stats-grid">
         {/* 전체 제안 */}
         <div style={{
           backgroundColor: 'white',
@@ -116,7 +172,7 @@ export default function BeneficiaryDashboardPage() {
           display: 'flex',
           alignItems: 'center',
           gap: '24px'
-        }}>
+        }} className="stats-card">
           <CircularProgress
             value={stats.totalProposals}
             maxValue={stats.totalProposals || 1}
@@ -130,7 +186,7 @@ export default function BeneficiaryDashboardPage() {
             <div style={{ fontSize: '14px', color: '#6C757D', marginBottom: '8px' }}>
               전체 제안
             </div>
-            <div style={{ fontSize: '36px', fontWeight: '700', color: '#212529', lineHeight: 1 }}>
+            <div style={{ fontSize: '36px', fontWeight: '700', color: '#212529', lineHeight: 1 }} className="stats-number">
               {stats.totalProposals}
             </div>
             <div style={{ fontSize: '12px', color: '#ADB5BD', marginTop: '4px' }}>
@@ -148,7 +204,7 @@ export default function BeneficiaryDashboardPage() {
           display: 'flex',
           alignItems: 'center',
           gap: '24px'
-        }}>
+        }} className="stats-card">
           <CircularProgress
             value={stats.pendingProposals}
             maxValue={stats.totalProposals || 1}
@@ -162,7 +218,7 @@ export default function BeneficiaryDashboardPage() {
             <div style={{ fontSize: '14px', color: '#6C757D', marginBottom: '8px' }}>
               대기 중
             </div>
-            <div style={{ fontSize: '36px', fontWeight: '700', color: '#212529', lineHeight: 1 }}>
+            <div style={{ fontSize: '36px', fontWeight: '700', color: '#212529', lineHeight: 1 }} className="stats-number">
               {stats.pendingProposals}
             </div>
             <div style={{ fontSize: '12px', color: '#ADB5BD', marginTop: '4px' }}>
@@ -180,7 +236,7 @@ export default function BeneficiaryDashboardPage() {
           display: 'flex',
           alignItems: 'center',
           gap: '24px'
-        }}>
+        }} className="stats-card">
           <CircularProgress
             value={stats.totalReceived}
             maxValue={stats.totalProposals || 1}
@@ -194,7 +250,7 @@ export default function BeneficiaryDashboardPage() {
             <div style={{ fontSize: '14px', color: '#6C757D', marginBottom: '8px' }}>
               수령 완료
             </div>
-            <div style={{ fontSize: '36px', fontWeight: '700', color: '#212529', lineHeight: 1 }}>
+            <div style={{ fontSize: '36px', fontWeight: '700', color: '#212529', lineHeight: 1 }} className="stats-number">
               {stats.totalReceived}
             </div>
             <div style={{ fontSize: '12px', color: '#ADB5BD', marginTop: '4px' }}>
@@ -212,7 +268,7 @@ export default function BeneficiaryDashboardPage() {
           display: 'flex',
           alignItems: 'center',
           gap: '24px'
-        }}>
+        }} className="stats-card">
           <CircularProgress
             value={stats.thisMonthReceived}
             maxValue={stats.thisMonthReceived || 1}
@@ -226,7 +282,7 @@ export default function BeneficiaryDashboardPage() {
             <div style={{ fontSize: '14px', color: '#6C757D', marginBottom: '8px' }}>
               이번 달
             </div>
-            <div style={{ fontSize: '36px', fontWeight: '700', color: '#212529', lineHeight: 1 }}>
+            <div style={{ fontSize: '36px', fontWeight: '700', color: '#212529', lineHeight: 1 }} className="stats-number">
               {stats.thisMonthReceived}
             </div>
             <div style={{ fontSize: '12px', color: '#ADB5BD', marginTop: '4px' }}>
@@ -276,62 +332,134 @@ export default function BeneficiaryDashboardPage() {
             제안받은 기부가 없습니다.
           </div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid #DEE2E6' }}>
-                <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>품명</th>
-                <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>수량</th>
-                <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>픽업 희망일</th>
-                <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>제안일</th>
-                <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>작업</th>
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            {/* Desktop Table */}
+            <div style={{ 
+              overflowX: 'auto', 
+              scrollbarWidth: 'thin',
+              WebkitOverflowScrolling: 'touch'
+            }} className="desktop-table">
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #DEE2E6' }}>
+                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', fontSize: '13px' }}>품명</th>
+                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>수량</th>
+                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>픽업 희망일</th>
+                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>제안일</th>
+                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#495057', fontSize: '13px' }}>작업</th>
+                  </tr>
+                </thead>
+              <tbody>
+                {recentProposals.map((proposal) => (
+                  <tr key={proposal.id} style={{ borderBottom: '1px solid #F8F9FA' }}>
+                    <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>
+                      {proposal.donations?.name || proposal.donations?.description}
+                    </td>
+                    <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#495057' }}>
+                      {proposal.donations?.quantity}{proposal.donations?.unit || 'kg'}
+                    </td>
+                    <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#495057' }}>
+                      {new Date(proposal.donations?.pickup_deadline).toLocaleDateString('ko-KR')}
+                    </td>
+                    <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#495057' }}>
+                      {new Date(proposal.proposed_at).toLocaleDateString('ko-KR')}
+                    </td>
+                    <td style={{ padding: '16px', textAlign: 'center' }}>
+                      <button
+                        onClick={() => router.push(`/beneficiary/proposal/${proposal.id}`)}
+                        style={{
+                          padding: '6px 16px',
+                          fontSize: '13px',
+                          fontWeight: '500',
+                          color: '#007BFF',
+                          backgroundColor: 'transparent',
+                          border: '1px solid #007BFF',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          minWidth: '90px'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#007BFF';
+                          e.currentTarget.style.color = 'white';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                          e.currentTarget.style.color = '#007BFF';
+                        }}
+                      >
+                        상세 보기
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                </tbody>
+              </table>
+            </div>
+            
+            {/* Mobile Card Layout */}
+            <div className="mobile-cards" style={{ display: 'none' }}>
               {recentProposals.map((proposal) => (
-                <tr key={proposal.id} style={{ borderBottom: '1px solid #F8F9FA' }}>
-                  <td style={{ padding: '16px', fontSize: '14px', color: '#212529' }}>
-                    {proposal.donations?.name || proposal.donations?.description}
-                  </td>
-                  <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#495057' }}>
-                    {proposal.donations?.quantity}{proposal.donations?.unit || 'kg'}
-                  </td>
-                  <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#495057' }}>
-                    {new Date(proposal.donations?.pickup_deadline).toLocaleDateString('ko-KR')}
-                  </td>
-                  <td style={{ padding: '16px', textAlign: 'center', fontSize: '14px', color: '#495057' }}>
-                    {new Date(proposal.proposed_at).toLocaleDateString('ko-KR')}
-                  </td>
-                  <td style={{ padding: '16px', textAlign: 'center' }}>
+                <div key={proposal.id} style={{
+                  backgroundColor: '#FAFAFA',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  marginBottom: '12px',
+                  border: '1px solid #E9ECEF',
+                  cursor: 'pointer'
+                }}
+                onClick={() => router.push(`/beneficiary/proposal/${proposal.id}`)}
+                >
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ fontSize: '16px', fontWeight: '600', color: '#212529', marginBottom: '8px' }}>
+                      {proposal.donations?.name || proposal.donations?.description}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '14px' }}>
+                      <div>
+                        <span style={{ color: '#6C757D', fontSize: '12px' }}>수량</span>
+                        <div style={{ fontWeight: '500', color: '#212529' }}>
+                          {proposal.donations?.quantity}{proposal.donations?.unit || 'kg'}
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ color: '#6C757D', fontSize: '12px' }}>픽업희망일</span>
+                        <div style={{ fontWeight: '500', color: '#212529' }}>
+                          {new Date(proposal.donations?.pickup_deadline).toLocaleDateString('ko-KR')}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <span style={{ color: '#6C757D', fontSize: '12px' }}>제안일</span>
+                      <div style={{ fontWeight: '500', color: '#212529', fontSize: '14px' }}>
+                        {new Date(proposal.proposed_at).toLocaleDateString('ko-KR')}
+                      </div>
+                    </div>
                     <button
-                      onClick={() => router.push(`/beneficiary/proposal/${proposal.id}`)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/beneficiary/proposal/${proposal.id}`);
+                      }}
                       style={{
-                        padding: '6px 16px',
+                        padding: '8px 16px',
                         fontSize: '13px',
                         fontWeight: '500',
                         color: '#007BFF',
                         backgroundColor: 'transparent',
                         border: '1px solid #007BFF',
                         borderRadius: '4px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        minWidth: '90px'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#007BFF';
-                        e.currentTarget.style.color = 'white';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                        e.currentTarget.style.color = '#007BFF';
+                        cursor: 'pointer'
                       }}
                     >
                       상세 보기
                     </button>
-                  </td>
-                </tr>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </>
         )}
       </div>
       
@@ -351,6 +479,7 @@ export default function BeneficiaryDashboardPage() {
           userId={userId}
         />
       )}
-    </div>
+      </div>
+    </>
   )
 }
