@@ -21,8 +21,8 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // 관리자 권한 확인
-    const { data: profile } = await supabase
+    // 관리자 권한 확인 (SERVICE_ROLE_KEY 사용 - RLS 우회)
+    const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('role')
       .eq('id', user.id)
