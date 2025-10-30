@@ -1,34 +1,40 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createServerComponentClient } from '@/lib/supabase-server'
 
 export async function PUT(request: Request) {
   try {
+    // ✅ 1. 인증 확인
+    const supabase = await createServerComponentClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // ✅ 2. Beneficiary 권한 확인
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (!profile || profile.role !== 'beneficiary') {
+      return NextResponse.json({ error: 'Beneficiary access required' }, { status: 403 })
+    }
+
+    // ✅ 3. updateData만 받음 (userId는 인증된 user.id 사용)
     const body = await request.json()
-    const { userId, updateData } = body
-    
-    if (!userId || !updateData) {
-      return NextResponse.json({ error: 'User ID and update data required' }, { status: 400 })
+    const { updateData } = body
+
+    if (!updateData) {
+      return NextResponse.json({ error: 'Update data required' }, { status: 400 })
     }
 
-    // 환경변수 확인
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error('Missing environment variables')
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
-    }
-
-    // 일반 클라이언트로 시도 (RLS 적용됨)
-    const supabase = createClient(supabaseUrl, supabaseAnonKey)
-    
-    console.log('Updating beneficiary profile for user:', userId)
-    console.log('Update data:', updateData)
-    
+    // ✅ 4. 본인 데이터만 수정
     const { data, error } = await supabase
       .from('beneficiaries')
       .update(updateData)
-      .eq('user_id', userId)
+      .eq('user_id', user.id)  // ✅ 인증된 user.id 사용
       .select()
 
     if (error) {

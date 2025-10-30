@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient, createAdminClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 import { Business } from '@/types/database'
 
 export default function AdminBusinessesPage() {

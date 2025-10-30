@@ -176,7 +176,7 @@ export interface Database {
           tax_deduction_needed: boolean
           tax_invoice_email: string | null
           business_type: string | null
-          status: 'pending_review' | 'quote_sent' | 'quote_accepted' | 'matched' | 'pickup_scheduled' | 'completed'
+          status: 'pending_review' | 'quote_sent' | 'quote_accepted' | 'matched' | 'beneficiary_accepted' | 'pickup_coordinating' | 'pickup_scheduled' | 'completed'
           matched_charity_name: string | null
           matched_at: string | null
           matched_by: string | null
@@ -201,7 +201,7 @@ export interface Database {
           pickup_deadline: string
           pickup_location: string
           tax_deduction_needed?: boolean
-          status?: 'pending_review' | 'quote_sent' | 'quote_accepted' | 'matched' | 'pickup_scheduled' | 'completed'
+          status?: 'pending_review' | 'quote_sent' | 'quote_accepted' | 'matched' | 'beneficiary_accepted' | 'pickup_coordinating' | 'pickup_scheduled' | 'completed'
           matched_charity_name?: string | null
           matched_at?: string | null
           matched_by?: string | null
@@ -226,7 +226,7 @@ export interface Database {
           pickup_deadline?: string
           pickup_location?: string
           tax_deduction_needed?: boolean
-          status?: 'pending_review' | 'quote_sent' | 'quote_accepted' | 'matched' | 'pickup_scheduled' | 'completed'
+          status?: 'pending_review' | 'quote_sent' | 'quote_accepted' | 'matched' | 'beneficiary_accepted' | 'pickup_coordinating' | 'pickup_scheduled' | 'completed'
           matched_charity_name?: string | null
           matched_at?: string | null
           matched_by?: string | null
