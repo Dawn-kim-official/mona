@@ -71,7 +71,6 @@ export default function BeneficiaryReceiptsPage() {
       setBeneficiary(beneficiaryData)
       
       // 수령 완료된 기부 목록 가져오기
-      
       const { data: donationsData, error } = await supabase
         .from('donation_matches')
         .select(`
@@ -89,21 +88,42 @@ export default function BeneficiaryReceiptsPage() {
             businesses (
               name,
               address,
-              representative_name
+              representative_name,
+              business_registration_number
             )
           )
         `)
         .eq('beneficiary_id', beneficiaryData.id)
         .eq('status', 'received')  // 수령 완료된 것만
-        .order('received_at', { ascending: false, nullsFirst: false })
-      
+        .not('received_at', 'is', null)  // received_at이 NULL이 아닌 것만
+        .order('received_at', { ascending: false })
+
       if (error) {
-        // Error fetching donations
-      } else {
+        console.error('영수증 데이터 조회 에러:', error)
       }
 
-      if (donationsData) {
-        setReceivedDonations(donationsData)
+      // quotes 데이터 별도 조회 및 병합
+      if (donationsData && donationsData.length > 0) {
+        const donationIds = donationsData.map(d => d.donation_id).filter(Boolean)
+
+        if (donationIds.length > 0) {
+          const { data: quotesData } = await supabase
+            .from('quotes')
+            .select('*')
+            .in('donation_id', donationIds)
+
+          // donations 데이터에 quotes 추가
+          const enrichedData = donationsData.map(donation => ({
+            ...donation,
+            quotes: quotesData?.filter(q => q.donation_id === donation.donation_id) || []
+          }))
+
+          setReceivedDonations(enrichedData)
+        } else {
+          setReceivedDonations(donationsData)
+        }
+      } else {
+        setReceivedDonations([])
       }
     }
 

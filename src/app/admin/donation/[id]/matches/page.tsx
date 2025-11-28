@@ -84,8 +84,8 @@ export default function DonationMatchesPage() {
     'proposed': { text: '응답 대기', color: '#FF8C00' },
     'accepted': { text: '수락', color: '#28A745' },
     'rejected': { text: '거절', color: '#DC3545' },
-    'received': { text: '수령 완료', color: '#007BFF' },
-    'quote_sent': { text: '픽업 대기', color: '#17A2B8' }
+    'quote_sent': { text: '픽업 대기', color: '#17A2B8' },
+    'received': { text: '수령 완료', color: '#007BFF' }
   }
 
   if (loading) {

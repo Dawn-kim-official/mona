@@ -52,7 +52,7 @@ export default function PickupSchedulePage({ params }: { params: Promise<{ id: s
 
     setDonation(donationData)
     setQuote(quoteData)
-    setSelectedDate(quoteData.pickup_date.split('T')[0])
+    setSelectedDate(quoteData.pickup_date ? quoteData.pickup_date.split('T')[0] : '')
     setLoading(false)
   }
 

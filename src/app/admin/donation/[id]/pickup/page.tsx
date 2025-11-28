@@ -27,6 +27,7 @@ export default function AdminPickupSchedulePage() {
     pickup_date: '',
     pickup_time: '',
     pickup_staff: '',
+    pickup_staff_phone: '',
     vehicle_info: '',
     notes: ''
   })
@@ -68,6 +69,7 @@ export default function AdminPickupSchedulePage() {
           pickup_date: formData.pickup_date,
           pickup_time: formData.pickup_time,
           pickup_staff: formData.pickup_staff,
+          pickup_staff_phone: formData.pickup_staff_phone,
           vehicle_info: formData.vehicle_info,
           notes: formData.notes,
           status: 'scheduled'
@@ -232,10 +234,10 @@ export default function AdminPickupSchedulePage() {
 
           {/* 픽업 담당자 */}
           <div>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '8px', 
-              fontSize: '14px', 
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
+              fontSize: '14px',
               fontWeight: '500',
               color: '#212529'
             }}>
@@ -247,6 +249,37 @@ export default function AdminPickupSchedulePage() {
               onChange={(e) => setFormData({ ...formData, pickup_staff: e.target.value })}
               required
               placeholder="담당자 이름을 입력하세요"
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                fontSize: '14px',
+                border: '1px solid #CED4DA',
+                borderRadius: '4px',
+                outline: 'none',
+                transition: 'border-color 0.2s'
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#80BDFF'}
+              onBlur={(e) => e.target.style.borderColor = '#CED4DA'}
+            />
+          </div>
+
+          {/* 픽업 담당자 연락처 */}
+          <div>
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#212529'
+            }}>
+              픽업 담당자 연락처
+            </label>
+            <input
+              type="tel"
+              value={formData.pickup_staff_phone}
+              onChange={(e) => setFormData({ ...formData, pickup_staff_phone: e.target.value })}
+              required
+              placeholder="010-1234-5678"
               style={{
                 width: '100%',
                 padding: '10px 12px',

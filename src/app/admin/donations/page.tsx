@@ -27,9 +27,9 @@ interface Donation {
 const statusMap: { [key: string]: { text: string; color: string; bgColor: string } } = {
   'pending_review': { text: '승인 대기', color: '#FF8C00', bgColor: '#FFF3CD' },
   'rejected': { text: '승인 거절', color: '#DC3545', bgColor: '#F8D7DA' },
-  'matched': { text: '수혜기관 선정', color: '#17A2B8', bgColor: '#D1ECF1' },
-  'quote_sent': { text: '견적 대기', color: '#FF8C00', bgColor: '#FFF3CD' },
-  'quote_accepted': { text: '견적 수락', color: '#007BFF', bgColor: '#CCE5FF' },
+  'quote_sent': { text: '견적 확인 대기', color: '#FF8C00', bgColor: '#FFF3CD' },
+  'quote_accepted': { text: '수혜자 매칭 대기', color: '#FFC107', bgColor: '#FFF9E6' },
+  'matched': { text: '수혜기관 확정', color: '#17A2B8', bgColor: '#D1ECF1' },
   'pickup_scheduled': { text: '픽업 예정', color: '#007BFF', bgColor: '#CCE5FF' },
   'received': { text: '수령 완료', color: '#28A745', bgColor: '#D4EDDA' },
   'completed': { text: '기부 완료', color: '#28A745', bgColor: '#D4EDDA' }
@@ -198,6 +198,38 @@ export default function AdminDonationsPage() {
     }
   }
 
+  async function handlePickupComplete(donationId: string) {
+    if (!confirm('픽업이 완료되었습니까? 수령 완료 상태로 변경됩니다.')) {
+      return
+    }
+
+    try {
+      // donation_matches에서 pickup_scheduled 또는 accepted 상태인 것을 received로 변경
+      const { data: matches } = await supabase
+        .from('donation_matches')
+        .select('id')
+        .eq('donation_id', donationId)
+        .in('status', ['pickup_scheduled', 'accepted'])
+
+      if (matches && matches.length > 0) {
+        for (const match of matches) {
+          await supabase
+            .from('donation_matches')
+            .update({
+              status: 'received',
+              received_at: new Date().toISOString()
+            })
+            .eq('id', match.id)
+        }
+      }
+
+      alert('픽업이 완료 처리되었습니다.')
+      await fetchAllDonations()
+    } catch (error) {
+      alert('픽업 완료 처리 중 오류가 발생했습니다.')
+    }
+  }
+
   if (loading) {
     return <div style={{ padding: '40px', textAlign: 'center' }}>로딩 중...</div>
   }
@@ -206,9 +238,9 @@ export default function AdminDonationsPage() {
     { id: null, label: '전체' },
     { id: 'pending_review', label: '승인 대기' },
     { id: 'rejected', label: '승인 거절' },
-    { id: 'matched', label: '수혜기관 선정' },
-    { id: 'quote_sent', label: '견적 발송' },
-    { id: 'quote_accepted', label: '견적 수락' },
+    { id: 'quote_sent', label: '견적 확인 대기' },
+    { id: 'quote_accepted', label: '수혜자 매칭 대기' },
+    { id: 'matched', label: '수혜기관 확정' },
     { id: 'pickup_coordinating', label: '픽업 일정 조율' },
     { id: 'pickup_scheduled', label: '픽업 예정' },
     { id: 'received', label: '수령 완료' },
@@ -467,13 +499,31 @@ export default function AdminDonationsPage() {
                             >
                               거절
                             </button>
-                            <Link href={`/admin/donation/${donation.id}/propose`}>
+                            <Link href={`/admin/donation/${donation.id}/quote`}>
                               <button style={{
                                 padding: '6px 16px',
+                                fontSize: '13px',
+                                fontWeight: '500',
+                                color: 'white',
+                                backgroundColor: '#02391f',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap'
+                              }}>
+                                견적서 작성
+                              </button>
+                            </Link>
+                          </>
+                        )}
+                        {donation.status === 'quote_accepted' && (
+                          <Link href={`/admin/donation/${donation.id}/propose`}>
+                            <button style={{
+                              padding: '6px 16px',
                               fontSize: '13px',
                               fontWeight: '500',
                               color: 'white',
-                              backgroundColor: '#007BFF',
+                              backgroundColor: '#17A2B8',
                               border: 'none',
                               borderRadius: '4px',
                               cursor: 'pointer',
@@ -482,7 +532,6 @@ export default function AdminDonationsPage() {
                               수혜기관 선택
                             </button>
                           </Link>
-                          </>
                         )}
                         {donation.status === 'matched' && (
                           <>
@@ -502,18 +551,18 @@ export default function AdminDonationsPage() {
                             </Link>
                             {/* donation_matches에 accepted 상태가 있는지 확인 */}
                             {donation.has_accepted_match && (
-                              <Link href={`/admin/donation/${donation.id}/quote`}>
+                              <Link href={`/admin/donation/${donation.id}/pickup`}>
                                 <button style={{
                                   padding: '6px 16px',
                                   fontSize: '13px',
                                   fontWeight: '500',
-                                  color: '#212529',
-                                  backgroundColor: '#ffd020',
+                                  color: 'white',
+                                  backgroundColor: '#6F42C1',
                                   border: 'none',
                                   borderRadius: '4px',
                                   cursor: 'pointer'
                                 }}>
-                                  견적서 발송
+                                  픽업 일정 설정
                                 </button>
                               </Link>
                             )}
@@ -525,27 +574,25 @@ export default function AdminDonationsPage() {
                           <span style={{ fontSize: '11px', color: '#999' }}>견적 수락 대기중</span>
                         </div>
                       )}
-                      {donation.status === 'quote_accepted' && (
-                        <Link href={`/admin/donation/${donation.id}/pickup`}>
-                          <button style={{
+                      {donation.status === 'pickup_scheduled' && !donation.has_received_match && (
+                        <button
+                          onClick={() => handlePickupComplete(donation.id)}
+                          style={{
                             padding: '6px 16px',
                             fontSize: '13px',
                             fontWeight: '500',
-                            color: '#212529',
-                            backgroundColor: 'transparent',
-                            border: '1px solid #212529',
+                            color: 'white',
+                            backgroundColor: '#28A745',
+                            border: 'none',
                             borderRadius: '4px',
                             cursor: 'pointer',
-                            minWidth: '90px'
-                          }}>
-                            픽업 일정 설정
-                          </button>
-                        </Link>
-                      )}
-                      {donation.status === 'pickup_scheduled' && !donation.has_received_match && (
-                        <span style={{ fontSize: '12px', color: '#666', fontStyle: 'italic' }}>
-                          수령 대기중
-                        </span>
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#218838'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#28A745'}
+                        >
+                          픽업 완료 처리
+                        </button>
                       )}
                       {donation.status === 'completed' && (
                         <Link href={`/admin/donation/${donation.id}/detail`}>
@@ -707,22 +754,39 @@ export default function AdminDonationsPage() {
                       >
                         거절
                       </button>
-                      <Link href={`/admin/donation/${donation.id}/propose`} style={{ flex: 1 }}>
+                      <Link href={`/admin/donation/${donation.id}/quote`} style={{ flex: 1 }}>
                         <button style={{
                           padding: '8px 16px',
                           fontSize: '13px',
                           fontWeight: '500',
                           color: 'white',
-                          backgroundColor: '#007BFF',
+                          backgroundColor: '#02391f',
                           border: 'none',
                           borderRadius: '4px',
                           cursor: 'pointer',
                           width: '100%'
                         }}>
-                          수혜기관 선택
+                          견적서 작성
                         </button>
                       </Link>
                     </>
+                  )}
+                  {donation.status === 'quote_accepted' && (
+                    <Link href={`/admin/donation/${donation.id}/propose`} style={{ flex: 1 }}>
+                      <button style={{
+                        padding: '8px 16px',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        color: 'white',
+                        backgroundColor: '#17A2B8',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        width: '100%'
+                      }}>
+                        수혜기관 선택
+                      </button>
+                    </Link>
                   )}
                   {donation.status === 'matched' && (
                     <>
@@ -742,19 +806,19 @@ export default function AdminDonationsPage() {
                         </button>
                       </Link>
                       {donation.has_accepted_match && (
-                        <Link href={`/admin/donation/${donation.id}/quote`} style={{ flex: 1 }}>
+                        <Link href={`/admin/donation/${donation.id}/pickup`} style={{ flex: 1 }}>
                           <button style={{
                             padding: '8px 16px',
                             fontSize: '13px',
                             fontWeight: '500',
-                            color: '#212529',
-                            backgroundColor: '#ffd020',
+                            color: 'white',
+                            backgroundColor: '#6F42C1',
                             border: 'none',
                             borderRadius: '4px',
                             cursor: 'pointer',
                             width: '100%'
                           }}>
-                            견적서 발송
+                            픽업 일정 설정
                           </button>
                         </Link>
                       )}
@@ -767,29 +831,23 @@ export default function AdminDonationsPage() {
                       <span style={{ fontSize: '11px', color: '#999' }}>견적 수락 대기중</span>
                     </div>
                   )}
-                  {donation.status === 'quote_accepted' && (
-                    <Link href={`/admin/donation/${donation.id}/pickup`} style={{ width: '100%' }}>
-                      <button style={{
+                  {donation.status === 'pickup_scheduled' && !donation.has_received_match && (
+                    <button
+                      onClick={() => handlePickupComplete(donation.id)}
+                      style={{
                         padding: '8px 16px',
                         fontSize: '13px',
                         fontWeight: '500',
-                        color: '#212529',
-                        backgroundColor: 'transparent',
-                        border: '1px solid #212529',
+                        color: 'white',
+                        backgroundColor: '#28A745',
+                        border: 'none',
                         borderRadius: '4px',
                         cursor: 'pointer',
                         width: '100%'
-                      }}>
-                        픽업 일정 설정
-                      </button>
-                    </Link>
-                  )}
-                  {donation.status === 'pickup_scheduled' && !donation.has_received_match && (
-                    <div style={{ width: '100%', textAlign: 'center', padding: '8px' }}>
-                      <span style={{ fontSize: '12px', color: '#666', fontStyle: 'italic' }}>
-                        수령 대기중
-                      </span>
-                    </div>
+                      }}
+                    >
+                      픽업 완료 처리
+                    </button>
                   )}
                   {donation.status === 'completed' && (
                     <Link href={`/admin/donation/${donation.id}/detail`} style={{ width: '100%' }}>

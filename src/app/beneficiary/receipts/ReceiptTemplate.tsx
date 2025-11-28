@@ -6,9 +6,13 @@ interface ReceiptTemplateProps {
 }
 
 export default function ReceiptTemplate({ donation, beneficiary }: ReceiptTemplateProps) {
-  const quote = donation.quotes?.[0] || { unit_price: 0, total_amount: 0 }
+  // 데이터 안전성 검증
+  const donationData = donation?.donations || {}
+  const businessData = donationData?.businesses || {}
+  const quote = donation?.quotes?.[0] || { unit_price: 0, total_amount: 0 }
+
   const today = new Date().toLocaleDateString('ko-KR')
-  const receiptNumber = donation.id.slice(0, 8).toUpperCase()
+  const receiptNumber = donation?.id?.slice(0, 8)?.toUpperCase() || 'N/A'
 
   return (
     <div
@@ -56,7 +60,7 @@ export default function ReceiptTemplate({ donation, beneficiary }: ReceiptTempla
                   <strong>법인명(상호)</strong>
                 </td>
                 <td style={{ border: '1px solid #ddd', padding: '10px', width: '75%' }}>
-                  {donation.donations.businesses.name}
+                  {businessData.name || '-'}
                 </td>
               </tr>
               <tr>
@@ -64,7 +68,7 @@ export default function ReceiptTemplate({ donation, beneficiary }: ReceiptTempla
                   <strong>사업자등록번호</strong>
                 </td>
                 <td style={{ border: '1px solid #ddd', padding: '10px' }}>
-                  {'123-45-67890'}
+                  {businessData.business_registration_number || '123-45-67890'}
                 </td>
               </tr>
               <tr>
@@ -72,7 +76,7 @@ export default function ReceiptTemplate({ donation, beneficiary }: ReceiptTempla
                   <strong>대표자</strong>
                 </td>
                 <td style={{ border: '1px solid #ddd', padding: '10px' }}>
-                  {donation.donations.businesses.representative_name}
+                  {businessData.representative_name || '-'}
                 </td>
               </tr>
               <tr>
@@ -80,7 +84,7 @@ export default function ReceiptTemplate({ donation, beneficiary }: ReceiptTempla
                   <strong>주소</strong>
                 </td>
                 <td style={{ border: '1px solid #ddd', padding: '10px' }}>
-                  {donation.donations.businesses.address}
+                  {businessData.address || '-'}
                 </td>
               </tr>
             </tbody>
@@ -147,16 +151,16 @@ export default function ReceiptTemplate({ donation, beneficiary }: ReceiptTempla
             <tbody>
               <tr>
                 <td style={{ border: '1px solid #ddd', padding: '10px', textAlign: 'center' }}>
-                  {donation.donations.name || donation.donations.description}
+                  {donationData.name || donationData.description || '-'}
                 </td>
                 <td style={{ border: '1px solid #ddd', padding: '10px', textAlign: 'center' }}>
-                  {donation.donations.quantity}{donation.donations.unit}
+                  {donationData.quantity || 0}{donationData.unit || ''}
                 </td>
                 <td style={{ border: '1px solid #ddd', padding: '10px', textAlign: 'right' }}>
-                  {quote.unit_price.toLocaleString()}원
+                  {(quote.unit_price || 0).toLocaleString()}원
                 </td>
                 <td style={{ border: '1px solid #ddd', padding: '10px', textAlign: 'right' }}>
-                  {quote.total_amount.toLocaleString()}원
+                  {(quote.total_amount || 0).toLocaleString()}원
                 </td>
               </tr>
             </tbody>
@@ -166,7 +170,7 @@ export default function ReceiptTemplate({ donation, beneficiary }: ReceiptTempla
                   <strong>총 기부금액</strong>
                 </td>
                 <td style={{ border: '1px solid #ddd', padding: '10px', textAlign: 'right', backgroundColor: '#f5f5f5' }}>
-                  <strong>{quote.total_amount.toLocaleString()}원</strong>
+                  <strong>{(quote.total_amount || 0).toLocaleString()}원</strong>
                 </td>
               </tr>
             </tfoot>

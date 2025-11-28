@@ -150,9 +150,9 @@ function DonationDetailContent({ paramsPromise }: { paramsPromise: Promise<{ id:
   const getStatusBadge = (status: string) => {
     const statusMap: any = {
       'pending_review': { text: '검토 대기', color: '#FFC107' },
-      'matched': { text: '매칭 완료', color: '#17A2B8' },
-      'quote_sent': { text: '견적서 발송', color: '#007BFF' },
-      'quote_accepted': { text: '견적 승인', color: '#28A745' },
+      'quote_sent': { text: '견적 확인 대기', color: '#FF8C00' },
+      'quote_accepted': { text: '수혜자 매칭 대기', color: '#FFC107' },
+      'matched': { text: '수혜기관 확정', color: '#17A2B8' },
       'pickup_coordinating': { text: '픽업 일정 조율', color: '#6F42C1' },
       'pickup_scheduled': { text: '픽업 예정', color: '#6F42C1' },
       'completed': { text: '기부 완료', color: '#28A745' },
@@ -170,20 +170,62 @@ function DonationDetailContent({ paramsPromise }: { paramsPromise: Promise<{ id:
           <h1 style={{ fontSize: '20px', fontWeight: '600', color: '#212529' }}>
             기부 상세 정보
           </h1>
-          <Link href="/admin/donations">
-            <button style={{
-              padding: '8px 16px',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#6C757D',
-              backgroundColor: 'white',
-              border: '1px solid #DEE2E6',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}>
-              목록으로
-            </button>
-          </Link>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {(donation.status === 'quote_sent' || donation.status === 'quote_accepted' || donation.status === 'matched' || donation.status === 'pickup_scheduled') && (
+              <Link href={`/admin/donation/${donationId}/quote`}>
+                <button style={{
+                  padding: '8px 16px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: 'white',
+                  backgroundColor: '#02391f',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#01291a'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#02391f'}
+                >
+                  견적서 수정
+                </button>
+              </Link>
+            )}
+            {(donation.status === 'pickup_scheduled' || donation.status === 'pickup_coordinating') && (
+              <Link href={`/admin/donation/${donationId}/pickup`}>
+                <button style={{
+                  padding: '8px 16px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: 'white',
+                  backgroundColor: '#6F42C1',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#5a32a3'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#6F42C1'}
+                >
+                  픽업 일정 수정
+                </button>
+              </Link>
+            )}
+            <Link href="/admin/donations">
+              <button style={{
+                padding: '8px 16px',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#6C757D',
+                backgroundColor: 'white',
+                border: '1px solid #DEE2E6',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}>
+                목록으로
+              </button>
+            </Link>
+          </div>
         </div>
 
         {/* 기부 기본 정보 */}
@@ -287,6 +329,26 @@ function DonationDetailContent({ paramsPromise }: { paramsPromise: Promise<{ id:
                 </label>
                 <div style={{ fontSize: '14px', color: '#212529' }}>
                   {donation.direct_delivery_available ? '가능' : '불가'}
+                </div>
+              </div>
+            )}
+            {(donation as any).consumer_price && (
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#6C757D', marginBottom: '4px' }}>
+                  소비자가
+                </label>
+                <div style={{ fontSize: '14px', color: '#212529' }}>
+                  {Number((donation as any).consumer_price).toLocaleString()}원
+                </div>
+              </div>
+            )}
+            {(donation as any).manufacturing_cost && (
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#6C757D', marginBottom: '4px' }}>
+                  제조원가
+                </label>
+                <div style={{ fontSize: '14px', color: '#212529' }}>
+                  {Number((donation as any).manufacturing_cost).toLocaleString()}원
                 </div>
               </div>
             )}
@@ -579,6 +641,12 @@ function DonationDetailContent({ paramsPromise }: { paramsPromise: Promise<{ id:
                   <span style={{ fontSize: '14px', color: '#02391f', fontWeight: '600' }}>픽업 담당자</span>
                   <p style={{ fontSize: '16px', color: '#212529', margin: '4px 0 0 0', fontWeight: '500' }}>
                     {pickupSchedule.pickup_staff}
+                  </p>
+                </div>
+                <div>
+                  <span style={{ fontSize: '14px', color: '#02391f', fontWeight: '600' }}>담당자 연락처</span>
+                  <p style={{ fontSize: '16px', color: '#212529', margin: '4px 0 0 0', fontWeight: '500' }}>
+                    {(pickupSchedule as any).pickup_staff_phone || '-'}
                   </p>
                 </div>
                 <div>

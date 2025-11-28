@@ -15,10 +15,10 @@ type Quote = Database['public']['Tables']['quotes']['Row']
 const statusMap: { [key: string]: { text: string; color: string } } = {
   'pending_review': { text: '승인 대기', color: '#FF8C00' },
   'rejected': { text: '승인 거절', color: '#DC3545' },
-  'matched': { text: '수혜기관 선정', color: '#17A2B8' },
   'quote_sent': { text: '견적서 도착', color: '#FF8C00' },
-  'quote_accepted': { text: '견적 수락', color: '#007BFF' },
-  'pickup_coordinating': { text: '픽업 예정', color: '#007BFF' }, // 임시 처리
+  'quote_accepted': { text: '수혜자 매칭 중', color: '#FFC107' },
+  'matched': { text: '수혜기관 확정', color: '#17A2B8' },
+  'pickup_coordinating': { text: '픽업 예정', color: '#007BFF' },
   'pickup_scheduled': { text: '픽업 예정', color: '#007BFF' },
   'received': { text: '수령 완료', color: '#28A745' },
   'completed': { text: '기부 완료', color: '#28A745' }
@@ -28,9 +28,9 @@ const tabs = [
   { id: '전체', label: '전체' },
   { id: '승인 대기', label: '승인 대기' },
   { id: '승인 거절', label: '승인 거절' },
-  { id: '수혜기관 선정', label: '수혜기관 선정' },
   { id: '견적서 도착', label: '견적서 도착' },
   { id: '견적 수락', label: '견적 수락' },
+  { id: '수혜기관 선정', label: '수혜기관 선정' },
   { id: '픽업 예정', label: '픽업 예정' },
   { id: '수령 완료', label: '수령 완료' },
   { id: '기부 완료', label: '기부 완료' }
@@ -120,19 +120,36 @@ export default function BusinessDashboardPage() {
 
 
   async function handleAcceptQuote(quoteId: string) {
-    const { error } = await supabase
+    // 1. Update quote status
+    const { error: quoteError } = await supabase
       .from('quotes')
       .update({ status: 'accepted' })
       .eq('id', quoteId)
 
-    if (!error && selectedDonation) {
-      // Navigate to pickup scheduling page
-      router.push(`/business/donation/${selectedDonation.id}/pickup-schedule`)
+    if (quoteError) {
+      alert(`견적 수락 중 오류가 발생했습니다: ${quoteError.message}`)
+      return
+    }
+
+    // 2. Update donation status
+    if (selectedDonation) {
+      const { error: donationError } = await supabase
+        .from('donations')
+        .update({ status: 'quote_accepted' })
+        .eq('id', selectedDonation.id)
+
+      if (donationError) {
+        alert(`상태 업데이트 중 오류가 발생했습니다: ${donationError.message}`)
+        return
+      }
     }
 
     setShowQuoteModal(false)
     setSelectedQuote(null)
     setSelectedDonation(null)
+
+    alert('견적을 수락했습니다. 곧 수혜기관 매칭이 진행될 예정입니다.')
+    window.location.reload()
   }
 
   async function handleRejectQuote(quoteId: string) {
@@ -155,6 +172,8 @@ export default function BusinessDashboardPage() {
     setShowQuoteModal(false)
     setSelectedQuote(null)
     setSelectedDonation(null)
+
+    alert('견적을 거절했습니다.')
   }
 
   if (loading) {

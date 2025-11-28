@@ -12,6 +12,7 @@ interface Donation {
   unit: string
   pickup_deadline: string
   pickup_location: string
+  status?: string
   businesses?: {
     name: string
   }
@@ -22,6 +23,18 @@ interface Beneficiary {
   organization_name: string
   organization_type: string
   address: string
+}
+
+function getStatusText(status: string): string {
+  const statusMap: { [key: string]: string } = {
+    'pending_review': '승인 대기',
+    'quote_sent': '견적서 발송됨 (기부자 확인 대기)',
+    'quote_accepted': '견적서 수락',
+    'matched': '수혜자 선정 완료',
+    'pickup_scheduled': '픽업 예정',
+    'completed': '기부 완료'
+  }
+  return statusMap[status] || status
 }
 
 export default function ProposeDonationPage() {
@@ -137,6 +150,13 @@ export default function ProposeDonationPage() {
   }
 
   const handleSubmit = async () => {
+    // 견적서 수락 여부 확인
+    if (donation && donation.status !== 'quote_accepted') {
+      const statusText = getStatusText(donation.status || 'unknown')
+      alert(`견적서가 수락된 기부건만 수혜자를 선정할 수 있습니다.\n현재 상태: ${statusText}`)
+      return
+    }
+
     if (selectedBeneficiaries.length === 0) {
       alert('최소 하나의 수혜 기관을 선택해주세요.')
       return
@@ -226,6 +246,33 @@ export default function ProposeDonationPage() {
         <h1 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '32px', color: '#212529' }}>
           수혜 기관 선택
         </h1>
+
+        {/* 견적서 수락 상태 표시 */}
+        <div style={{
+          backgroundColor: donation?.status === 'quote_accepted' ? '#D4EDDA' : '#FFF3CD',
+          border: `1px solid ${donation?.status === 'quote_accepted' ? '#28A745' : '#FFC107'}`,
+          borderRadius: '8px',
+          padding: '16px',
+          marginBottom: '24px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '20px' }}>
+              {donation?.status === 'quote_accepted' ? '✅' : '⏳'}
+            </span>
+            <div>
+              <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#212529', marginBottom: '4px' }}>
+                {donation?.status === 'quote_accepted'
+                  ? '견적서가 수락되었습니다'
+                  : '견적서 수락 대기 중입니다'}
+              </p>
+              <p style={{ margin: 0, fontSize: '13px', color: '#6C757D' }}>
+                {donation?.status === 'quote_accepted'
+                  ? '이제 수혜기관을 선정할 수 있습니다.'
+                  : '기부자가 견적서를 수락한 후 수혜기관을 선정할 수 있습니다.'}
+              </p>
+            </div>
+          </div>
+        </div>
 
         {/* 기부 정보 */}
         <div style={{

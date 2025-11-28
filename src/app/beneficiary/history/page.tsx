@@ -34,6 +34,7 @@ export default function BeneficiaryHistoryPage() {
   const [history, setHistory] = useState<DonationHistory[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState<string | null>(null)
+  const [uploadingReview, setUploadingReview] = useState<string | null>(null)
 
   useEffect(() => {
     fetchHistory()
@@ -116,7 +117,7 @@ export default function BeneficiaryHistoryPage() {
       // Update donation match with receipt photo
       const match = history.find(h => h.id === matchId)
       const existingPhotos = match?.receipt_photos || []
-      
+
       const { error: updateError } = await supabase
         .from('donation_matches')
         .update({
@@ -134,6 +135,53 @@ export default function BeneficiaryHistoryPage() {
       alert('사진 업로드 중 오류가 발생했습니다.')
     } finally {
       setUploading(null)
+    }
+  }
+
+  async function handleReviewUpload(matchId: string, event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // 파일 형식 검증
+    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+    if (!allowedTypes.includes(file.type)) {
+      alert('PDF 또는 Word 문서만 업로드 가능합니다.')
+      return
+    }
+
+    setUploadingReview(matchId)
+
+    try {
+      // Upload file to Supabase Storage
+      const fileName = `reviews/${matchId}_${Date.now()}_${file.name}`
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('donation-images')
+        .upload(fileName, file)
+
+      if (uploadError) throw uploadError
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('donation-images')
+        .getPublicUrl(fileName)
+
+      // Update donation match with review file
+      const { error: updateError } = await supabase
+        .from('donation_matches')
+        .update({
+          review_file_url: publicUrl,
+          review_uploaded_at: new Date().toISOString()
+        })
+        .eq('id', matchId)
+
+      if (updateError) throw updateError
+
+      alert('후기가 등록되었습니다.')
+      await fetchHistory()
+    } catch (error) {
+      alert('파일 업로드 중 오류가 발생했습니다.')
+    } finally {
+      setUploadingReview(null)
     }
   }
 
@@ -311,10 +359,12 @@ export default function BeneficiaryHistoryPage() {
                 </div>
 
                 {/* 수령 확인 업로드 */}
-                <div style={{ 
-                  marginTop: '16px', 
-                  paddingTop: '16px', 
-                  borderTop: '1px solid #E9ECEF' 
+                <div style={{
+                  marginTop: '16px',
+                  paddingTop: '16px',
+                  borderTop: '1px solid #E9ECEF',
+                  display: 'flex',
+                  gap: '8px'
                 }}>
                   <input
                     type="file"
@@ -351,6 +401,43 @@ export default function BeneficiaryHistoryPage() {
                     }}
                   >
                     {uploading === item.id ? '업로드 중...' : '수령 확인 사진 추가'}
+                  </label>
+
+                  <input
+                    type="file"
+                    id={`review-${item.id}`}
+                    accept=".pdf,.doc,.docx"
+                    onChange={(e) => handleReviewUpload(item.id, e)}
+                    style={{ display: 'none' }}
+                    disabled={uploadingReview === item.id}
+                  />
+                  <label
+                    htmlFor={`review-${item.id}`}
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#007BFF',
+                      backgroundColor: 'transparent',
+                      border: '1px solid #007BFF',
+                      borderRadius: '4px',
+                      cursor: uploadingReview === item.id ? 'not-allowed' : 'pointer',
+                      opacity: uploadingReview === item.id ? 0.6 : 1,
+                      transition: 'all 0.2s',
+                      display: 'inline-block'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (uploadingReview !== item.id) {
+                        e.currentTarget.style.backgroundColor = '#007BFF';
+                        e.currentTarget.style.color = 'white';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = '#007BFF';
+                    }}
+                  >
+                    {uploadingReview === item.id ? '업로드 중...' : '후기 등록'}
                   </label>
                 </div>
                 </div>
@@ -468,9 +555,11 @@ export default function BeneficiaryHistoryPage() {
                   )}
 
                   {/* 수령 확인 업로드 */}
-                  <div style={{ 
-                    paddingTop: '12px', 
-                    borderTop: '1px solid #E9ECEF' 
+                  <div style={{
+                    paddingTop: '12px',
+                    borderTop: '1px solid #E9ECEF',
+                    display: 'flex',
+                    gap: '8px'
                   }}>
                     <input
                       type="file"
@@ -483,8 +572,8 @@ export default function BeneficiaryHistoryPage() {
                     <label
                       htmlFor={`receipt-mobile-${item.id}`}
                       style={{
-                        padding: '8px 16px',
-                        fontSize: '14px',
+                        padding: '8px 12px',
+                        fontSize: '13px',
                         fontWeight: '500',
                         color: '#007BFF',
                         backgroundColor: 'transparent',
@@ -494,12 +583,42 @@ export default function BeneficiaryHistoryPage() {
                         opacity: uploading === item.id ? 0.6 : 1,
                         transition: 'all 0.2s',
                         display: 'inline-block',
-                        width: '100%',
+                        flex: 1,
                         textAlign: 'center',
                         boxSizing: 'border-box'
                       }}
                     >
                       {uploading === item.id ? '업로드 중...' : '수령 확인 사진 추가'}
+                    </label>
+
+                    <input
+                      type="file"
+                      id={`review-mobile-${item.id}`}
+                      accept=".pdf,.doc,.docx"
+                      onChange={(e) => handleReviewUpload(item.id, e)}
+                      style={{ display: 'none' }}
+                      disabled={uploadingReview === item.id}
+                    />
+                    <label
+                      htmlFor={`review-mobile-${item.id}`}
+                      style={{
+                        padding: '8px 12px',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        color: '#007BFF',
+                        backgroundColor: 'transparent',
+                        border: '1px solid #007BFF',
+                        borderRadius: '4px',
+                        cursor: uploadingReview === item.id ? 'not-allowed' : 'pointer',
+                        opacity: uploadingReview === item.id ? 0.6 : 1,
+                        transition: 'all 0.2s',
+                        display: 'inline-block',
+                        flex: 1,
+                        textAlign: 'center',
+                        boxSizing: 'border-box'
+                      }}
+                    >
+                      {uploadingReview === item.id ? '업로드 중...' : '후기 등록'}
                     </label>
                   </div>
                 </div>

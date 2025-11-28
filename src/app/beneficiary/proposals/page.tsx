@@ -52,7 +52,7 @@ const statusMap: { [key: string]: { text: string; color: string } } = {
   'quote_sent': { text: '픽업 대기', color: '#17A2B8' },
   'pickup_scheduled': { text: '픽업 예정', color: '#007BFF' },
   'rejected': { text: '거절', color: '#DC3545' },
-  'received': { text: '수령 완료', color: '#007BFF' }
+  'received': { text: '수령 완료', color: '#28A745' }
 }
 
 export default function BeneficiaryProposalsPage() {

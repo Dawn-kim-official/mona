@@ -11,9 +11,9 @@ import CircularProgress from '@/components/CircularProgress'
 const statusMap: { [key: string]: { text: string; color: string; bgColor: string } } = {
   'pending_review': { text: '승인 대기', color: '#FF8C00', bgColor: '#FF8C0020' },
   'rejected': { text: '승인 거절', color: '#DC3545', bgColor: '#DC354520' },
-  'matched': { text: '수혜기관 선정', color: '#17A2B8', bgColor: '#17A2B820' },
   'quote_sent': { text: '견적서 도착', color: '#FF8C00', bgColor: '#FF8C0020' },
-  'quote_accepted': { text: '견적 수락', color: '#007BFF', bgColor: '#007BFF20' },
+  'quote_accepted': { text: '수혜자 매칭 중', color: '#FFC107', bgColor: '#FFC10720' },
+  'matched': { text: '수혜기관 확정', color: '#17A2B8', bgColor: '#17A2B820' },
   'pickup_coordinating': { text: '픽업 일정 조율', color: '#6F42C1', bgColor: '#6F42C120' },
   'pickup_scheduled': { text: '픽업 예정', color: '#007BFF', bgColor: '#007BFF20' },
   'completed': { text: '기부 완료', color: '#28A745', bgColor: '#28A74520' }
@@ -628,7 +628,20 @@ export default function BusinessDashboardPage() {
                           })()}
                         </td>
                         <td style={{ padding: '12px', textAlign: 'center' }}>
-                          <span style={{ color: '#6C757D', fontSize: '13px' }}>-</span>
+                          <Link href={`/business/donation/${donation.id}`}>
+                            <button style={{
+                              padding: '6px 16px',
+                              fontSize: '13px',
+                              fontWeight: '500',
+                              color: 'white',
+                              backgroundColor: '#02391f',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer'
+                            }}>
+                              상세보기
+                            </button>
+                          </Link>
                         </td>
                       </tr>
                     ))}
@@ -707,7 +720,7 @@ export default function BusinessDashboardPage() {
                         </div>
                       </div>
                       
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '14px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '14px', marginBottom: '12px' }}>
                         <div>
                           <span style={{ color: '#6C757D', fontSize: '12px' }}>수량</span>
                           <div style={{ fontWeight: '500', color: '#212529' }}>
@@ -721,6 +734,22 @@ export default function BusinessDashboardPage() {
                           </div>
                         </div>
                       </div>
+
+                      <Link href={`/business/donation/${donation.id}`} style={{ textDecoration: 'none', width: '100%' }}>
+                        <button style={{
+                          width: '100%',
+                          padding: '8px 16px',
+                          fontSize: '13px',
+                          fontWeight: '500',
+                          color: 'white',
+                          backgroundColor: '#02391f',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}>
+                          상세보기
+                        </button>
+                      </Link>
                     </div>
                   );
                 })}

@@ -102,11 +102,15 @@ export default function ProposalDetailPage() {
 
 
       if (!error && data) {
-        // Get donation details
+        // Get donation details (exclude consumer_price and manufacturing_cost)
         const { data: donationData, error: donationError } = await supabase
           .from('donations')
           .select(`
-            *,
+            id, business_id, name, description, quantity, unit, condition,
+            expiration_date, pickup_deadline, pickup_location, pickup_time,
+            additional_info, photos, status, category, created_at, updated_at,
+            direct_delivery_available, product_detail_url,
+            tax_deduction_needed, tax_invoice_email, business_type,
             businesses (*)
           `)
           .eq('id', data.donation_id)
@@ -612,6 +616,12 @@ export default function ProposalDetailPage() {
                   <span style={{ fontSize: '14px', color: '#02391f', fontWeight: '600' }}>픽업 담당자</span>
                   <p style={{ fontSize: '16px', color: '#212529', margin: '4px 0 0 0', fontWeight: '500' }}>
                     {pickupSchedule ? pickupSchedule.pickup_staff : '미정'}
+                  </p>
+                </div>
+                <div>
+                  <span style={{ fontSize: '14px', color: '#02391f', fontWeight: '600' }}>담당자 연락처</span>
+                  <p style={{ fontSize: '16px', color: '#212529', margin: '4px 0 0 0', fontWeight: '500' }}>
+                    {pickupSchedule ? ((pickupSchedule as any).pickup_staff_phone || '미정') : '미정'}
                   </p>
                 </div>
                 <div>

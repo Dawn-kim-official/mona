@@ -56,13 +56,15 @@ export default function AdminQuoteUploadPage() {
 
   async function loadSavedQuote() {
     try {
-      // 임시저장된 견적서 불러오기
-      const { data: quoteData } = await supabase
+      // 기존 견적서 불러오기 (status 상관없이 가장 최신 것)
+      const { data: quotes } = await supabase
         .from('quotes')
         .select('*')
         .eq('donation_id', params.id)
-        .eq('status', 'draft')
-        .single()
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      const quoteData = quotes?.[0]
 
       if (quoteData) {
         setSavedQuote(quoteData)
@@ -74,7 +76,7 @@ export default function AdminQuoteUploadPage() {
         })
       }
     } catch (error) {
-      // No saved draft
+      // No saved quote
     }
   }
 
@@ -187,10 +189,11 @@ export default function AdminQuoteUploadPage() {
   // 단가 변경시 부가세 자동 계산 (10%)
   const handleUnitPriceChange = (value: string) => {
     const unitPrice = parseInt(value) || 0
-    const totalAcceptedQuantity = donationMatches.reduce((sum, match) => 
-      sum + (match.accepted_quantity || 0), 0
-    )
-    const totalPrice = unitPrice * totalAcceptedQuantity
+    // 수혜자가 있으면 수락 수량, 없으면 전체 기부 수량 사용
+    const totalQuantity = donationMatches.length > 0
+      ? donationMatches.reduce((sum, match) => sum + (match.accepted_quantity || 0), 0)
+      : (donation?.quantity || 0)
+    const totalPrice = unitPrice * totalQuantity
     const logisticsCost = Math.round(totalPrice * 0.1)
     setFormData({
       ...formData,
@@ -204,10 +207,11 @@ export default function AdminQuoteUploadPage() {
     setLoading(true)
     try {
       const unitPrice = parseInt(formData.unit_price) || 0
-      const totalAcceptedQuantity = donationMatches.reduce((sum, match) => 
-        sum + (match.accepted_quantity || 0), 0
-      )
-      const supplyPrice = unitPrice * totalAcceptedQuantity
+      // 수혜자가 있으면 수락 수량, 없으면 전체 기부 수량 사용
+      const totalQuantity = donationMatches.length > 0
+        ? donationMatches.reduce((sum, match) => sum + (match.accepted_quantity || 0), 0)
+        : (donation?.quantity || 0)
+      const supplyPrice = unitPrice * totalQuantity
       const logisticsCost = parseInt(formData.logistics_cost) || 0
       const totalAmount = supplyPrice + logisticsCost
 
@@ -263,23 +267,19 @@ export default function AdminQuoteUploadPage() {
         return
       }
       
-      // 매칭된 수혜기관이 없는 경우
-      if (donationMatches.length === 0) {
-        alert('매칭된 수혜기관이 없습니다. 먼저 수혜기관을 매칭해주세요.')
-        setLoading(false)
-        return
-      }
+      // 수혜자 매칭은 견적서 수락 후에 진행되므로 검증 제거
 
       console.log('Form data:', formData)
       console.log('Selected beneficiaries:', selectedBeneficiaries)
       console.log('Donation matches:', donationMatches)
 
       // Calculate total amount based on all matched beneficiaries' accepted quantities
+      // 수혜자가 없으면 전체 기부 수량 사용
       const unitPrice = parseInt(formData.unit_price) || 0
-      const totalAcceptedQuantity = donationMatches.reduce((sum, match) => 
-        sum + (match.accepted_quantity || 0), 0
-      )
-      const supplyPrice = unitPrice * totalAcceptedQuantity
+      const totalQuantity = donationMatches.length > 0
+        ? donationMatches.reduce((sum, match) => sum + (match.accepted_quantity || 0), 0)
+        : (donation?.quantity || 0)
+      const supplyPrice = unitPrice * totalQuantity
       const logisticsCost = parseInt(formData.logistics_cost) || 0
       const totalAmount = supplyPrice + logisticsCost
 
@@ -287,10 +287,21 @@ export default function AdminQuoteUploadPage() {
 
       let quoteId = savedQuote?.id
 
-      // 임시저장된 견적서가 있으면 업데이트, 없으면 새로 생성
-      if (savedQuote) {
-        console.log('Updating existing quote:', savedQuote.id)
-        
+      // 기존 견적서 확인 (savedQuote가 없어도 DB에서 다시 확인)
+      const { data: existingQuotes } = await supabase
+        .from('quotes')
+        .select('id, status')
+        .eq('donation_id', params.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      const existingQuote = existingQuotes?.[0]
+
+      // 기존 견적서가 있으면 업데이트, 없으면 새로 생성
+      if (existingQuote || savedQuote) {
+        const quoteIdToUpdate = savedQuote?.id || existingQuote?.id
+        console.log('Updating existing quote:', quoteIdToUpdate)
+
         let updatePayload: any = {
           unit_price: unitPrice,
           logistics_cost: logisticsCost,
@@ -299,13 +310,13 @@ export default function AdminQuoteUploadPage() {
           status: 'pending',
           estimated_pickup_date: donation?.pickup_deadline || new Date().toISOString()
         }
-        
+
         const { data: updateData, error } = await supabase
           .from('quotes')
           .update(updatePayload)
-          .eq('id', savedQuote.id)
+          .eq('id', quoteIdToUpdate)
           .select()
-        
+
         if (error) {
           console.error('Quote update error details:', error)
           console.error('Error code:', error.code)
@@ -314,6 +325,7 @@ export default function AdminQuoteUploadPage() {
           throw error
         } else {
           console.log('Quote updated successfully:', updateData)
+          quoteId = quoteIdToUpdate
         }
       } else {
         console.log('Creating new quote for donation_id:', params.id)
@@ -434,11 +446,12 @@ export default function AdminQuoteUploadPage() {
     return <div style={{ padding: '40px', textAlign: 'center' }}>로딩 중...</div>
   }
 
-  // 화면에 표시할 총 금액 계산 (매칭된 모든 수혜기관의 수량 합계)
-  const totalAcceptedQuantity = donationMatches.reduce((sum, match) => 
-    sum + (match.accepted_quantity || 0), 0
-  )
-  const supplyPrice = (parseInt(formData.unit_price) || 0) * totalAcceptedQuantity
+  // 화면에 표시할 총 금액 계산
+  // 수혜자가 있으면 수락 수량, 없으면 전체 기부 수량 사용
+  const totalQuantity = donationMatches.length > 0
+    ? donationMatches.reduce((sum, match) => sum + (match.accepted_quantity || 0), 0)
+    : (donation?.quantity || 0)
+  const supplyPrice = (parseInt(formData.unit_price) || 0) * totalQuantity
   const totalAmount = supplyPrice + (parseInt(formData.logistics_cost) || 0)
 
   return (
@@ -469,6 +482,29 @@ export default function AdminQuoteUploadPage() {
           console.log('Form onSubmit triggered!')
           handleSubmit(e)
         }}>
+          {/* 수혜자가 아직 선정되지 않았을 때 안내 메시지 */}
+          {donationMatches.length === 0 && (
+            <div style={{
+              backgroundColor: '#FFF9E6',
+              border: '1px solid #ffd020',
+              borderRadius: '8px',
+              padding: '16px',
+              marginBottom: '24px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '20px' }}>ℹ️</span>
+                <div>
+                  <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#212529', marginBottom: '4px' }}>
+                    아직 수혜기관이 선정되지 않았습니다
+                  </p>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#6C757D' }}>
+                    견적서가 기부자에게 수락되면 수혜기관을 선정할 수 있습니다.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* 수혜기관 선택 (복수 선택 가능) */}
           {beneficiaries.length > 0 && (
             <div style={{
@@ -546,6 +582,22 @@ export default function AdminQuoteUploadPage() {
                   {new Date(donation.pickup_deadline).toLocaleDateString('ko-KR')}
                 </span>
               </div>
+              {(donation as any).consumer_price && (
+                <div>
+                  <span style={{ fontSize: '13px', color: '#6C757D', fontWeight: '500' }}>소비자가: </span>
+                  <span style={{ fontSize: '14px', color: '#212529' }}>
+                    {Number((donation as any).consumer_price).toLocaleString()}원
+                  </span>
+                </div>
+              )}
+              {(donation as any).manufacturing_cost && (
+                <div>
+                  <span style={{ fontSize: '13px', color: '#6C757D', fontWeight: '500' }}>제조원가: </span>
+                  <span style={{ fontSize: '14px', color: '#212529' }}>
+                    {Number((donation as any).manufacturing_cost).toLocaleString()}원
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -606,7 +658,7 @@ export default function AdminQuoteUploadPage() {
                   borderRadius: '4px',
                   textAlign: 'right'
                 }}>
-                  {totalAcceptedQuantity}{donation.unit || 'kg'}
+                  {totalQuantity}{donation.unit || 'kg'}
                 </div>
               </div>
 
@@ -731,12 +783,7 @@ export default function AdminQuoteUploadPage() {
                   alert('단가를 입력해주세요.')
                   return
                 }
-                
-                if (selectedBeneficiaries.length === 0) {
-                  alert('수혜기관을 선택해주세요.')
-                  return
-                }
-                
+
                 console.log('Calling handleSubmit...')
                 handleSubmit(e as any)
               }}

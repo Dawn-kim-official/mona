@@ -128,9 +128,9 @@ export default function MatchingDetailModal({
 
   const statusMap: { [key: string]: { text: string; color: string } } = {
     'pending_review': { text: '승인 대기', color: '#FF8C00' },
-    'matched': { text: '수혜기관 선정', color: '#17A2B8' },
-    'quote_sent': { text: '견적 대기', color: '#FF8C00' },
-    'quote_accepted': { text: '견적 수락', color: '#007BFF' },
+    'quote_sent': { text: '견적 확인 대기', color: '#FF8C00' },
+    'quote_accepted': { text: '수혜자 매칭 대기', color: '#FFC107' },
+    'matched': { text: '수혜기관 확정', color: '#17A2B8' },
     'pickup_scheduled': { text: '픽업 예정', color: '#007BFF' },
     'completed': { text: '기부 완료', color: '#28A745' }
   }

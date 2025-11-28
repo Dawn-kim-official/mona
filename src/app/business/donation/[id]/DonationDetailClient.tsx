@@ -33,11 +33,12 @@ interface Quote {
 }
 
 const statusSteps = [
-  { key: 'pending_review', label: '등록', icon: '1' },
-  { key: 'quote_sent', label: '견적 발송', icon: '2' },
-  { key: 'quote_accepted', label: '견적 확인', icon: '3' },
-  { key: 'pickup_scheduled', label: '일정 조율', icon: '4' },
-  { key: 'completed', label: '픽업 완료', icon: '5' }
+  { key: 'pending_review', label: '등록 완료', icon: '1' },
+  { key: 'quote_sent', label: '견적 확인 중', icon: '2' },
+  { key: 'quote_accepted', label: '수혜자 매칭 중', icon: '3' },
+  { key: 'matched', label: '수혜자 확정', icon: '4' },
+  { key: 'pickup_scheduled', label: '픽업 예정', icon: '5' },
+  { key: 'completed', label: '기부 완료', icon: '6' }
 ]
 
 interface DonationDetailClientProps {
@@ -268,7 +269,7 @@ export default function DonationDetailClient({ donationId, initialDonation, init
 
       console.log('Donation updated successfully:', updatedDonation)
 
-      alert('견적을 수락했습니다. 곧 픽업 일정이 조율될 예정입니다.')
+      alert('견적을 수락했습니다. 곧 수혜기관 매칭이 진행될 예정입니다.')
       
       // 페이지 새로고침으로 상태 완전히 반영
       console.log('Reloading page...')
@@ -302,10 +303,10 @@ export default function DonationDetailClient({ donationId, initialDonation, init
     const stepMap: { [key: string]: number } = {
       'pending_review': 1,
       'quote_sent': 2,
-      'matched': 2,
       'quote_accepted': 3,
-      'pickup_scheduled': 4,
-      'completed': 5
+      'matched': 4,
+      'pickup_scheduled': 5,
+      'completed': 6
     }
     return stepMap[status] || 1
   }
@@ -320,13 +321,14 @@ export default function DonationDetailClient({ donationId, initialDonation, init
   // Check if any donation matches have been received
   const hasReceivedMatch = donationMatches?.some(match => match.status === 'received') || false
   
-  const statusBadge = donation.status === 'quote_sent' ? '견적 대기' : 
+  const statusBadge = donation.status === 'pending_review' ? '승인 대기' :
+                     donation.status === 'quote_sent' ? '견적 확인 대기' :
+                     donation.status === 'quote_accepted' ? '수혜자 매칭 중' :
+                     donation.status === 'matched' ? '수혜자 확정' :
                      donation.status === 'pickup_scheduled' && hasReceivedMatch ? '수령 완료' :
                      donation.status === 'pickup_scheduled' ? '픽업 예정' :
-                     donation.status === 'pickup_coordinating' ? '픽업 예정' : // 임시 처리
-                     donation.status === 'completed' ? '기부 완료' : 
-                     donation.status === 'quote_accepted' ? '견적 수락' :
-                     donation.status === 'pending_review' ? '승인 대기' : '진행중'
+                     donation.status === 'pickup_coordinating' ? '픽업 예정' :
+                     donation.status === 'completed' ? '기부 완료' : '진행중'
 
   const statusColor = donation.status === 'quote_sent' ? '#FF8C00' :
                       donation.status === 'pickup_scheduled' && hasReceivedMatch ? '#28A745' :
@@ -701,6 +703,12 @@ export default function DonationDetailClient({ donationId, initialDonation, init
                   <span style={{ fontSize: '14px', color: '#02391f', fontWeight: '600' }}>픽업 담당자</span>
                   <p style={{ fontSize: '16px', color: '#212529', margin: '4px 0 0 0', fontWeight: '500' }}>
                     {pickupSchedule.pickup_staff}
+                  </p>
+                </div>
+                <div>
+                  <span style={{ fontSize: '14px', color: '#02391f', fontWeight: '600' }}>담당자 연락처</span>
+                  <p style={{ fontSize: '16px', color: '#212529', margin: '4px 0 0 0', fontWeight: '500' }}>
+                    {(pickupSchedule as any).pickup_staff_phone || '-'}
                   </p>
                 </div>
                 <div>

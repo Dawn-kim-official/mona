@@ -36,7 +36,10 @@ export default function NewDonationPage() {
     productDetailUrl: '', // 제품 상세정보 링크
     // 세금계산서 정보
     taxInvoiceEmail: '',
-    businessType: ''
+    businessType: '',
+    // 소비자가/제조원가
+    consumerPrice: '',
+    manufacturingCost: ''
   })
 
   useEffect(() => {
@@ -74,6 +77,24 @@ export default function NewDonationPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+
+    // 사진 필수 검증
+    if (formData.photos.length === 0) {
+      alert('기부 물품 사진을 최소 1장 이상 업로드해주세요.')
+      return
+    }
+
+    // 소비자가/제조원가 필수 검증
+    if (!formData.consumerPrice || parseFloat(formData.consumerPrice) <= 0) {
+      alert('소비자가를 입력해주세요.')
+      return
+    }
+
+    if (!formData.manufacturingCost || parseFloat(formData.manufacturingCost) <= 0) {
+      alert('제조원가를 입력해주세요.')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -123,7 +144,7 @@ export default function NewDonationPage() {
         quantity: parseFloat(formData.quantity) || 0,
         unit: formData.unit === 'custom' ? formData.customUnit : formData.unit,
         condition: 'good',
-        expiration_date: formData.expiryDate || '',
+        expiration_date: formData.expiryDate || '2999-01-01',
         pickup_deadline: formData.pickupDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default to 7 days from now
         pickup_location: fullPickupAddress,
         pickup_time: formData.pickupTime || null,
@@ -135,7 +156,9 @@ export default function NewDonationPage() {
         product_detail_url: formData.productDetailUrl || null, // 제품 상세정보 링크
         tax_deduction_needed: taxInvoiceRequested,
         tax_invoice_email: taxInvoiceRequested ? formData.taxInvoiceEmail : null,
-        business_type: taxInvoiceRequested ? formData.businessType : null
+        business_type: taxInvoiceRequested ? formData.businessType : null,
+        consumer_price: formData.consumerPrice ? parseFloat(formData.consumerPrice) : null,
+        manufacturing_cost: formData.manufacturingCost ? parseFloat(formData.manufacturingCost) : null
       }
       
       // Creating donation with data
@@ -413,12 +436,18 @@ export default function NewDonationPage() {
                   value={formData.category}
                   onChange={(e) => {
                     const newCategory = e.target.value
-                    const foodCategories = ['식품', '생필품', '가구', '가전제품', '의류', '기타']
-                    // 비식품 카테고리로 변경 시 소비기한 초기화
-                    if (!foodCategories.includes(newCategory)) {
-                      setFormData({ ...formData, category: newCategory, expiryDate: '' })
-                    } else {
+                    const foodCategories = ['식품']
+
+                    if (foodCategories.includes(newCategory)) {
+                      // 식품 선택: 소비기한 유지 또는 초기화
                       setFormData({ ...formData, category: newCategory })
+                    } else {
+                      // 비식품 선택: 소비기한을 2999-01-01로 자동 설정
+                      setFormData({
+                        ...formData,
+                        category: newCategory,
+                        expiryDate: '2999-01-01'
+                      })
                     }
                   }}
                   style={inputStyle}
@@ -475,6 +504,52 @@ export default function NewDonationPage() {
                     식품 카테고리만 소비기한 입력이 필요합니다.
                   </small>
                 )}
+              </div>
+            </div>
+
+            {/* 소비자가/제조원가 입력 필드 */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
+              <div>
+                <label style={labelStyle}>
+                  소비자가 <span style={{ color: '#DC3545' }}>*</span>
+                </label>
+                <input
+                  type="number"
+                  required
+                  value={formData.consumerPrice}
+                  onChange={(e) => setFormData({ ...formData, consumerPrice: e.target.value })}
+                  style={inputStyle}
+                  placeholder="소비자가 입력 (원)"
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#02391f'
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#CED4DA'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>
+                  제조원가 <span style={{ color: '#DC3545' }}>*</span>
+                </label>
+                <input
+                  type="number"
+                  required
+                  value={formData.manufacturingCost}
+                  onChange={(e) => setFormData({ ...formData, manufacturingCost: e.target.value })}
+                  style={inputStyle}
+                  placeholder="제조원가 입력 (원)"
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#02391f'
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(27, 77, 62, 0.1)'
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#CED4DA'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
+                />
               </div>
             </div>
 
@@ -802,7 +877,9 @@ export default function NewDonationPage() {
             boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
             marginBottom: '24px'
           }}>
-            <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', color: '#212529' }}>기부 물품 사진 (최대 3장)</h2>
+            <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', color: '#212529' }}>
+              기부 물품 사진 <span style={{ color: '#DC3545' }}>*</span> (최대 3장)
+            </h2>
             <label htmlFor="photo-upload" style={{ 
               border: formData.photos.length >= 3 ? '2px dashed #CED4DA' : '2px dashed #DEE2E6',
               borderRadius: '8px',

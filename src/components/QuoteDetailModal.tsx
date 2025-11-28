@@ -27,8 +27,8 @@ interface QuoteDetailModalProps {
     pickup_deadline: string
     created_at: string
   } | null
-  onAccept: () => void
-  onReject: () => void
+  onAccept: (quoteId: string) => void
+  onReject: (quoteId: string) => void
 }
 
 export default function QuoteDetailModal({ 
@@ -269,10 +269,11 @@ export default function QuoteDetailModal({
               </div>
             </div>
 
-            {/* 하단 버튼 - 닫기만 표시 */}
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'flex-end'
+            {/* 하단 버튼 */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
             }}>
               <button
                 onClick={onClose}
@@ -289,6 +290,50 @@ export default function QuoteDetailModal({
               >
                 닫기
               </button>
+
+              {/* 견적서가 pending 상태일 때만 수락/거절 버튼 표시 */}
+              {quote && quote.status !== 'accepted' && quote.status !== 'rejected' && (
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => {
+                      if (window.confirm('견적서를 거절하시겠습니까?')) {
+                        onReject(quote.id)
+                      }
+                    }}
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: '13px',
+                      fontWeight: '500',
+                      color: '#DC3545',
+                      backgroundColor: 'white',
+                      border: '1px solid #DC3545',
+                      borderRadius: '4px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    거절
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (window.confirm('견적서를 수락하시겠습니까?')) {
+                        onAccept(quote.id)
+                      }
+                    }}
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: '13px',
+                      fontWeight: '500',
+                      color: 'white',
+                      backgroundColor: '#02391f',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    수락
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

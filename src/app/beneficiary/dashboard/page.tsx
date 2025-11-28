@@ -10,6 +10,7 @@ import CircularProgress from '@/components/CircularProgress'
 interface DashboardStats {
   totalProposals: number
   pendingProposals: number
+  inProgressDonations: number
   totalReceived: number
   thisMonthReceived: number
 }
@@ -21,6 +22,7 @@ export default function BeneficiaryDashboardPage() {
   const [stats, setStats] = useState<DashboardStats>({
     totalProposals: 0,
     pendingProposals: 0,
+    inProgressDonations: 0,
     totalReceived: 0,
     thisMonthReceived: 0
   })
@@ -59,21 +61,27 @@ export default function BeneficiaryDashboardPage() {
     if (matches) {
       const totalProposals = matches.length
       const pendingProposals = matches.filter(m => m.status === 'proposed').length
+      const inProgressDonations = matches.filter(m =>
+        m.status === 'accepted' ||
+        m.status === 'quote_sent' ||
+        m.status === 'pickup_scheduled'
+      ).length
       const totalReceived = matches.filter(m => m.status === 'received').length
-      
+
       // This month received
       const thisMonth = new Date()
       thisMonth.setDate(1)
       thisMonth.setHours(0, 0, 0, 0)
-      
-      const thisMonthReceived = matches.filter(m => 
-        m.status === 'received' && 
+
+      const thisMonthReceived = matches.filter(m =>
+        m.status === 'received' &&
         new Date(m.received_at) >= thisMonth
       ).length
 
       setStats({
         totalProposals,
         pendingProposals,
+        inProgressDonations,
         totalReceived,
         thisMonthReceived
       })
@@ -108,12 +116,14 @@ export default function BeneficiaryDashboardPage() {
             padding: 16px !important;
           }
           .stats-grid {
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            grid-template-rows: auto !important;
             gap: 12px !important;
           }
           .stats-card {
             padding: 20px !important;
             gap: 16px !important;
+            grid-row: auto !important;
           }
           .stats-card .circular-progress {
             width: 80px !important;
@@ -123,18 +133,20 @@ export default function BeneficiaryDashboardPage() {
             font-size: 24px !important;
           }
         }
-        
+
         @media (max-width: 480px) {
           .main-container {
             padding: 12px !important;
           }
           .stats-grid {
             grid-template-columns: 1fr !important;
+            grid-template-rows: auto !important;
             gap: 8px !important;
           }
           .stats-card {
             padding: 16px !important;
             gap: 12px !important;
+            grid-row: auto !important;
           }
           .stats-number {
             font-size: 20px !important;
@@ -157,9 +169,10 @@ export default function BeneficiaryDashboardPage() {
       </h1>
 
       {/* Statistics Cards with Circular Progress */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gridTemplateRows: 'repeat(2, 1fr)',
         gap: '16px',
         marginBottom: '32px'
       }} className="stats-grid">
@@ -171,7 +184,8 @@ export default function BeneficiaryDashboardPage() {
           boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
           display: 'flex',
           alignItems: 'center',
-          gap: '24px'
+          gap: '24px',
+          gridRow: '1 / 3'
         }} className="stats-card">
           <CircularProgress
             value={stats.totalProposals}
@@ -223,6 +237,38 @@ export default function BeneficiaryDashboardPage() {
             </div>
             <div style={{ fontSize: '12px', color: '#ADB5BD', marginTop: '4px' }}>
               응답 대기 중인 제안
+            </div>
+          </div>
+        </div>
+
+        {/* 진행 중 */}
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '32px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '24px'
+        }} className="stats-card">
+          <CircularProgress
+            value={stats.inProgressDonations}
+            maxValue={stats.totalProposals || 1}
+            size={120}
+            strokeWidth={8}
+            primaryColor="#17A2B8"
+            secondaryColor="#E9ECEF"
+            label={`${stats.totalProposals > 0 ? Math.round((stats.inProgressDonations / stats.totalProposals) * 100) : 0}%`}
+          />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '14px', color: '#6C757D', marginBottom: '8px' }}>
+              진행 중
+            </div>
+            <div style={{ fontSize: '36px', fontWeight: '700', color: '#212529', lineHeight: 1 }} className="stats-number">
+              {stats.inProgressDonations}
+            </div>
+            <div style={{ fontSize: '12px', color: '#ADB5BD', marginTop: '4px' }}>
+              진행 중인 기부
             </div>
           </div>
         </div>
