@@ -6,6 +6,8 @@ interface Quote {
   id: string
   donation_id: string
   unit_price: number
+  commission_rate?: number
+  commission_amount?: number
   logistics_cost: number
   total_amount: number
   estimated_pickup_date: string
@@ -58,6 +60,10 @@ export default function QuoteDetailModal({
 
   // 공급가액 계산 (단가 * 수량)
   const supplyAmount = quote.unit_price * donationInfo.quantity
+  // 수수료 계산 (DB에서 가져온 값 사용)
+  const commissionAmount = quote.commission_amount || 0
+  // 부가세 계산 (공급가액의 10%)
+  const vatAmount = Math.round(supplyAmount * 0.1)
 
   return (
     <>
@@ -215,14 +221,20 @@ export default function QuoteDetailModal({
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ color: '#6C757D' }}>부가세 (10%):</span>
+                  <span style={{ color: '#6C757D' }}>수수료:</span>
                   <span style={{ color: '#212529' }}>
-                    {quote.logistics_cost.toLocaleString()} 원
+                    {commissionAmount.toLocaleString()} 원
                   </span>
                 </div>
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#6C757D' }}>부가세 (10%):</span>
+                  <span style={{ color: '#212529' }}>
+                    {vatAmount.toLocaleString()} 원
+                  </span>
+                </div>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
                   alignItems: 'center',
                   paddingTop: '12px',
                   borderTop: '1px solid #DEE2E6',

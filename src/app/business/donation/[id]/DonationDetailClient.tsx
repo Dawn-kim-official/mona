@@ -269,8 +269,34 @@ export default function DonationDetailClient({ donationId, initialDonation, init
 
       console.log('Donation updated successfully:', updatedDonation)
 
+      // 어드민에게 견적서 승인 알림 이메일 발송
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        const { data: business } = await supabase
+          .from('businesses')
+          .select('name')
+          .eq('user_id', user?.id)
+          .single()
+
+        const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@mona.ai.kr'
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: adminEmail,
+            type: 'admin_quote_accepted',
+            businessName: business?.name,
+            donationName: donation?.name,
+            quoteAmount: quote.total_amount?.toLocaleString()
+          })
+        })
+      } catch (emailError) {
+        console.error('견적서 승인 이메일 발송 실패:', emailError)
+        // 이메일 실패해도 견적서 수락은 성공으로 처리
+      }
+
       alert('견적을 수락했습니다. 곧 수혜기관 매칭이 진행될 예정입니다.')
-      
+
       // 페이지 새로고침으로 상태 완전히 반영
       console.log('Reloading page...')
       window.location.reload()

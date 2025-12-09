@@ -15,6 +15,7 @@ interface Donation {
   status?: string
   businesses?: {
     name: string
+    email?: string
   }
 }
 
@@ -212,7 +213,66 @@ export default function ProposeDonationPage() {
       if (updateError) {
         alert(`상태 업데이트 중 오류가 발생했습니다: ${updateError.message}`)
       } else {
-        const message = selectedBeneficiaries.length === 1 
+        // 수혜기관들에게 매칭 제안 이메일 발송 + 기업에게 매칭 완료 이메일 발송
+        try {
+          const proposalLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/beneficiary/proposals`
+
+          // 1. 선정된 수혜기관들에게 이메일 발송
+          for (const beneficiaryId of selectedBeneficiaries) {
+            const beneficiary = beneficiaries.find(b => b.id === beneficiaryId)
+            if (beneficiary) {
+              // beneficiaries 테이블에서 user_id로 이메일 가져오기
+              const { data: profileData } = await supabase
+                .from('profiles')
+                .select('email')
+                .eq('id', beneficiary.id)
+                .single()
+
+              const beneficiaryEmail = profileData?.email
+
+              if (beneficiaryEmail && donation) {
+                await fetch('/api/send-email', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    to: beneficiaryEmail,
+                    type: 'beneficiary_match_proposal',
+                    donationName: donation.name,
+                    businessName: donation.businesses?.name,
+                    quantity: donation.quantity,
+                    unit: donation.unit,
+                    proposalLink
+                  })
+                })
+              }
+            }
+          }
+
+          // 2. 기업에게 매칭 완료 이메일 발송
+          if (donation?.businesses?.email) {
+            const beneficiaryNames = selectedBeneficiaries
+              .map(id => beneficiaries.find(b => b.id === id)?.organization_name)
+              .filter(Boolean)
+              .join(', ')
+
+            await fetch('/api/send-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                to: donation.businesses.email,
+                type: 'business_matching_complete',
+                donationName: donation.name,
+                beneficiaryName: beneficiaryNames,
+                pickupLocation: donation.pickup_location
+              })
+            })
+          }
+        } catch (emailError) {
+          console.error('매칭 이메일 발송 실패:', emailError)
+          // 이메일 실패해도 매칭은 성공으로 처리
+        }
+
+        const message = selectedBeneficiaries.length === 1
           ? '수혜기관이 성공적으로 선정되었습니다.'
           : `${selectedBeneficiaries.length}개의 수혜기관이 성공적으로 선정되었습니다.`
         alert(message)

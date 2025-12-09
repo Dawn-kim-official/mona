@@ -153,7 +153,33 @@ export default function AdminReportsPage() {
       if (selectedBusiness) {
         await fetchReports(selectedBusiness.id)
       }
-      
+
+      // 기업에게 ESG 보고서 업로드 완료 이메일 발송
+      try {
+        // businesses 테이블에서 이메일 가져오기
+        const { data: businessData } = await supabase
+          .from('businesses')
+          .select('email, name')
+          .eq('id', selectedBusiness.id)
+          .single()
+
+        if (businessData?.email) {
+          await fetch('/api/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: businessData.email,
+              type: 'business_report_uploaded',
+              businessName: businessData.name,
+              reportUrl: publicUrl
+            })
+          })
+        }
+      } catch (emailError) {
+        console.error('ESG 보고서 이메일 발송 실패:', emailError)
+        // 이메일 실패해도 리포트 업로드는 성공으로 처리
+      }
+
       // Reset form
       setMediaLinks([''])
       setSelectedFile(null)

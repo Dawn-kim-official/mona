@@ -170,6 +170,41 @@ export default function NewDonationPage() {
         throw error
       }
 
+      // 기부 등록 완료 이메일 발송 (기업 + 어드민)
+      try {
+        // 1. 기업에게 이메일 발송
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: user.email,
+            type: 'business_donation_registered',
+            donationName: formData.name,
+            businessName: businessInfo.name,
+            quantity: formData.quantity,
+            unit: formData.unit === 'custom' ? formData.customUnit : formData.unit
+          })
+        })
+
+        // 2. 어드민에게 이메일 발송
+        const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@mona.ai.kr'
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: adminEmail,
+            type: 'admin_donation_created',
+            businessName: businessInfo.name,
+            donationName: formData.name,
+            quantity: formData.quantity,
+            unit: formData.unit === 'custom' ? formData.customUnit : formData.unit
+          })
+        })
+      } catch (emailError) {
+        console.error('이메일 발송 실패:', emailError)
+        // 이메일 실패해도 기부 등록은 성공으로 처리
+      }
+
       alert('기부가 성공적으로 등록되었습니다!')
       router.push('/business/dashboard')
     } catch (error: any) {

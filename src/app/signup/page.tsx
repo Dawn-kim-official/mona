@@ -463,6 +463,25 @@ export default function SignupPage() {
           }
         }
 
+        // 어드민에게 회원가입 승인 요청 이메일 발송
+        try {
+          const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@mona.ai.kr'
+          await fetch('/api/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: adminEmail,
+              type: 'admin_signup_request',
+              memberType: userType === 'business' ? '기업' : '수혜기관',
+              organizationName: userType === 'business' ? businessName : organizationName,
+              signupDate: new Date().toLocaleDateString('ko-KR')
+            })
+          })
+        } catch (emailError) {
+          console.error('회원가입 알림 이메일 발송 실패:', emailError)
+          // 이메일 실패해도 회원가입은 성공으로 처리
+        }
+
         // 로그아웃 후 승인 대기 안내
         await supabase.auth.signOut()
         alert(`회원가입이 완료되었습니다.\n\n담당자가 ${userType === 'business' ? '사업자' : '기관'} 정보를 확인 후 승인 처리할 예정입니다.\n승인 완료 시 이메일로 안내드리겠습니다.`)

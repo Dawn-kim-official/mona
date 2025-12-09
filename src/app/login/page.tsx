@@ -266,6 +266,26 @@ export default function LoginPage() {
         </form>
 
         <div style={{
+          marginTop: '20px',
+          textAlign: 'center'
+        }}>
+          <Link
+            href="/forgot-password"
+            style={{
+              color: '#6C757D',
+              fontSize: '13px',
+              textDecoration: 'none',
+              fontFamily: 'Montserrat, sans-serif',
+              transition: 'color 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#02391f'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#6C757D'}
+          >
+            비밀번호를 잊으셨나요?
+          </Link>
+        </div>
+
+        <div style={{
           marginTop: '24px',
           textAlign: 'center'
         }}>
