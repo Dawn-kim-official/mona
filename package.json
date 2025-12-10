@@ -17,10 +17,10 @@
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.1",
     "jspdf-autotable": "^5.0.2",
-    "next": "15.4.7",
-    "next-intl": "^4.3.4",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
+    "next": "^16.0.0",
+    "next-intl": "^4.5.8",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "resend": "^6.1.1"
   },
   "devDependencies": {

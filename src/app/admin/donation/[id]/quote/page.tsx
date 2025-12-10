@@ -43,8 +43,7 @@ export default function AdminQuoteUploadPage() {
   const [donationMatches, setDonationMatches] = useState<any[]>([])
   const [formData, setFormData] = useState({
     unit_price: '',
-    logistics_cost: '0', // 부가세를 0으로 변경
-    logistics_percent: '10',
+    commission_rate: '10', // 수수료율 (기본 10%)
     special_notes: ''
   })
   const [savedQuote, setSavedQuote] = useState<any>(null)
@@ -70,8 +69,7 @@ export default function AdminQuoteUploadPage() {
         setSavedQuote(quoteData)
         setFormData({
           unit_price: quoteData.unit_price?.toString() || '',
-          logistics_cost: quoteData.logistics_cost?.toString() || '0',
-          logistics_percent: '10',
+          commission_rate: quoteData.commission_rate?.toString() || '10',
           special_notes: quoteData.special_notes || ''
         })
       }
@@ -186,20 +184,20 @@ export default function AdminQuoteUploadPage() {
     }
   }
 
-  // 단가 변경시 부가세 자동 계산 (10%)
-  const handleUnitPriceChange = (value: string) => {
-    const unitPrice = parseInt(value) || 0
-    // 수혜자가 있으면 수락 수량, 없으면 전체 기부 수량 사용
+  // 금액 계산 함수
+  const calculateAmounts = () => {
+    const unitPrice = parseInt(formData.unit_price) || 0
     const totalQuantity = donationMatches.length > 0
       ? donationMatches.reduce((sum, match) => sum + (match.accepted_quantity || 0), 0)
       : (donation?.quantity || 0)
-    const totalPrice = unitPrice * totalQuantity
-    const logisticsCost = Math.round(totalPrice * 0.1)
-    setFormData({
-      ...formData,
-      unit_price: value,
-      logistics_cost: logisticsCost.toString()
-    })
+
+    const supplyPrice = unitPrice * totalQuantity
+    const commissionRate = parseFloat(formData.commission_rate) || 10
+    const commissionAmount = Math.round(supplyPrice * (commissionRate / 100))
+    const vatAmount = Math.round(supplyPrice * 0.1)
+    const totalAmount = supplyPrice + commissionAmount + vatAmount
+
+    return { supplyPrice, commissionAmount, vatAmount, totalAmount }
   }
 
   // 임시저장 기능
@@ -207,13 +205,8 @@ export default function AdminQuoteUploadPage() {
     setLoading(true)
     try {
       const unitPrice = parseInt(formData.unit_price) || 0
-      // 수혜자가 있으면 수락 수량, 없으면 전체 기부 수량 사용
-      const totalQuantity = donationMatches.length > 0
-        ? donationMatches.reduce((sum, match) => sum + (match.accepted_quantity || 0), 0)
-        : (donation?.quantity || 0)
-      const supplyPrice = unitPrice * totalQuantity
-      const logisticsCost = parseInt(formData.logistics_cost) || 0
-      const totalAmount = supplyPrice + logisticsCost
+      const { supplyPrice, commissionAmount, vatAmount, totalAmount } = calculateAmounts()
+      const commissionRate = parseFloat(formData.commission_rate) || 10
 
       if (savedQuote) {
         // 기존 임시저장 업데이트
@@ -221,7 +214,9 @@ export default function AdminQuoteUploadPage() {
           .from('quotes')
           .update({
             unit_price: unitPrice,
-            logistics_cost: logisticsCost,
+            commission_rate: commissionRate,
+            commission_amount: commissionAmount,
+            logistics_cost: vatAmount,
             total_amount: totalAmount,
             special_notes: formData.special_notes,
             updated_at: new Date().toISOString()
@@ -234,14 +229,16 @@ export default function AdminQuoteUploadPage() {
           .insert({
             donation_id: params.id,
             unit_price: unitPrice,
-            logistics_cost: logisticsCost,
+            commission_rate: commissionRate,
+            commission_amount: commissionAmount,
+            logistics_cost: vatAmount,
             total_amount: totalAmount,
             special_notes: formData.special_notes,
             status: 'draft'
           })
           .select()
           .single()
-        
+
         setSavedQuote(data)
       }
 
@@ -274,16 +271,11 @@ export default function AdminQuoteUploadPage() {
       console.log('Donation matches:', donationMatches)
 
       // Calculate total amount based on all matched beneficiaries' accepted quantities
-      // 수혜자가 없으면 전체 기부 수량 사용
       const unitPrice = parseInt(formData.unit_price) || 0
-      const totalQuantity = donationMatches.length > 0
-        ? donationMatches.reduce((sum, match) => sum + (match.accepted_quantity || 0), 0)
-        : (donation?.quantity || 0)
-      const supplyPrice = unitPrice * totalQuantity
-      const logisticsCost = parseInt(formData.logistics_cost) || 0
-      const totalAmount = supplyPrice + logisticsCost
+      const commissionRate = parseFloat(formData.commission_rate) || 10
+      const { supplyPrice, commissionAmount, vatAmount, totalAmount } = calculateAmounts()
 
-      console.log('Calculated amounts:', { unitPrice, supplyPrice, logisticsCost, totalAmount })
+      console.log('Calculated amounts:', { unitPrice, supplyPrice, commissionAmount, vatAmount, totalAmount })
 
       let quoteId = savedQuote?.id
 
@@ -304,7 +296,9 @@ export default function AdminQuoteUploadPage() {
 
         let updatePayload: any = {
           unit_price: unitPrice,
-          logistics_cost: logisticsCost,
+          commission_rate: commissionRate,
+          commission_amount: commissionAmount,
+          logistics_cost: vatAmount,
           total_amount: totalAmount,
           special_notes: formData.special_notes,
           status: 'pending',
@@ -334,7 +328,9 @@ export default function AdminQuoteUploadPage() {
         const insertData: any = {
           donation_id: params.id,
           unit_price: unitPrice,
-          logistics_cost: logisticsCost,
+          commission_rate: commissionRate,
+          commission_amount: commissionAmount,
+          logistics_cost: vatAmount,
           total_amount: totalAmount,
           special_notes: formData.special_notes,
           status: 'pending',
@@ -431,6 +427,27 @@ export default function AdminQuoteUploadPage() {
       }
 
       console.log('All updates completed successfully')
+
+      // 기업에게 견적서 발송 완료 이메일 전송
+      try {
+        if (donation?.businesses) {
+          const businessEmail = donation.businesses.email
+          await fetch('/api/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: businessEmail,
+              type: 'business_quote_ready',
+              donationName: donation.name,
+              quoteAmount: totalAmount.toLocaleString()
+            })
+          })
+        }
+      } catch (emailError) {
+        console.error('견적서 이메일 발송 실패:', emailError)
+        // 이메일 실패해도 견적서 발송은 성공으로 처리
+      }
+
       alert('견적서가 성공적으로 발송되었습니다.')
       router.push('/admin/donations')
     } catch (error: any) {
@@ -447,12 +464,11 @@ export default function AdminQuoteUploadPage() {
   }
 
   // 화면에 표시할 총 금액 계산
-  // 수혜자가 있으면 수락 수량, 없으면 전체 기부 수량 사용
   const totalQuantity = donationMatches.length > 0
     ? donationMatches.reduce((sum, match) => sum + (match.accepted_quantity || 0), 0)
     : (donation?.quantity || 0)
-  const supplyPrice = (parseInt(formData.unit_price) || 0) * totalQuantity
-  const totalAmount = supplyPrice + (parseInt(formData.logistics_cost) || 0)
+
+  const { supplyPrice, commissionAmount, vatAmount, totalAmount } = calculateAmounts()
 
   return (
     <div style={{ backgroundColor: '#F8F9FA', minHeight: '100vh' }}>
@@ -621,7 +637,7 @@ export default function AdminQuoteUploadPage() {
                   <input
                     type="text"
                     value={formData.unit_price}
-                    onChange={(e) => handleUnitPriceChange(e.target.value)}
+                    onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
                     required
                     placeholder="0"
                     style={{
@@ -662,7 +678,7 @@ export default function AdminQuoteUploadPage() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 120px 1fr', gap: '16px', alignItems: 'center' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 120px 1fr', gap: '16px', alignItems: 'center', marginBottom: '16px' }}>
                 <label style={{ fontSize: '14px', color: '#212529', fontWeight: '500' }}>공급가액</label>
                 <div style={{
                   padding: '8px 12px',
@@ -677,35 +693,70 @@ export default function AdminQuoteUploadPage() {
                   {supplyPrice.toLocaleString()} 원
                 </div>
                 <label style={{ fontSize: '14px', color: '#212529', fontWeight: '500' }}>부가세 (10%)</label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type="text"
-                    value={formData.logistics_cost}
-                    onChange={(e) => setFormData({ ...formData, logistics_cost: e.target.value })}
-                    placeholder="0"
-                    style={{
-                      padding: '8px 60px 8px 12px',
-                      fontSize: '14px',
-                      color: '#212529',
-                      fontWeight: '500',
-                      border: '1px solid #CED4DA',
-                      borderRadius: '4px',
-                      outline: 'none',
-                      textAlign: 'right',
-                      width: '100%'
-                    }}
-                  />
-                  <span style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    fontSize: '13px',
-                    color: '#6C757D',
-                    fontWeight: '400'
+                <div style={{
+                  padding: '8px 12px',
+                  fontSize: '14px',
+                  color: '#212529',
+                  fontWeight: '500',
+                  backgroundColor: '#F8F9FA',
+                  border: '1px solid #CED4DA',
+                  borderRadius: '4px',
+                  textAlign: 'right'
+                }}>
+                  {vatAmount.toLocaleString()} 원
+                </div>
+              </div>
+
+              {/* 수수료 필드 (어드민 전용) */}
+              <div style={{
+                backgroundColor: '#FFF9E6',
+                border: '1px solid #FFD020',
+                borderRadius: '8px',
+                padding: '16px',
+                marginBottom: '16px'
+              }}>
+                <div style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '600', color: '#856404' }}>⚠️ 어드민 전용</span>
+                  <span style={{ fontSize: '12px', color: '#856404' }}>(기부기업/수혜기관에게는 표시되지 않습니다)</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 120px 1fr', gap: '16px', alignItems: 'center' }}>
+                  <label style={{ fontSize: '14px', color: '#212529', fontWeight: '500' }}>수수료</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input
+                      type="number"
+                      value={formData.commission_rate}
+                      onChange={(e) => setFormData({ ...formData, commission_rate: e.target.value })}
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      placeholder="10"
+                      style={{
+                        padding: '8px 12px',
+                        fontSize: '14px',
+                        color: '#212529',
+                        fontWeight: '500',
+                        border: '1px solid #CED4DA',
+                        borderRadius: '4px',
+                        outline: 'none',
+                        textAlign: 'right',
+                        width: '80px'
+                      }}
+                    />
+                    <span style={{ fontSize: '14px', color: '#212529', fontWeight: '500' }}>%</span>
+                  </div>
+                  <label style={{ fontSize: '14px', color: '#212529', fontWeight: '500' }}>수수료 금액</label>
+                  <div style={{
+                    padding: '8px 12px',
+                    fontSize: '14px',
+                    color: '#212529',
+                    fontWeight: '500',
+                    backgroundColor: '#F8F9FA',
+                    border: '1px solid #CED4DA',
+                    borderRadius: '4px',
+                    textAlign: 'right'
                   }}>
-                    원
-                  </span>
+                    {commissionAmount.toLocaleString()} 원
+                  </div>
                 </div>
               </div>
 

@@ -674,17 +674,35 @@ export default function ProposalDetailPage() {
                         alert('수령 완료 처리 중 오류가 발생했습니다.')
                         return
                       }
-                      
+
+                      // 어드민에게 수령 확인 알림 이메일 발송
+                      try {
+                        const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@mona.ai.kr'
+                        await fetch('/api/send-email', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            to: adminEmail,
+                            type: 'admin_receipt_submitted',
+                            beneficiaryName: beneficiary?.organization_name,
+                            donationName: donation.description || (donation as any).name
+                          })
+                        })
+                      } catch (emailError) {
+                        console.error('수령 확인 이메일 발송 실패:', emailError)
+                        // 이메일 실패해도 수령 완료는 성공으로 처리
+                      }
+
                       // donations 테이블도 자동으로 completed 처리
                       try {
                         const { error: donationError } = await supabase
                           .from('donations')
-                          .update({ 
+                          .update({
                             status: 'completed',
                             completed_at: new Date().toISOString()
                           })
                           .eq('id', donation.id)
-                        
+
                         if (donationError) {
                           console.warn('Could not auto-complete donation (likely RLS):', donationError.message)
                           alert('수령이 완료되었습니다. 어드민에서 최종 완료 처리 후 기부영수증을 발급할 수 있습니다.')

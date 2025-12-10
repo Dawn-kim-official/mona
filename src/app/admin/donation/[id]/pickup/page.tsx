@@ -98,6 +98,82 @@ export default function AdminPickupSchedulePage() {
 
       console.log('Donation updated successfully:', updatedDonation)
 
+      // 픽업 일정 확정 이메일 발송 (기업 + 수혜기관)
+      try {
+        const pickupInfo = {
+          pickupDate: formData.pickup_date,
+          pickupTime: formData.pickup_time,
+          pickupStaff: formData.pickup_staff,
+          pickupStaffPhone: formData.pickup_staff_phone
+        }
+
+        // 1. 기업에게 이메일 발송
+        const { data: donationWithBusiness } = await supabase
+          .from('donations')
+          .select('*, businesses(email, name)')
+          .eq('id', params.id)
+          .single()
+
+        if (donationWithBusiness?.businesses?.email) {
+          await fetch('/api/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: donationWithBusiness.businesses.email,
+              type: 'business_pickup_confirmed',
+              donationName: donationWithBusiness.name,
+              ...pickupInfo
+            })
+          })
+        }
+
+        // 2. 수락한 수혜기관들에게 이메일 발송
+        const { data: acceptedMatches } = await supabase
+          .from('donation_matches')
+          .select('*, beneficiaries(id, organization_name)')
+          .eq('donation_id', params.id)
+          .eq('status', 'accepted')
+
+        if (acceptedMatches && acceptedMatches.length > 0) {
+          // donation 정보를 다시 가져와서 unit과 pickup_location 포함
+          const { data: donationData } = await supabase
+            .from('donations')
+            .select('name, unit, pickup_location')
+            .eq('id', params.id)
+            .single()
+
+          for (const match of acceptedMatches) {
+            if (match.beneficiaries?.id) {
+              // profiles 테이블에서 이메일 가져오기
+              const { data: profileData } = await supabase
+                .from('profiles')
+                .select('email')
+                .eq('id', match.beneficiaries.id)
+                .single()
+
+              if (profileData?.email) {
+                await fetch('/api/send-email', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    to: profileData.email,
+                    type: 'beneficiary_pickup_confirmed',
+                    donationName: donationData?.name || '',
+                    acceptedQuantity: match.accepted_quantity || '',
+                    unit: donationData?.unit || '',
+                    pickupLocation: donationData?.pickup_location || '',
+                    ...pickupInfo
+                  })
+                })
+              }
+            }
+          }
+        }
+      } catch (emailError) {
+        console.error('픽업 일정 이메일 발송 실패:', emailError)
+        // 이메일 실패해도 픽업 일정 설정은 성공으로 처리
+      }
+
       alert('픽업 일정이 성공적으로 설정되었습니다.')
       router.push('/admin/donations')
     } catch (error: any) {

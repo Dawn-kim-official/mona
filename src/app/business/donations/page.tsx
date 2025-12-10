@@ -101,17 +101,20 @@ export default function BusinessDashboardPage() {
     const donation = donations.find(d => d.id === donationId)
     if (!donation) return
 
-    // Fetch the quote for this donation
-    const { data: quote, error } = await supabase
+    // Fetch the latest quote for this donation
+    const { data: quotes, error } = await supabase
       .from('quotes')
       .select('*')
       .eq('donation_id', donationId)
-      .single()
+      .order('created_at', { ascending: false })
+      .limit(1)
 
-    if (error) {
-      // Error fetching quote
+    if (error || !quotes || quotes.length === 0) {
+      alert('견적서를 불러올 수 없습니다.')
       return
     }
+
+    const quote = quotes[0]
 
     setSelectedDonation(donation)
     setSelectedQuote(quote)
